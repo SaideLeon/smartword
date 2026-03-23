@@ -2,26 +2,14 @@
 
 import { useState, useCallback, useRef } from 'react';
 
-export type WorkType =
-  | 'grupo'        // Trabalho de Investigação em Grupo
-  | 'individual'   // Relatório Individual
-  | 'resumo'       // Resumo / Síntese
-  | 'campo';       // Trabalho de Campo
-
 export type WorkStep =
   | 'idle'
-  | 'config'
+  | 'topic_input'
   | 'generating_outline'
   | 'review_outline'
+  | 'outline_approved'
   | 'developing'
-  | 'section_ready'
-  | 'outline_approved';
-
-export interface WorkGroup {
-  number: number;
-  members: string[];
-  topic: string;
-}
+  | 'section_ready';
 
 export interface WorkSection {
   index: number;
@@ -30,71 +18,50 @@ export interface WorkSection {
   status: 'pending' | 'developed' | 'inserted';
 }
 
-export interface WorkConfig {
-  type: WorkType;
-  school: string;
-  course: string;
-  subject: string;
-  module: string;
-  className: string;
-  deliveryDate: string;
-  numGroups: number;
-  membersPerGroup: number;
-  customTopics: string;
-  formatorName: string;
-  formatorContact: string;
-}
-
 export interface WorkSession {
-  config: WorkConfig;
-  groups: WorkGroup[];
+  topic: string;
   outline: string;
   sections: WorkSection[];
-  enunciado: string;
 }
 
-const DEFAULT_CONFIG: WorkConfig = {
-  type: 'grupo',
-  school: '',
-  course: '',
-  subject: '',
-  module: '',
-  className: '',
-  deliveryDate: '',
-  numGroups: 5,
-  membersPerGroup: 5,
-  customTopics: '',
-  formatorName: '',
-  formatorContact: '',
-};
+// Secções fixas do ensino secundário/médio em Moçambique
+const FIXED_SECTIONS: Omit<WorkSection, 'content' | 'status'>[] = [
+  { index: 0, title: 'Índice' },
+  { index: 1, title: 'Introdução' },
+  { index: 2, title: 'Objectivos e Metodologia' },
+  { index: 3, title: 'Desenvolvimento Teórico' },
+  { index: 4, title: 'Conclusão' },
+  { index: 5, title: 'Referências Bibliográficas' },
+];
+
+function buildInitialSections(): WorkSection[] {
+  return FIXED_SECTIONS.map(s => ({ ...s, content: '', status: 'pending' as const }));
+}
 
 export function useWorkSession() {
-  const [step, setStep] = useState<WorkStep>('idle');
-  const [config, setConfig] = useState<WorkConfig>(DEFAULT_CONFIG);
-  const [session, setSession] = useState<WorkSession | null>(null);
-  const [streamingText, setStreamingText] = useState('');
+  const [step, setStep]                     = useState<WorkStep>('idle');
+  const [session, setSession]               = useState<WorkSession | null>(null);
+  const [streamingText, setStreamingText]   = useState('');
   const [activeSectionIdx, setActiveSectionIdx] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]                   = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setStep('idle');
-    setConfig(DEFAULT_CONFIG);
     setSession(null);
     setStreamingText('');
     setActiveSectionIdx(null);
     setError(null);
   }, []);
 
-  const startConfig = useCallback((type: WorkType) => {
-    setConfig(prev => ({ ...prev, type }));
-    setStep('config');
+  const startNew = useCallback(() => {
+    setStep('topic_input');
     setError(null);
   }, []);
 
-  const generateWork = useCallback(async (cfg: WorkConfig) => {
-    setConfig(cfg);
+  // Gera o esboço via IA
+  const submitTopic = useCallback(async (topic: string) => {
     setError(null);
     setStreamingText('');
     setStep('generating_outline');
@@ -106,13 +73,13 @@ export function useWorkSession() {
       const res = await fetch('/api/work/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: cfg }),
+        body: JSON.stringify({ topic }),
         signal: ctrl.signal,
       });
 
-      if (!res.ok) throw new Error('Erro ao gerar trabalho');
+      if (!res.ok) throw new Error('Erro ao gerar esboço');
 
-      const reader = res.body!.getReader();
+      const reader  = res.body!.getReader();
       const decoder = new TextDecoder();
       let accumulated = '';
 
@@ -125,43 +92,21 @@ export function useWorkSession() {
           const data = line.slice(6).trim();
           if (data === '[DONE]') break;
           try {
-            const json = JSON.parse(data);
+            const json  = JSON.parse(data);
             const delta = json.choices?.[0]?.delta?.content ?? '';
             if (delta) { accumulated += delta; setStreamingText(accumulated); }
           } catch { /* ignorar */ }
         }
       }
 
-      // Parse the JSON response
-      try {
-        const clean = accumulated.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const parsed = JSON.parse(clean);
-        setSession({
-          config: cfg,
-          groups: parsed.groups ?? [],
-          outline: parsed.outline ?? '',
-          sections: (parsed.sections ?? []).map((s: any, i: number) => ({
-            index: i,
-            title: s.title,
-            content: '',
-            status: 'pending' as const,
-          })),
-          enunciado: parsed.enunciado ?? '',
-        });
-        setStep('review_outline');
-      } catch {
-        // If not JSON, treat as outline text
-        setSession({
-          config: cfg,
-          groups: [],
-          outline: accumulated,
-          sections: extractSections(accumulated),
-          enunciado: accumulated,
-        });
-        setStep('review_outline');
-      }
+      setSession({
+        topic,
+        outline: accumulated,
+        sections: buildInitialSections(),
+      });
+      setStep('review_outline');
     } catch (e: any) {
-      if (e.name !== 'AbortError') { setError(e.message); setStep('config'); }
+      if (e.name !== 'AbortError') { setError(e.message); setStep('topic_input'); }
     }
   }, []);
 
@@ -169,6 +114,12 @@ export function useWorkSession() {
     setStep('outline_approved');
   }, []);
 
+  const requestNewOutline = useCallback(() => {
+    if (!session) return;
+    submitTopic(session.topic);
+  }, [session, submitTopic]);
+
+  // Desenvolve uma secção
   const developSection = useCallback(async (index: number) => {
     if (!session) return;
     setError(null);
@@ -180,22 +131,25 @@ export function useWorkSession() {
     abortRef.current = ctrl;
 
     try {
+      const previousSections = session.sections
+        .filter(s => s.index < index && s.content)
+        .map(s => ({ title: s.title, content: s.content }));
+
       const res = await fetch('/api/work/develop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          config: session.config,
-          section: session.sections[index],
+          topic: session.topic,
           outline: session.outline,
-          groups: session.groups,
-          previousSections: session.sections.slice(0, index).filter(s => s.content),
+          section: session.sections[index],
+          previousSections,
         }),
         signal: ctrl.signal,
       });
 
       if (!res.ok) throw new Error('Erro ao desenvolver secção');
 
-      const reader = res.body!.getReader();
+      const reader  = res.body!.getReader();
       const decoder = new TextDecoder();
       let accumulated = '';
 
@@ -208,7 +162,7 @@ export function useWorkSession() {
           const data = line.slice(6).trim();
           if (data === '[DONE]') break;
           try {
-            const json = JSON.parse(data);
+            const json  = JSON.parse(data);
             const delta = json.choices?.[0]?.delta?.content ?? '';
             if (delta) { accumulated += delta; setStreamingText(accumulated); }
           } catch { /* ignorar */ }
@@ -217,10 +171,12 @@ export function useWorkSession() {
 
       setSession(prev => {
         if (!prev) return prev;
-        const updated = prev.sections.map(s =>
-          s.index === index ? { ...s, content: accumulated, status: 'developed' as const } : s
-        );
-        return { ...prev, sections: updated };
+        return {
+          ...prev,
+          sections: prev.sections.map(s =>
+            s.index === index ? { ...s, content: accumulated, status: 'developed' as const } : s
+          ),
+        };
       });
       setStep('section_ready');
     } catch (e: any) {
@@ -232,7 +188,9 @@ export function useWorkSession() {
     if (!session) return;
     const sec = session.sections[index];
     if (!sec?.content) return;
+
     onInsert(`## ${sec.title}\n\n${sec.content}`);
+
     setSession(prev => {
       if (!prev) return prev;
       return {
@@ -246,41 +204,21 @@ export function useWorkSession() {
     setActiveSectionIdx(null);
   }, [session]);
 
-  const insertEnunciado = useCallback((onInsert: (text: string) => void) => {
-    if (!session?.enunciado) return;
-    onInsert(session.enunciado);
-  }, [session]);
-
   const backToOutline = useCallback(() => {
     setStep('outline_approved');
     setActiveSectionIdx(null);
   }, []);
 
   const progressPct = session?.sections.length
-    ? Math.round(session.sections.filter(s => s.status !== 'pending').length / session.sections.length * 100)
+    ? Math.round(
+        session.sections.filter(s => s.status !== 'pending').length /
+        session.sections.length * 100
+      )
     : 0;
 
   return {
-    step, config, session, streamingText, activeSectionIdx, error, progressPct,
-    reset, startConfig, generateWork, approveOutline, developSection,
-    insertSection, insertEnunciado, backToOutline,
+    step, session, streamingText, activeSectionIdx, error, progressPct,
+    reset, startNew, submitTopic, approveOutline, requestNewOutline,
+    developSection, insertSection, backToOutline,
   };
-}
-
-function extractSections(text: string): WorkSection[] {
-  const lines = text.split('\n');
-  const sections: WorkSection[] = [];
-  let index = 0;
-  for (const line of lines) {
-    const match = line.match(/^#{1,3}\s+(.+)/);
-    if (match) {
-      sections.push({ index: index++, title: match[1].trim(), content: '', status: 'pending' });
-    }
-  }
-  return sections.length > 0 ? sections : [
-    { index: 0, title: 'Introdução', content: '', status: 'pending' },
-    { index: 1, title: 'Desenvolvimento', content: '', status: 'pending' },
-    { index: 2, title: 'Conclusão', content: '', status: 'pending' },
-    { index: 3, title: 'Referências Bibliográficas', content: '', status: 'pending' },
-  ];
 }
