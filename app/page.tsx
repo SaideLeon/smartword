@@ -12,7 +12,7 @@ import { WorkPanel } from '@/components/WorkPanel';
 type SidePanel = 'none' | 'chat' | 'tcc' | 'work';
 
 export default function Home() {
-  const { markdown, setMarkdown, filename, setFilename, loading, exportDocx } = useDocumentEditor();
+  const { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown } = useDocumentEditor();
   const [sidePanel, setSidePanel] = useState<SidePanel>('none');
   const isMobile = useIsMobile();
 
@@ -29,6 +29,7 @@ export default function Home() {
   );
 
   const togglePanel = (panel: SidePanel) => {
+    clearDefaultMarkdown();
     setSidePanel(prev => (prev === panel ? 'none' : panel));
   };
 
