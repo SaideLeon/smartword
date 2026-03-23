@@ -5,9 +5,10 @@ import { useRef, useState, useCallback } from 'react';
 interface Props {
   value: string;
   onChange: (v: string) => void;
+  isMobile?: boolean;
 }
 
-export function MarkdownEditor({ value, onChange }: Props) {
+export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
@@ -59,13 +60,14 @@ export function MarkdownEditor({ value, onChange }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      {/* Toolbar */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
           justifyContent: 'space-between',
+          flexDirection: isMobile ? 'column' : 'row',
           padding: '0 2px',
+          gap: '0.75rem',
         }}
       >
         <span
@@ -80,7 +82,15 @@ export function MarkdownEditor({ value, onChange }: Props) {
           Editor Markdown
         </span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: isMobile ? 'stretch' : 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            width: isMobile ? '100%' : 'auto',
+          }}
+        >
           {uploadedFilename && (
             <div
               style={{
@@ -91,6 +101,7 @@ export function MarkdownEditor({ value, onChange }: Props) {
                 border: '1px solid #c9a96e33',
                 borderRadius: '4px',
                 padding: '3px 8px',
+                maxWidth: isMobile ? '100%' : 'none',
               }}
             >
               <span style={{ fontSize: '11px', color: '#c9a96e', fontFamily: 'monospace' }}>
@@ -121,6 +132,7 @@ export function MarkdownEditor({ value, onChange }: Props) {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.4rem',
               background: '#1a1714',
               border: '1px solid #2a2520',
@@ -130,6 +142,7 @@ export function MarkdownEditor({ value, onChange }: Props) {
               fontSize: '11px',
               letterSpacing: '0.06em',
               padding: '5px 10px',
+              width: isMobile ? '100%' : 'auto',
               cursor: 'pointer',
               transition: 'all 0.15s',
             }}
@@ -152,7 +165,6 @@ export function MarkdownEditor({ value, onChange }: Props) {
         </div>
       </div>
 
-      {/* Drop zone + textarea */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -166,7 +178,6 @@ export function MarkdownEditor({ value, onChange }: Props) {
           background: '#141210',
         }}
       >
-        {/* Drag overlay */}
         {dragging && (
           <div
             style={{
@@ -200,7 +211,7 @@ export function MarkdownEditor({ value, onChange }: Props) {
               style={{
                 color: '#c9a96e',
                 fontFamily: 'monospace',
-                fontSize: '13px',
+                fontSize: isMobile ? '12px' : '13px',
                 letterSpacing: '0.08em',
                 opacity: 0.8,
               }}
@@ -210,13 +221,11 @@ export function MarkdownEditor({ value, onChange }: Props) {
           </div>
         )}
 
-        {/* Line numbers + textarea wrapper */}
         <div style={{ display: 'flex', overflow: 'hidden', borderRadius: '6px' }}>
-          {/* Gutter */}
           <div
             aria-hidden
             style={{
-              minWidth: '44px',
+              minWidth: isMobile ? '36px' : '44px',
               background: '#111009',
               borderRight: '1px solid #1e1b18',
               padding: '14px 0',
@@ -233,7 +242,7 @@ export function MarkdownEditor({ value, onChange }: Props) {
                 key={i}
                 style={{
                   display: 'block',
-                  fontSize: '11px',
+                  fontSize: isMobile ? '10px' : '11px',
                   fontFamily: 'monospace',
                   color: '#3a3530',
                   lineHeight: '1.65',
@@ -259,21 +268,20 @@ export function MarkdownEditor({ value, onChange }: Props) {
             )}
           </div>
 
-          {/* Textarea */}
           <textarea
             value={value}
             onChange={e => onChange(e.target.value)}
             spellCheck={false}
             style={{
               flex: 1,
-              minHeight: '480px',
-              padding: '14px 16px',
+              minHeight: isMobile ? '360px' : '480px',
+              padding: isMobile ? '12px' : '14px 16px',
               background: 'transparent',
               border: 'none',
               outline: 'none',
               resize: 'vertical',
               fontFamily: "'Courier New', 'Courier', monospace",
-              fontSize: '13px',
+              fontSize: isMobile ? '12px' : '13px',
               lineHeight: '1.65',
               color: '#d4cec7',
               caretColor: '#c9a96e',
@@ -284,7 +292,6 @@ export function MarkdownEditor({ value, onChange }: Props) {
         </div>
       </div>
 
-      {/* Hint */}
       <p
         style={{
           fontSize: '11px',
@@ -293,13 +300,13 @@ export function MarkdownEditor({ value, onChange }: Props) {
           letterSpacing: '0.04em',
           margin: 0,
           padding: '0 2px',
+          lineHeight: 1.5,
         }}
       >
         Arraste um ficheiro <span style={{ color: '#5a5248' }}>.md</span> para o editor, ou clique em{' '}
         <span style={{ color: '#5a5248' }}>Importar .md</span> para carregar.
       </p>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
