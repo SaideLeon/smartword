@@ -1,5 +1,6 @@
 import type {Metadata, Viewport} from 'next';
 import {PwaRegistrar} from '@/components/PwaRegistrar';
+import 'temml/dist/Temml-Local.css';
 import './globals.css'; // Global styles
 
 export const metadata: Metadata = {

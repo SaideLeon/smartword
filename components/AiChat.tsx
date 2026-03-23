@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { ChatMessageContent } from '@/components/ChatMessageContent';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -256,18 +257,8 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
                 padding: '0.6rem 0.85rem',
               }}
             >
-              <pre
-                style={{
-                  margin: 0,
-                  fontFamily: msg.role === 'assistant' ? "'Courier New', monospace" : "'Georgia', serif",
-                  fontSize: '12px',
-                  color: msg.role === 'user' ? '#d4cec7' : '#c9c3ba',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  lineHeight: 1.65,
-                }}
-              >
-                {msg.content}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <ChatMessageContent content={msg.content} role={msg.role} />
                 {streaming && i === messages.length - 1 && msg.role === 'assistant' && (
                   <span
                     style={{
@@ -281,7 +272,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
                     }}
                   />
                 )}
-              </pre>
+              </div>
             </div>
 
             {/* Botões de acção na última mensagem do assistente */}
