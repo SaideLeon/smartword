@@ -17,7 +17,10 @@ export async function POST(req: Request) {
         }\n`
       : '';
 
-    // Instruções específicas por secção
+    // Detectar se é uma subsecção numerada (ex: "4.1 Conceito de...")
+    const isSubsection = /^\d+\.\d+/.test(section.title);
+
+    // Instruções específicas por título de secção
     const sectionInstructions: Record<string, string> = {
       'Índice': `Formata como um índice real com os títulos das secções e páginas fictícias (ex: pág. 1, pág. 2…). Apresenta de forma limpa, sem desenvolvimento de conteúdo.`,
       'Introdução': `Apresenta o tema, contextualiza a sua importância, indica brevemente a estrutura do trabalho. Entre 200-350 palavras.`,
@@ -27,7 +30,15 @@ export async function POST(req: Request) {
       'Referências Bibliográficas': `Lista no mínimo 5 referências no formato APA adaptado ao contexto moçambicano. Inclui livros, sites académicos e artigos relacionados com o tema.`,
     };
 
-    const specificInstruction = sectionInstructions[section.title] ?? 'Desenvolve o conteúdo de forma académica e adequada ao ensino secundário/médio.';
+    // Para subsecções (4.1, 4.2, …): instrução dedicada ao subtópico específico
+    const subsectionInstruction = `Desenvolve este subtópico de forma aprofundada e académica. \
+Apresenta definições claras, factos relevantes, exemplos práticos (preferencialmente do contexto moçambicano) \
+e, quando adequado, menciona autores ou fontes que suportem as ideias. \
+Entre 250-450 palavras. Usa Markdown para listas e destaques quando melhorar a clareza.`;
+
+    const specificInstruction = isSubsection
+      ? subsectionInstruction
+      : (sectionInstructions[section.title] ?? 'Desenvolve o conteúdo de forma académica e adequada ao ensino secundário/médio.');
 
     const systemPrompt = `És um especialista académico a desenvolver um trabalho escolar do ensino secundário/médio em Moçambique sobre: "${topic}".
 
@@ -41,7 +52,7 @@ INSTRUÇÃO ESPECÍFICA PARA ESTA SECÇÃO:
 ${specificInstruction}
 
 REGRAS ABSOLUTAS:
-- Escreve APENAS o conteúdo da secção, sem introduções do tipo "Nesta secção…"
+- Escreve APENAS o conteúdo da secção, sem introduções do tipo "Nesta secção…" ou "Vou desenvolver…"
 - Português europeu/moçambicano correcto
 - Usa Markdown: negrito, listas, sub-títulos ### quando adequado
 - Mantém coerência terminológica com as secções anteriores

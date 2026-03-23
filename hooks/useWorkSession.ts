@@ -24,18 +24,77 @@ export interface WorkSession {
   sections: WorkSection[];
 }
 
-// Secções fixas do ensino secundário/médio em Moçambique
-const FIXED_SECTIONS: Omit<WorkSection, 'content' | 'status'>[] = [
-  { index: 0, title: 'Índice' },
-  { index: 1, title: 'Introdução' },
-  { index: 2, title: 'Objectivos e Metodologia' },
-  { index: 3, title: 'Desenvolvimento Teórico' },
-  { index: 4, title: 'Conclusão' },
-  { index: 5, title: 'Referências Bibliográficas' },
+// Secções fixas de fallback (caso o esboço não tenha ## nenhum)
+const FIXED_SECTIONS = [
+  'Índice',
+  'Introdução',
+  'Objectivos e Metodologia',
+  'Desenvolvimento Teórico',
+  'Conclusão',
+  'Referências Bibliográficas',
 ];
 
 function buildInitialSections(): WorkSection[] {
-  return FIXED_SECTIONS.map(s => ({ ...s, content: '', status: 'pending' as const }));
+  return FIXED_SECTIONS.map((title, index) => ({
+    index,
+    title,
+    content: '',
+    status: 'pending' as const,
+  }));
+}
+
+/**
+ * Analisa o esboço gerado pela IA e cria secções individualizadas.
+ *
+ * Regra:
+ *  - Cabeçalhos ## sem subsecções ### imediatamente a seguir → secção própria
+ *  - Cabeçalhos ## com subsecções ### a seguir → ignorados (substituídos pelas subsecções)
+ *  - Cabeçalhos ### → sempre secção individual
+ *
+ * Resultado típico para "Desenvolvimento Teórico":
+ *   1. Índice
+ *   2. Introdução
+ *   3. Objectivos e Metodologia
+ *   4.1 Conceito de correio electrónico   ← subsecção individual
+ *   4.2 História do correio electrónico   ← subsecção individual
+ *   5. Conclusão
+ *   6. Referências Bibliográficas
+ */
+function parseOutlineSections(outline: string): WorkSection[] {
+  const lines = outline.split('\n');
+
+  // 1ª passagem: recolher todos os ## e ###
+  const raw: { title: string; level: 2 | 3 }[] = [];
+  for (const line of lines) {
+    const h2 = line.match(/^##\s+(.+)/);
+    const h3 = line.match(/^###\s+(.+)/);
+    if (h2) raw.push({ title: h2[1].trim(), level: 2 });
+    else if (h3) raw.push({ title: h3[1].trim(), level: 3 });
+  }
+
+  if (raw.length === 0) return buildInitialSections();
+
+  // 2ª passagem: se um ## é seguido por ###, salta o ##
+  const sections: WorkSection[] = [];
+  let index = 0;
+
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i].level === 2) {
+      const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
+      if (!nextIsH3) {
+        // Secção principal sem subsecções — adicionar normalmente
+        sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
+        index++;
+      }
+      // Se tem subsecções logo a seguir, o ## é apenas contentor — ignorar
+    } else {
+      // Subsecção ### → sempre individual
+      sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
+      index++;
+    }
+  }
+
+  return sections.length > 0 ? sections : buildInitialSections();
 }
 
 export function useWorkSession() {
@@ -102,7 +161,8 @@ export function useWorkSession() {
       setSession({
         topic,
         outline: accumulated,
-        sections: buildInitialSections(),
+        // Usar o esboço gerado para criar secções individualizadas (incluindo subsecções)
+        sections: parseOutlineSections(accumulated),
       });
       setStep('review_outline');
     } catch (e: any) {
@@ -189,7 +249,10 @@ export function useWorkSession() {
     const sec = session.sections[index];
     if (!sec?.content) return;
 
-    onInsert(`## ${sec.title}\n\n${sec.content}`);
+    // Subsecções (ex: "4.1 Conceito de...") inseridas com ### em vez de ##
+    const isSubsection = /^\d+\.\d+/.test(sec.title);
+    const heading = isSubsection ? '###' : '##';
+    onInsert(`${heading} ${sec.title}\n\n${sec.content}`);
 
     setSession(prev => {
       if (!prev) return prev;
