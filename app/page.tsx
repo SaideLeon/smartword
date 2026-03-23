@@ -12,7 +12,7 @@ import { WorkPanel } from '@/components/WorkPanel';
 type SidePanel = 'none' | 'chat' | 'tcc' | 'work';
 
 export default function Home() {
-  const { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown } = useDocumentEditor();
+  const { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown, setFilenameFromTopic } = useDocumentEditor();
   const [sidePanel, setSidePanel] = useState<SidePanel>('none');
   const isMobile = useIsMobile();
 
@@ -279,10 +279,10 @@ export default function Home() {
               <AiChat onInsert={handleInsert} onReplace={handleReplace} onClose={() => setSidePanel('none')} isMobile={isMobile} />
             )}
             {sidePanel === 'tcc' && (
-              <TccPanel onInsert={handleInsert} onClose={() => setSidePanel('none')} isMobile={isMobile} />
+              <TccPanel onInsert={handleInsert} onTopicChange={setFilenameFromTopic} onClose={() => setSidePanel('none')} isMobile={isMobile} />
             )}
             {sidePanel === 'work' && (
-              <WorkPanel onInsert={handleInsert} onClose={() => setSidePanel('none')} isMobile={isMobile} />
+              <WorkPanel onInsert={handleInsert} onTopicChange={setFilenameFromTopic} onClose={() => setSidePanel('none')} isMobile={isMobile} />
             )}
           </div>
         )}

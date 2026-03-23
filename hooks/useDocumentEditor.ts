@@ -190,6 +190,19 @@ Como o domínio exige $x > 0$ e $x - 3 > 0$, logo $x > 3$, temos $x_2 = -2$ reje
 
 5. Mostre que $\\log_a b \\cdot \\log_b a = 1$.`;
 
+function buildFilenameFromTopic(topic: string) {
+  const normalized = topic
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 80);
+
+  return normalized || 'documento';
+}
+
 export function useDocumentEditor() {
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
   const [loading, setLoading] = useState(false);
@@ -197,6 +210,10 @@ export function useDocumentEditor() {
 
   const clearDefaultMarkdown = () => {
     setMarkdown(current => (current === DEFAULT_MARKDOWN ? '' : current));
+  };
+
+  const setFilenameFromTopic = (topic: string) => {
+    setFilename(buildFilenameFromTopic(topic));
   };
 
   const exportDocx = async () => {
@@ -227,5 +244,5 @@ export function useDocumentEditor() {
     }
   };
 
-  return { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown };
+  return { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown, setFilenameFromTopic };
 }
