@@ -195,6 +195,10 @@ export function useDocumentEditor() {
   const [loading, setLoading] = useState(false);
   const [filename, setFilename] = useState('matematica-teste');
 
+  const clearDefaultMarkdown = () => {
+    setMarkdown(current => (current === DEFAULT_MARKDOWN ? '' : current));
+  };
+
   const exportDocx = async () => {
     setLoading(true);
     try {
@@ -223,5 +227,5 @@ export function useDocumentEditor() {
     }
   };
 
-  return { markdown, setMarkdown, filename, setFilename, loading, exportDocx };
+  return { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown };
 }
