@@ -1,7 +1,11 @@
+// components/TccPanel.tsx  (versão actualizada — substitui o original)
+// Adiciona o badge de compressão de contexto no header do painel.
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useTccSession } from '@/hooks/useTccSession';
+import { ContextCompressionBadge } from '@/components/ContextCompressionBadge';
 import type { TccSection } from '@/lib/tcc/types';
 
 interface Props {
@@ -10,7 +14,6 @@ interface Props {
   isMobile?: boolean;
 }
 
-// ── Paleta de cores TCC (verde-oliva académico, diferente do dourado do chat) ──
 const C = {
   bg:       '#0b0d0b',
   surface:  '#111411',
@@ -27,13 +30,13 @@ const C = {
 export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
   const {
     step, session, outline, streamingText, activeSectionIdx, error,
-    recentSessions,
+    recentSessions, compressionStatus,
     startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession, reset,
   } = useTccSession();
 
-  const [topicInput, setTopicInput]     = useState('');
-  const [outlineEdit, setOutlineEdit]   = useState('');
+  const [topicInput, setTopicInput]   = useState('');
+  const [outlineEdit, setOutlineEdit] = useState('');
   const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -72,38 +75,43 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
       background: C.bg, borderLeft: isMobile ? 'none' : `1px solid ${C.border}`,
     }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── Header ───────────────────────────────────────────────────────────── */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', flexDirection: 'column', gap: '0.4rem',
         padding: isMobile ? '0.75rem 0.85rem' : '0.75rem 1rem',
         borderBottom: `1px solid ${C.border}`, flexShrink: 0,
         background: 'rgba(11,13,11,0.95)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '16px' }}>📝</span>
-          <span style={{ fontSize: '13px', fontFamily: 'monospace', color: C.accent, letterSpacing: '0.06em' }}>
-            Modo TCC
-          </span>
-          {session && (
-            <span style={{
-              fontSize: '10px', fontFamily: 'monospace', color: C.textFaint,
-              background: C.surface, padding: '1px 6px', borderRadius: '3px',
-              border: `1px solid ${C.border}`,
-            }}>
-              {session.topic.length > 28 ? session.topic.slice(0, 28) + '…' : session.topic}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '16px' }}>📝</span>
+            <span style={{ fontSize: '13px', fontFamily: 'monospace', color: C.accent, letterSpacing: '0.06em' }}>
+              Modo TCC
             </span>
-          )}
+            {session && (
+              <span style={{
+                fontSize: '10px', fontFamily: 'monospace', color: C.textFaint,
+                background: C.surface, padding: '1px 6px', borderRadius: '3px',
+                border: `1px solid ${C.border}`,
+              }}>
+                {session.topic.length > 28 ? session.topic.slice(0, 28) + '…' : session.topic}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {session && (
+              <button onClick={reset} style={ghostBtn(C.muted)} title="Nova sessão">↩</button>
+            )}
+            <button onClick={onClose} style={ghostBtn('#5a5248')} title="Fechar">×</button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {session && (
-            <button onClick={reset} style={ghostBtn(C.muted)} title="Nova sessão">↩</button>
-          )}
-          <button onClick={onClose} style={ghostBtn('#5a5248')} title="Fechar">×</button>
-        </div>
+        {/* Badge de compressão — aparece quando activo */}
+        <ContextCompressionBadge status={compressionStatus} />
       </div>
 
-      {/* ── Barra de progresso ─────────────────────────────────────────────── */}
+      {/* ── Barra de progresso ───────────────────────────────────────────────── */}
       {session && session.sections.length > 0 && (
         <div style={{ flexShrink: 0, padding: '0.5rem 1rem', borderBottom: `1px solid ${C.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
@@ -124,18 +132,21 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
         </div>
       )}
 
-      {/* ── Conteúdo principal ─────────────────────────────────────────────── */}
+      {/* ── Conteúdo principal ───────────────────────────────────────────────── */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: isMobile ? '0.85rem' : '1rem',
         display: 'flex', flexDirection: 'column', gap: '1rem',
       }}>
 
-        {/* ── IDLE ─────────────────────────────────────────────────────────── */}
+        {/* IDLE */}
         {step === 'idle' && (
           <div style={{ textAlign: 'center', marginTop: '2rem' }}>
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📝</div>
             <p style={{ color: C.textDim, fontSize: '13px', fontFamily: 'monospace', lineHeight: 1.65, marginBottom: '1.5rem' }}>
-              O modo TCC acompanha-te do esboço<br />à conclusão, secção a secção.
+              O modo TCC acompanha-te do esboço<br />à conclusão, secção a secção.<br />
+              <span style={{ color: C.textFaint, fontSize: '11px' }}>
+                Compressão de contexto automática — sem limites de janela.
+              </span>
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               <Btn onClick={() => { startNew(); setShowSessions(false); }} color={C.accent}>
@@ -172,7 +183,7 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
                     <span style={{
                       fontSize: '10px', fontFamily: 'monospace',
                       color: s.status === 'completed' ? C.accent : C.muted,
-                      padding: '2px 6px', border: `1px solid currentColor`, borderRadius: '3px',
+                      padding: '2px 6px', border: '1px solid currentColor', borderRadius: '3px',
                     }}>
                       {s.status === 'completed' ? 'Concluído' :
                        s.status === 'in_progress' ? 'Em curso' :
@@ -185,7 +196,7 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
           </div>
         )}
 
-        {/* ── ESCOLHER NOVO/RETOMAR ─────────────────────────────────────────── */}
+        {/* TOPIC INPUT */}
         {step === 'new_or_resume' && (
           <TopicInput
             value={topicInput}
@@ -195,7 +206,7 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
           />
         )}
 
-        {/* ── A GERAR ESBOÇO ───────────────────────────────────────────────── */}
+        {/* GERANDO ESBOÇO */}
         {step === 'generating_outline' && (
           <div>
             <Label>A gerar esboço estrutural…</Label>
@@ -203,12 +214,10 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
           </div>
         )}
 
-        {/* ── REVER ESBOÇO ─────────────────────────────────────────────────── */}
+        {/* REVER ESBOÇO */}
         {step === 'review_outline' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <Label>
-              Revê o esboço gerado. Podes editar directamente antes de aprovar.
-            </Label>
+            <Label>Revê o esboço gerado. Podes editar directamente antes de aprovar.</Label>
             <textarea
               value={outlineEdit}
               onChange={e => setOutlineEdit(e.target.value)}
@@ -222,26 +231,25 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
               onBlur={e  => (e.target.style.borderColor = C.border)}
             />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Btn onClick={() => { approveOutline(); }} color={C.accent} flex>
-                ✓ Aprovar esboço
-              </Btn>
-              <Btn onClick={requestNewOutline} color={C.muted} outline flex>
-                ↻ Gerar novo
-              </Btn>
+              <Btn onClick={() => approveOutline()} color={C.accent} flex>✓ Aprovar esboço</Btn>
+              <Btn onClick={requestNewOutline} color={C.muted} outline flex>↻ Gerar novo</Btn>
             </div>
           </div>
         )}
 
-        {/* ── ESBOÇO APROVADO — LISTA DE SECÇÕES ───────────────────────────── */}
+        {/* LISTA DE SECÇÕES */}
         {(step === 'outline_approved' || step === 'section_ready') && session && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <Label>
-              Esboço aprovado. Selecciona uma secção para desenvolver.
-            </Label>
+            <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
 
             {session.sections.map(sec => {
               const { label, color } = statusLabel(sec);
               const isActive = activeSectionIdx === sec.index;
+              // Indicador visual se esta secção já está no resumo
+              const isCompressed =
+                compressionStatus.active &&
+                compressionStatus.coveredUpTo !== null &&
+                sec.index <= compressionStatus.coveredUpTo;
 
               return (
                 <div key={sec.index} style={{
@@ -250,10 +258,21 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
                   borderRadius: '6px', padding: '0.65rem 0.85rem',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   gap: '0.5rem', transition: 'all 0.15s',
+                  opacity: isCompressed ? 0.75 : 1,
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: C.text, fontSize: '12px', fontFamily: 'monospace', fontWeight: 500 }}>
-                      {sec.title}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ color: C.text, fontSize: '12px', fontFamily: 'monospace', fontWeight: 500 }}>
+                        {sec.title}
+                      </span>
+                      {/* Ícone discreto para secções já no resumo */}
+                      {isCompressed && (
+                        <span title="Secção no resumo de contexto" style={{
+                          fontSize: '9px', color: C.textFaint,
+                          border: `1px solid ${C.border}`, borderRadius: '2px',
+                          padding: '0 3px', fontFamily: 'monospace',
+                        }}>∑</span>
+                      )}
                     </div>
                     <div style={{ color, fontSize: '10px', fontFamily: 'monospace', marginTop: '2px' }}>
                       {label}
@@ -264,11 +283,8 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
                     {sec.status !== 'pending' && (
                       <button
                         onClick={() => insertSection(sec.index, onInsert)}
-                        style={smallBtn(C.gold)}
-                        title="Inserir no editor"
-                      >
-                        ↓
-                      </button>
+                        style={smallBtn(C.gold)} title="Inserir no editor"
+                      >↓</button>
                     )}
                     <button
                       onClick={() => developSection(sec.index)}
@@ -297,21 +313,30 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
           </div>
         )}
 
-        {/* ── A DESENVOLVER SECÇÃO ─────────────────────────────────────────── */}
+        {/* A DESENVOLVER */}
         {step === 'developing' && (
           <div>
             {session && activeSectionIdx !== null && (
               <Label>
                 A desenvolver: <span style={{ color: C.accent }}>
-                  {session.sections[activeSectionIdx]?.title}
+                  {session.sections.find(s => s.index === activeSectionIdx)?.title}
                 </span>
               </Label>
+            )}
+            {compressionStatus.justCompressed && (
+              <div style={{
+                marginBottom: '0.5rem', padding: '0.4rem 0.7rem', borderRadius: '4px',
+                background: '#c9a96e11', border: '1px solid #c9a96e33',
+                fontSize: '10px', fontFamily: 'monospace', color: C.gold,
+              }}>
+                ✦ Contexto comprimido automaticamente para optimizar a janela de tokens
+              </div>
             )}
             <StreamBox text={streamingText} />
           </div>
         )}
 
-        {/* ── SECÇÃO PRONTA ────────────────────────────────────────────────── */}
+        {/* SECÇÃO PRONTA */}
         {step === 'section_ready' && session && activeSectionIdx !== null && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
             <Label>
@@ -330,23 +355,15 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
               {streamingText}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Btn
-                onClick={() => insertSection(activeSectionIdx, onInsert)}
-                color={C.accent} flex
-              >
+              <Btn onClick={() => insertSection(activeSectionIdx, onInsert)} color={C.accent} flex>
                 ↓ Inserir no editor
               </Btn>
-              <Btn
-                onClick={backToOutline}
-                color={C.muted} outline flex
-              >
-                ← Voltar
-              </Btn>
+              <Btn onClick={backToOutline} color={C.muted} outline flex>← Voltar</Btn>
             </div>
           </div>
         )}
 
-        {/* ── Erro ─────────────────────────────────────────────────────────── */}
+        {/* Erro */}
         {error && (
           <div style={{
             padding: '0.65rem 0.85rem', borderRadius: '5px',
@@ -378,20 +395,16 @@ function TopicInput({
         onChange={e => onChange(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(); } }}
         placeholder="Ex: O impacto das tecnologias digitais na educação básica em Moçambique"
-        rows={4}
-        autoFocus
+        rows={4} autoFocus
         style={{
-          background: C.surface, border: `1px solid ${C.border}`,
-          borderRadius: '5px', color: C.text, fontFamily: 'monospace',
-          fontSize: '12px', padding: '0.75rem', outline: 'none',
-          resize: 'none', lineHeight: 1.6, caretColor: C.accent,
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: '5px',
+          color: C.text, fontFamily: 'monospace', fontSize: '12px',
+          padding: '0.75rem', outline: 'none', resize: 'none', lineHeight: 1.6, caretColor: C.accent,
         }}
         onFocus={e => (e.target.style.borderColor = C.accentDim)}
         onBlur={e  => (e.target.style.borderColor = C.border)}
       />
-      <Btn onClick={onSubmit} color={C.accent} disabled={!value.trim()}>
-        ✦ Gerar esboço
-      </Btn>
+      <Btn onClick={onSubmit} color={C.accent} disabled={!value.trim()}>✦ Gerar esboço</Btn>
     </div>
   );
 }
