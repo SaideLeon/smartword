@@ -260,16 +260,16 @@ export function useTccSession(): UseTccSession {
 
       setSession(prev => {
         if (!prev) return prev;
-        const updatedSections = prev.sections.map(s =>
+        const updatedSections: TccSection[] = prev.sections.map(s =>
           s.index === index ? { ...s, content: accumulated, status: 'developed' as const } : s,
         );
         const allDone = updatedSections.every(s => s.status !== 'pending');
-        const updated = {
+        const updated: TccSession = {
           ...prev,
           sections: updatedSections,
-          status: allDone ? 'completed' : 'in_progress' as const,
+          status: allDone ? 'completed' : 'in_progress',
           // Actualiza summary_covers_up_to localmente se houve compressão
-          ...(wasCompressed && coveredUpTo >= 0 ? { summary_covers_up_to: coveredUpTo } : {}),
+          summary_covers_up_to: wasCompressed && coveredUpTo >= 0 ? coveredUpTo : prev.summary_covers_up_to,
         };
         // Actualiza o indicador de compressão com os dados reais da sessão
         if (wasCompressed) updateCompressionStatus(updated, true);
