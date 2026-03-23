@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   onClick: () => void;
@@ -11,11 +11,30 @@ interface Props {
 
 export function ExportButton({ onClick, loading, filename = 'document', fullWidth = false }: Props) {
   const [hovered, setHovered] = useState(false);
+  const [recentlyExported, setRecentlyExported] = useState(false);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (!loading) {
+      setRecentlyExported(true);
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setRecentlyExported(false);
+        feedbackTimeoutRef.current = null;
+      }, 2200);
+    }
+
+    onClick();
+  }, [loading, onClick]);
 
   return (
     <button
       className="press-feedback"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={loading}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -72,7 +91,7 @@ export function ExportButton({ onClick, loading, filename = 'document', fullWidt
           whiteSpace: 'nowrap',
         }}
       >
-        {loading ? 'A gerar…' : `Exportar ${filename}.docx`}
+        {loading ? 'A gerar…' : recentlyExported ? `Exportado ${filename}.docx` : `Exportar ${filename}.docx`}
       </span>
 
       <style>{`
