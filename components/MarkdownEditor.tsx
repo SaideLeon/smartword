@@ -108,6 +108,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
                 📄 {uploadedFilename}
               </span>
               <button
+                className="press-feedback"
                 onClick={clearFile}
                 style={{
                   background: 'none',
@@ -128,6 +129,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
           )}
 
           <button
+            className="press-feedback"
             onClick={() => fileInputRef.current?.click()}
             style={{
               display: 'flex',

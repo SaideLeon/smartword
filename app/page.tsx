@@ -119,6 +119,7 @@ export default function Home() {
           }}
         >
           <button
+            className="press-feedback"
             onClick={() => setChatOpen(o => !o)}
             style={{
               display: 'flex',
