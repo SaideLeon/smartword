@@ -181,7 +181,7 @@ export default function Home() {
         <div
           style={{
             flex: 1,
-            overflowY: 'auto',
+            overflowY: chatOpen && isMobile ? 'hidden' : 'auto',
             display: 'flex',
             flexDirection: 'column',
             padding: isMobile ? '1rem 0.9rem 0.75rem' : '2.5rem 2rem 1rem',
@@ -368,16 +368,21 @@ export default function Home() {
         {chatOpen && (
           <div
             style={{
+              position: isMobile ? 'absolute' : 'relative',
+              inset: isMobile ? 0 : 'auto',
               width: isMobile ? '100%' : '380px',
-              maxHeight: isMobile ? '55vh' : 'none',
-              minHeight: isMobile ? '320px' : '0',
+              height: isMobile ? '100%' : 'auto',
+              maxHeight: 'none',
+              minHeight: isMobile ? 0 : '0',
               flexShrink: 0,
               borderLeft: isMobile ? 'none' : '1px solid #2a2520',
-              borderTop: isMobile ? '1px solid #2a2520' : 'none',
               display: 'flex',
               flexDirection: 'column',
               animation: isMobile ? 'slideUp 0.25s ease' : 'slideIn 0.25s ease',
               minWidth: 0,
+              zIndex: isMobile ? 3 : 'auto',
+              background: '#0d0c0b',
+              boxShadow: isMobile ? '0 -16px 40px rgba(0, 0, 0, 0.45)' : 'none',
             }}
           >
             <AiChat
