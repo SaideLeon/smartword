@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
 
 interface Props {
-  onInsert:  (text: string) => void;
-  onClose:   () => void;
+  onInsert: (text: string) => void;
+  onTopicChange: (topic: string) => void;
+  onClose: () => void;
   isMobile?: boolean;
 }
 
@@ -22,7 +23,7 @@ const C = {
   gold:      '#c9a96e',
 };
 
-export function WorkPanel({ onInsert, onClose, isMobile = false }: Props) {
+export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
@@ -42,7 +43,10 @@ export function WorkPanel({ onInsert, onClose, isMobile = false }: Props) {
   }, [step, session]);
 
   const handleTopicSubmit = () => {
-    if (topicInput.trim()) submitTopic(topicInput.trim());
+    const topic = topicInput.trim();
+    if (!topic) return;
+    onTopicChange(topic);
+    submitTopic(topic);
   };
 
   const statusLabel = (status: string) => {

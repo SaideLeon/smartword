@@ -9,8 +9,9 @@ import { ContextCompressionBadge } from '@/components/ContextCompressionBadge';
 import type { TccSection } from '@/lib/tcc/types';
 
 interface Props {
-  onInsert:  (text: string) => void;
-  onClose:   () => void;
+  onInsert: (text: string) => void;
+  onTopicChange: (topic: string) => void;
+  onClose: () => void;
   isMobile?: boolean;
 }
 
@@ -27,7 +28,7 @@ const C = {
   gold:     '#c9a96e',
 };
 
-export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
+export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
   const {
     step, session, outline, streamingText, activeSectionIdx, error,
     recentSessions, compressionStatus,
@@ -53,7 +54,10 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
   }, [showSessions, loadSessions]);
 
   const handleTopicSubmit = () => {
-    if (topicInput.trim()) submitTopic(topicInput.trim());
+    const topic = topicInput.trim();
+    if (!topic) return;
+    onTopicChange(topic);
+    submitTopic(topic);
   };
 
   const statusLabel = (s: TccSection) => {
@@ -165,7 +169,7 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
                   </p>
                 )}
                 {recentSessions.map(s => (
-                  <button key={s.id} onClick={() => resumeSession(s.id)} style={{
+                  <button key={s.id} onClick={() => { onTopicChange(s.topic); resumeSession(s.id); }} style={{
                     background: C.surface, border: `1px solid ${C.border}`, borderRadius: '5px',
                     padding: '0.6rem 0.85rem', cursor: 'pointer', textAlign: 'left',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
