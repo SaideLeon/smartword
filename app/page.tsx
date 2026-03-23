@@ -10,7 +10,8 @@ export default function Home() {
   return (
     <main
       style={{
-        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
         background: '#0f0e0d',
         color: '#e8e2d9',
         fontFamily: "'Georgia', 'Times New Roman', serif",
@@ -115,6 +116,7 @@ export default function Home() {
           position: 'relative',
           zIndex: 1,
           flex: 1,
+          overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
           maxWidth: '960px',
