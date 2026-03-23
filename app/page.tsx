@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { ExportButton } from '@/components/ExportButton';
 import { AiChat } from '@/components/AiChat';
@@ -9,6 +10,7 @@ import { AiChat } from '@/components/AiChat';
 export default function Home() {
   const { markdown, setMarkdown, filename, setFilename, loading, exportDocx } = useDocumentEditor();
   const [chatOpen, setChatOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleInsert = useCallback(
     (text: string) => {
@@ -27,7 +29,8 @@ export default function Home() {
   return (
     <main
       style={{
-        height: '100vh',
+        minHeight: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         background: '#0f0e0d',
         color: '#e8e2d9',
@@ -36,7 +39,6 @@ export default function Home() {
         flexDirection: 'column',
       }}
     >
-      {/* Grain overlay */}
       <div
         style={{
           position: 'fixed',
@@ -51,23 +53,24 @@ export default function Home() {
         }}
       />
 
-      {/* Header */}
       <header
         style={{
           position: 'relative',
           zIndex: 1,
           borderBottom: '1px solid #2a2520',
-          padding: '0 2.5rem',
+          padding: isMobile ? '0.75rem 1rem' : '0 2.5rem',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'space-between',
-          height: '64px',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? '0.75rem' : '1rem',
+          minHeight: isMobile ? 'auto' : '64px',
           flexShrink: 0,
           backdropFilter: 'blur(8px)',
           background: 'rgba(15, 14, 13, 0.85)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
           <span
             style={{
               width: 28,
@@ -81,6 +84,7 @@ export default function Home() {
               fontWeight: 700,
               color: '#0f0e0d',
               fontFamily: 'monospace',
+              flexShrink: 0,
             }}
           >
             ∂
@@ -93,6 +97,7 @@ export default function Home() {
               color: '#c9a96e',
               fontFamily: "'Georgia', serif",
               fontStyle: 'italic',
+              lineHeight: 1.35,
             }}
           >
             docx
@@ -103,8 +108,16 @@ export default function Home() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Botão toggle do chat */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? '0.65rem' : '1rem',
+            width: isMobile ? '100%' : 'auto',
+            justifyContent: isMobile ? 'space-between' : 'flex-end',
+            flexWrap: 'wrap',
+          }}
+        >
           <button
             onClick={() => setChatOpen(o => !o)}
             style={{
@@ -122,69 +135,67 @@ export default function Home() {
               letterSpacing: '0.05em',
               transition: 'all 0.2s',
             }}
-            onMouseOver={e => {
-              if (!chatOpen) {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = '#c9a96e44';
-                (e.currentTarget as HTMLButtonElement).style.color = '#c9a96e';
-              }
-            }}
-            onMouseOut={e => {
-              if (!chatOpen) {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = '#2a2520';
-                (e.currentTarget as HTMLButtonElement).style.color = '#8a7d6e';
-              }
-            }}
           >
             <span>✦</span>
-            <span>IA</span>
+            <span>{chatOpen ? 'Fechar IA' : 'IA'}</span>
           </button>
 
-          <span
-            style={{
-              fontSize: '11px',
-              color: '#4a4440',
-              fontFamily: 'monospace',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-            }}
-          >
-            LaTeX → OMML
-          </span>
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: '#4a7c59',
-              boxShadow: '0 0 6px #4a7c59',
-              display: 'inline-block',
-            }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#4a4440',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              LaTeX → OMML
+            </span>
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#4a7c59',
+                boxShadow: '0 0 6px #4a7c59',
+                display: 'inline-block',
+                flexShrink: 0,
+              }}
+            />
+          </div>
         </div>
       </header>
 
-      {/* Corpo: editor + chat lado a lado */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-
-        {/* Coluna do editor */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          overflow: 'hidden',
+          position: 'relative',
+          zIndex: 1,
+          minHeight: 0,
+        }}
+      >
         <div
           style={{
             flex: 1,
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            padding: '2.5rem 2rem 1rem',
-            gap: '1.75rem',
+            padding: isMobile ? '1rem 0.9rem 0.75rem' : '2.5rem 2rem 1rem',
+            gap: '1.25rem',
             minWidth: 0,
+            minHeight: 0,
             transition: 'all 0.3s ease',
           }}
         >
-          <div style={{ maxWidth: '960px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-            {/* Title */}
+          <div style={{ maxWidth: '960px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
               <h1
                 style={{
-                  fontSize: 'clamp(1.4rem, 3vw, 2.2rem)',
+                  fontSize: isMobile ? '1.35rem' : 'clamp(1.4rem, 3vw, 2.2rem)',
                   fontWeight: 400,
                   fontStyle: 'italic',
                   color: '#e8e2d9',
@@ -201,9 +212,10 @@ export default function Home() {
                 style={{
                   marginTop: '0.6rem',
                   color: '#5a5248',
-                  fontSize: '13px',
+                  fontSize: isMobile ? '12px' : '13px',
                   fontFamily: 'monospace',
                   letterSpacing: '0.04em',
+                  lineHeight: 1.5,
                 }}
               >
                 Suporta{' '}
@@ -218,8 +230,14 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Filename */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: isMobile ? 'stretch' : 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: '0.75rem',
+              }}
+            >
               <label
                 style={{
                   fontSize: '11px',
@@ -232,7 +250,7 @@ export default function Home() {
               >
                 Nome do ficheiro
               </label>
-              <div style={{ position: 'relative', flex: '0 0 auto' }}>
+              <div style={{ position: 'relative', flex: isMobile ? '1 1 auto' : '0 0 auto', width: isMobile ? '100%' : 'auto' }}>
                 <input
                   type="text"
                   value={filename}
@@ -246,7 +264,7 @@ export default function Home() {
                     fontSize: '13px',
                     padding: '6px 48px 6px 10px',
                     outline: 'none',
-                    width: '220px',
+                    width: isMobile ? '100%' : '220px',
                     letterSpacing: '0.02em',
                     transition: 'border-color 0.2s',
                   }}
@@ -270,33 +288,35 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Editor */}
-            <MarkdownEditor value={markdown} onChange={setMarkdown} />
+            <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />
           </div>
         </div>
 
-        {/* Painel de chat IA */}
         {chatOpen && (
           <div
             style={{
-              width: '380px',
+              width: isMobile ? '100%' : '380px',
+              maxHeight: isMobile ? '55vh' : 'none',
+              minHeight: isMobile ? '320px' : '0',
               flexShrink: 0,
-              borderLeft: '1px solid #2a2520',
+              borderLeft: isMobile ? 'none' : '1px solid #2a2520',
+              borderTop: isMobile ? '1px solid #2a2520' : 'none',
               display: 'flex',
               flexDirection: 'column',
-              animation: 'slideIn 0.25s ease',
+              animation: isMobile ? 'slideUp 0.25s ease' : 'slideIn 0.25s ease',
+              minWidth: 0,
             }}
           >
             <AiChat
               onInsert={handleInsert}
               onReplace={handleReplace}
               onClose={() => setChatOpen(false)}
+              isMobile={isMobile}
             />
           </div>
         )}
       </div>
 
-      {/* Barra fixa de exportação */}
       <div
         style={{
           position: 'relative',
@@ -305,10 +325,11 @@ export default function Home() {
           borderTop: '1px solid #2a2520',
           background: 'rgba(15, 14, 13, 0.95)',
           backdropFilter: 'blur(12px)',
-          padding: '0.75rem 2rem',
+          padding: isMobile ? '0.75rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom, 0px))' : '0.75rem 2rem',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
           justifyContent: 'space-between',
+          flexDirection: isMobile ? 'column' : 'row',
           gap: '0.75rem',
         }}
       >
@@ -322,31 +343,37 @@ export default function Home() {
         >
           {markdown.split('\n').length} linhas · {markdown.length} caracteres
         </div>
-        <ExportButton onClick={exportDocx} loading={loading} filename={filename} />
+        <ExportButton onClick={exportDocx} loading={loading} filename={filename} fullWidth={isMobile} />
       </div>
 
-      {/* Footer */}
-      <footer
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          flexShrink: 0,
-          borderTop: '1px solid #1e1b18',
-          padding: '0.75rem 2.5rem',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <span style={{ fontSize: '11px', color: '#3a3530', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
-          temml · mathml2omml · docx · Quelimane, Moçambique
-        </span>
-      </footer>
+      {!isMobile && (
+        <footer
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            flexShrink: 0,
+            borderTop: '1px solid #1e1b18',
+            padding: '0.75rem 2.5rem',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ fontSize: '11px', color: '#3a3530', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
+            temml · mathml2omml · docx · Quelimane, Moçambique
+          </span>
+        </footer>
+      )}
 
       <style>{`
         @keyframes slideIn {
           from { opacity: 0; transform: translateX(20px); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </main>
