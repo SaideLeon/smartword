@@ -159,6 +159,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           )}
         </div>
         <button
+          className="press-feedback"
           onClick={onClose}
           style={{
             background: 'none',
@@ -202,6 +203,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
                 'Resumo das propriedades das progressões aritméticas',
               ].map(sugestao => (
                 <button
+                  className="press-feedback"
                   key={sugestao}
                   onClick={() => setInput(sugestao)}
                   style={{
@@ -312,12 +314,14 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           }}
         >
           <button
+            className="press-feedback"
             onClick={() => onInsert(lastAssistant)}
             style={quickBtnStyle('#4a7c5922', '#4a7c59')}
           >
             ↓ Inserir no editor
           </button>
           <button
+            className="press-feedback"
             onClick={() => onReplace(lastAssistant)}
             style={quickBtnStyle('#8b691422', '#c9a96e')}
           >
@@ -362,6 +366,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           onBlur={e => (e.target.style.borderColor = '#2a2520')}
         />
         <button
+          className="press-feedback"
           onClick={streaming ? () => abortRef.current?.abort() : send}
           style={{
             width: isMobile ? 42 : 36,
@@ -405,6 +410,7 @@ function ActionButton({
 }) {
   return (
     <button
+      className="press-feedback"
       onClick={onClick}
       title={title}
       style={{

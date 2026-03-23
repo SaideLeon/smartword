@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+
+.press-feedback {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  will-change: transform, filter, box-shadow;
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 220ms ease, opacity 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.press-feedback::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255, 244, 216, 0.24) 0%, rgba(255, 244, 216, 0.12) 35%, rgba(255, 244, 216, 0) 72%);
+  opacity: 0;
+  transform: scale(0.72);
+  pointer-events: none;
+}
+
+.press-feedback:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.press-feedback:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(1.1);
+}
+
+.press-feedback:active:not(:disabled)::after {
+  animation: press-feedback-pulse 360ms ease-out;
+}
+
+@keyframes press-feedback-pulse {
+  0% {
+    opacity: 0.05;
+    transform: scale(0.72);
+  }
+  45% {
+    opacity: 0.22;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}

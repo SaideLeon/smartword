@@ -14,6 +14,7 @@ export function ExportButton({ onClick, loading, filename = 'document', fullWidt
 
   return (
     <button
+      className="press-feedback"
       onClick={onClick}
       disabled={loading}
       onMouseEnter={() => setHovered(true)}
