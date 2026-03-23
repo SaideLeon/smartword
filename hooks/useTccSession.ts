@@ -28,6 +28,7 @@ interface UseTccSession {
   requestNewOutline: () => void;
   developSection:  (index: number) => Promise<void>;
   insertSection:   (index: number, onInsert: (text: string) => void) => Promise<void>;
+  backToOutline:   () => void;
   loadSessions:    () => Promise<void>;
   resumeSession:   (id: string) => Promise<void>;
   reset:           () => void;
@@ -248,6 +249,11 @@ export function useTccSession(): UseTccSession {
   }, [session]);
 
   // ─── Inserir secção no editor e marcar como inserida ────────────────────────
+  const backToOutline = useCallback(() => {
+    setStep('outline_approved');
+    setActiveSectionIdx(null);
+  }, []);
+
   const insertSection = useCallback(async (
     index: number,
     onInsert: (text: string) => void,
@@ -287,6 +293,6 @@ export function useTccSession(): UseTccSession {
   return {
     step, session, outline, streamingText, activeSectionIdx, error, recentSessions,
     startNew, submitTopic, approveOutline, requestNewOutline,
-    developSection, insertSection, loadSessions, resumeSession, reset,
+    developSection, insertSection, backToOutline, loadSessions, resumeSession, reset,
   };
 }

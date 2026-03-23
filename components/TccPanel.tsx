@@ -29,7 +29,7 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
     step, session, outline, streamingText, activeSectionIdx, error,
     recentSessions,
     startNew, submitTopic, approveOutline, requestNewOutline,
-    developSection, insertSection, loadSessions, resumeSession, reset,
+    developSection, insertSection, backToOutline, loadSessions, resumeSession, reset,
   } = useTccSession();
 
   const [topicInput, setTopicInput]     = useState('');
@@ -337,7 +337,7 @@ export function TccPanel({ onInsert, onClose, isMobile = false }: Props) {
                 ↓ Inserir no editor
               </Btn>
               <Btn
-                onClick={() => setStep('outline_approved')}
+                onClick={backToOutline}
                 color={C.muted} outline flex
               >
                 ← Voltar
