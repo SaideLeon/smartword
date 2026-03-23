@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { saveWorkOutlineDraft } from '@/lib/work/service';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -19,7 +20,7 @@ Escreve em português europeu/moçambicano. Sê concreto e útil — o esboço s
 
 export async function POST(req: Request) {
   try {
-    const { topic } = await req.json();
+    const { topic, sessionId } = await req.json();
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: SYSTEM },
-          { role: 'user',   content: `Gera o esboço orientador para um trabalho escolar sobre: "${topic}"` },
+          { role: 'user', content: `Gera o esboço orientador para um trabalho escolar sobre: "${topic}"` },
         ],
         stream: true,
         max_tokens: 1024,
@@ -47,11 +48,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: err }, { status: response.status });
     }
 
-    return new NextResponse(response.body, {
+    let accumulated = '';
+
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+
+          try {
+            const json = JSON.parse(data);
+            const delta = json.choices?.[0]?.delta?.content ?? '';
+            if (delta) accumulated += delta;
+          } catch { /* ignorar */ }
+        }
+
+        controller.enqueue(chunk);
+      },
+      async flush() {
+        if (sessionId && accumulated) {
+          try {
+            await saveWorkOutlineDraft(sessionId, accumulated);
+          } catch (e) {
+            console.error('Erro ao guardar esboço do trabalho:', e);
+          }
+        }
+      },
+    });
+
+    return new NextResponse(response.body!.pipeThrough(transformStream), {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection':    'keep-alive',
+        'Connection': 'keep-alive',
       },
     });
   } catch (e: any) {

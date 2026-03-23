@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
 
 interface Props {
-  onInsert:  (text: string) => void;
-  onClose:   () => void;
+  onInsert: (text: string) => void;
+  onTopicChange: (topic: string) => void;
+  onClose: () => void;
   isMobile?: boolean;
 }
 
@@ -22,15 +23,16 @@ const C = {
   gold:      '#c9a96e',
 };
 
-export function WorkPanel({ onInsert, onClose, isMobile = false }: Props) {
+export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
   const {
-    step, session, streamingText, activeSectionIdx, error, progressPct,
+    step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
-    developSection, insertSection, backToOutline,
+    developSection, insertSection, backToOutline, loadSessions, resumeSession,
   } = useWorkSession();
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
+  const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,11 +40,18 @@ export function WorkPanel({ onInsert, onClose, isMobile = false }: Props) {
   }, [streamingText, step]);
 
   useEffect(() => {
-    if (step === 'review_outline') setOutlineEdit(session?.outline ?? '');
+    if (step === 'review_outline') setOutlineEdit(session?.outline_draft ?? '');
   }, [step, session]);
 
+  useEffect(() => {
+    if (showSessions) loadSessions();
+  }, [showSessions, loadSessions]);
+
   const handleTopicSubmit = () => {
-    if (topicInput.trim()) submitTopic(topicInput.trim());
+    const topic = topicInput.trim();
+    if (!topic) return;
+    onTopicChange(topic);
+    submitTopic(topic);
   };
 
   const statusLabel = (status: string) => {
@@ -137,7 +146,47 @@ export function WorkPanel({ onInsert, onClose, isMobile = false }: Props) {
                 </div>
               ))}
             </div>
-            <Btn onClick={startNew} color={C.accent}>✦ Iniciar trabalho</Btn>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <Btn onClick={() => { startNew(); setShowSessions(false); }} color={C.accent}>✦ Iniciar trabalho</Btn>
+              <Btn onClick={() => setShowSessions(v => !v)} color={C.muted} outline>↩ Retomar trabalho</Btn>
+            </div>
+
+            {showSessions && (
+              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {recentSessions.length === 0 && (
+                  <p style={{ color: C.textFaint, fontSize: '11px', fontFamily: 'monospace' }}>
+                    Nenhum trabalho anterior encontrado.
+                  </p>
+                )}
+                {recentSessions.map(s => (
+                  <button key={s.id} onClick={() => { onTopicChange(s.topic); resumeSession(s.id); }} style={{
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: '5px',
+                    padding: '0.6rem 0.85rem', cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    transition: 'border-color 0.15s',
+                  }}
+                  onMouseOver={e => (e.currentTarget.style.borderColor = C.accentDim)}
+                  onMouseOut={e  => (e.currentTarget.style.borderColor = C.border)}
+                  >
+                    <div>
+                      <div style={{ color: C.text, fontSize: '12px', fontFamily: 'monospace' }}>{s.topic}</div>
+                      <div style={{ color: C.textFaint, fontSize: '10px', fontFamily: 'monospace', marginTop: '2px' }}>
+                        {new Date(s.updated_at).toLocaleDateString('pt-PT')}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '10px', fontFamily: 'monospace',
+                      color: s.status === 'completed' ? C.accent : C.muted,
+                      padding: '2px 6px', border: '1px solid currentColor', borderRadius: '3px',
+                    }}>
+                      {s.status === 'completed' ? 'Concluído' :
+                       s.status === 'in_progress' ? 'Em curso' :
+                       s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -191,7 +240,7 @@ export function WorkPanel({ onInsert, onClose, isMobile = false }: Props) {
               onBlur={e  => (e.target.style.borderColor = C.border)}
             />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Btn onClick={approveOutline} color={C.accent} flex>✓ Aprovar esboço</Btn>
+              <Btn onClick={() => approveOutline(outlineEdit)} color={C.accent} flex>✓ Aprovar esboço</Btn>
               <Btn onClick={requestNewOutline} color={C.muted} outline flex>↻ Gerar novo</Btn>
             </div>
           </div>
