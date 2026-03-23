@@ -7,8 +7,9 @@ import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { ExportButton } from '@/components/ExportButton';
 import { AiChat } from '@/components/AiChat';
 import { TccPanel } from '@/components/TccPanel';
+import { WorkPanel } from '@/components/WorkPanel';
 
-type SidePanel = 'none' | 'chat' | 'tcc';
+type SidePanel = 'none' | 'chat' | 'tcc' | 'work';
 
 export default function Home() {
   const { markdown, setMarkdown, filename, setFilename, loading, exportDocx } = useDocumentEditor();
@@ -89,6 +90,25 @@ export default function Home() {
           justifyContent: isMobile ? 'space-between' : 'flex-end',
           flexWrap: 'wrap',
         }}>
+          {/* ── Botão Trabalhos (NOVO) ───────────────────────────────────────── */}
+          <button
+            className="press-feedback"
+            onClick={() => togglePanel('work')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              background: sidePanel === 'work' ? '#0a140a' : '#1a1714',
+              border: `1px solid ${sidePanel === 'work' ? '#5a9e8f55' : '#2a2520'}`,
+              borderRadius: '5px',
+              color: sidePanel === 'work' ? '#5a9e8f' : '#8a7d6e',
+              fontFamily: 'monospace', fontSize: '12px',
+              padding: '5px 12px', cursor: 'pointer',
+              letterSpacing: '0.05em', transition: 'all 0.2s',
+            }}
+          >
+            <span>📚</span>
+            <span>{sidePanel === 'work' ? 'Fechar Trabalhos' : 'Trabalhos'}</span>
+          </button>
+
           {/* Botão TCC */}
           <button
             className="press-feedback"
@@ -238,7 +258,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Painel lateral (Chat ou TCC) ────────────────────────────────── */}
+        {/* ── Side Panel ──────────────────────────────────────────────────────── */}
         {sidePanel !== 'none' && (
           <div style={{
             position: isMobile ? 'absolute' : 'relative',
@@ -251,23 +271,17 @@ export default function Home() {
             display: 'flex', flexDirection: 'column',
             animation: isMobile ? 'slideUp 0.25s ease' : 'slideIn 0.25s ease',
             minWidth: 0, zIndex: isMobile ? 3 : 'auto',
-            background: sidePanel === 'tcc' ? '#0b0d0b' : '#0d0c0b',
+            background: sidePanel === 'tcc' ? '#0b0d0b' : sidePanel === 'work' ? '#0a0d0a' : '#0d0c0b',
             boxShadow: isMobile ? '0 -16px 40px rgba(0,0,0,0.45)' : 'none',
           }}>
             {sidePanel === 'chat' && (
-              <AiChat
-                onInsert={handleInsert}
-                onReplace={handleReplace}
-                onClose={() => setSidePanel('none')}
-                isMobile={isMobile}
-              />
+              <AiChat onInsert={handleInsert} onReplace={handleReplace} onClose={() => setSidePanel('none')} isMobile={isMobile} />
             )}
             {sidePanel === 'tcc' && (
-              <TccPanel
-                onInsert={handleInsert}
-                onClose={() => setSidePanel('none')}
-                isMobile={isMobile}
-              />
+              <TccPanel onInsert={handleInsert} onClose={() => setSidePanel('none')} isMobile={isMobile} />
+            )}
+            {sidePanel === 'work' && (
+              <WorkPanel onInsert={handleInsert} onClose={() => setSidePanel('none')} isMobile={isMobile} />
             )}
           </div>
         )}
