@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 interface Props {
   value: string;
@@ -12,6 +12,21 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const [recentAction, setRecentAction] = useState<'import' | 'clear' | null>(null);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+  }, []);
+
+  const showActionFeedback = useCallback((action: 'import' | 'clear') => {
+    setRecentAction(action);
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setRecentAction(current => (current === action ? null : current));
+      feedbackTimeoutRef.current = null;
+    }, 2200);
+  }, []);
 
   const readFile = useCallback(
     (file: File) => {
@@ -24,10 +39,11 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
         const text = e.target?.result as string;
         onChange(text);
         setUploadedFilename(file.name);
+        showActionFeedback('import');
       };
       reader.readAsText(file, 'utf-8');
     },
-    [onChange],
+    [onChange, showActionFeedback],
   );
 
   const handleDrop = useCallback(
@@ -56,6 +72,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const clearFile = () => {
     setUploadedFilename(null);
     onChange('');
+    showActionFeedback('clear');
   };
 
   return (
@@ -108,6 +125,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
                 📄 {uploadedFilename}
               </span>
               <button
+                className="press-feedback"
                 onClick={clearFile}
                 style={{
                   background: 'none',
@@ -122,12 +140,13 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
                 }}
                 title="Limpar"
               >
-                ×
+                {recentAction === 'clear' ? '✓' : '×'}
               </button>
             </div>
           )}
 
           <button
+            className="press-feedback"
             onClick={() => fileInputRef.current?.click()}
             style={{
               display: 'flex',
@@ -160,7 +179,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            Importar .md
+            {recentAction === 'import' ? 'Importado' : 'Importar .md'}
           </button>
         </div>
       </div>

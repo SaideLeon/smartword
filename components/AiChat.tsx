@@ -19,12 +19,37 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [recentAction, setRecentAction] = useState<'insert' | 'replace' | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const actionFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => () => {
+    if (actionFeedbackTimeoutRef.current) clearTimeout(actionFeedbackTimeoutRef.current);
+  }, []);
+
+  const showActionFeedback = useCallback((action: 'insert' | 'replace') => {
+    setRecentAction(action);
+    if (actionFeedbackTimeoutRef.current) clearTimeout(actionFeedbackTimeoutRef.current);
+    actionFeedbackTimeoutRef.current = setTimeout(() => {
+      setRecentAction(current => (current === action ? null : current));
+      actionFeedbackTimeoutRef.current = null;
+    }, 2200);
+  }, []);
+
+  const handleInsert = useCallback((text: string) => {
+    onInsert(text);
+    showActionFeedback('insert');
+  }, [onInsert, showActionFeedback]);
+
+  const handleReplace = useCallback((text: string) => {
+    onReplace(text);
+    showActionFeedback('replace');
+  }, [onReplace, showActionFeedback]);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -159,6 +184,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           )}
         </div>
         <button
+          className="press-feedback"
           onClick={onClose}
           style={{
             background: 'none',
@@ -202,6 +228,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
                 'Resumo das propriedades das progressões aritméticas',
               ].map(sugestao => (
                 <button
+                  className="press-feedback"
                   key={sugestao}
                   onClick={() => setInput(sugestao)}
                   style={{
@@ -282,15 +309,19 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
                   icon="↓"
                   label="Inserir"
                   title="Adiciona ao fim do editor"
-                  onClick={() => onInsert(msg.content)}
+                  onClick={() => handleInsert(msg.content)}
                   color="#4a7c59"
+                  activeLabel="Inserido"
+                  isActive={recentAction === 'insert'}
                 />
                 <ActionButton
                   icon="⟳"
                   label="Substituir"
                   title="Substitui todo o conteúdo do editor"
-                  onClick={() => onReplace(msg.content)}
+                  onClick={() => handleReplace(msg.content)}
                   color="#8b6914"
+                  activeLabel="Substituído"
+                  isActive={recentAction === 'replace'}
                 />
               </div>
             )}
@@ -312,16 +343,18 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           }}
         >
           <button
-            onClick={() => onInsert(lastAssistant)}
+            className="press-feedback"
+            onClick={() => handleInsert(lastAssistant)}
             style={quickBtnStyle('#4a7c5922', '#4a7c59')}
           >
-            ↓ Inserir no editor
+            {recentAction === 'insert' ? '✓ Inserido no editor' : '↓ Inserir no editor'}
           </button>
           <button
-            onClick={() => onReplace(lastAssistant)}
+            className="press-feedback"
+            onClick={() => handleReplace(lastAssistant)}
             style={quickBtnStyle('#8b691422', '#c9a96e')}
           >
-            ⟳ Substituir editor
+            {recentAction === 'replace' ? '✓ Editor substituído' : '⟳ Substituir editor'}
           </button>
         </div>
       )}
@@ -362,6 +395,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           onBlur={e => (e.target.style.borderColor = '#2a2520')}
         />
         <button
+          className="press-feedback"
           onClick={streaming ? () => abortRef.current?.abort() : send}
           style={{
             width: isMobile ? 42 : 36,
@@ -399,12 +433,13 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
 }
 
 function ActionButton({
-  icon, label, title, onClick, color,
+  icon, label, title, onClick, color, activeLabel, isActive = false,
 }: {
-  icon: string; label: string; title: string; onClick: () => void; color: string;
+  icon: string; label: string; title: string; onClick: () => void; color: string; activeLabel: string; isActive?: boolean;
 }) {
   return (
     <button
+      className="press-feedback"
       onClick={onClick}
       title={title}
       style={{
@@ -431,8 +466,8 @@ function ActionButton({
         (e.currentTarget as HTMLButtonElement).style.borderColor = `${color}44`;
       }}
     >
-      <span>{icon}</span>
-      <span>{label}</span>
+      <span>{isActive ? '✓' : icon}</span>
+      <span>{isActive ? activeLabel : label}</span>
     </button>
   );
 }
