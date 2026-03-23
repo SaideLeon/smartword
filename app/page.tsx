@@ -234,6 +234,79 @@ export default function Home() {
               style={{
                 display: 'flex',
                 alignItems: isMobile ? 'stretch' : 'center',
+                justifyContent: 'space-between',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: '0.75rem',
+                padding: isMobile ? '0.85rem' : '0.9rem 1rem',
+                border: '1px solid #2a2520',
+                borderRadius: '10px',
+                background: 'rgba(26, 23, 20, 0.72)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: 0 }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    color: '#c9a96e',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  PWA pronta para instalar
+                </span>
+                <span
+                  style={{
+                    color: '#8a7d6e',
+                    fontSize: isMobile ? '12px' : '13px',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Adicione esta app ao ecrã inicial para abrir em modo standalone e manter os ficheiros essenciais em cache offline.
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    border: '1px solid #3a3229',
+                    borderRadius: '999px',
+                    padding: '0.35rem 0.7rem',
+                    fontSize: '11px',
+                    color: '#e8e2d9',
+                    fontFamily: 'monospace',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  Android/Chrome: Instalar
+                </span>
+                <span
+                  style={{
+                    border: '1px solid #3a3229',
+                    borderRadius: '999px',
+                    padding: '0.35rem 0.7rem',
+                    fontSize: '11px',
+                    color: '#e8e2d9',
+                    fontFamily: 'monospace',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  iPhone/iPad: Partilhar → Ecrã inicial
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: isMobile ? 'stretch' : 'center',
                 flexDirection: isMobile ? 'column' : 'row',
                 gap: '0.75rem',
               }}
