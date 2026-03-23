@@ -6,9 +6,10 @@ interface Props {
   onClick: () => void;
   loading: boolean;
   filename?: string;
+  fullWidth?: boolean;
 }
 
-export function ExportButton({ onClick, loading, filename = 'document' }: Props) {
+export function ExportButton({ onClick, loading, filename = 'document', fullWidth = false }: Props) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -20,8 +21,11 @@ export function ExportButton({ onClick, loading, filename = 'document' }: Props)
       style={{
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '0.6rem',
         padding: '10px 22px',
+        width: fullWidth ? '100%' : 'auto',
+        maxWidth: '100%',
         background: loading
           ? '#1e1b18'
           : hovered
@@ -60,7 +64,7 @@ export function ExportButton({ onClick, loading, filename = 'document' }: Props)
         style={{
           fontFamily: "'Georgia', serif",
           fontStyle: 'italic',
-          fontSize: '14px',
+          fontSize: fullWidth ? '13px' : '14px',
           fontWeight: 400,
           color: loading ? '#5a5248' : '#0f0e0d',
           letterSpacing: '0.01em',

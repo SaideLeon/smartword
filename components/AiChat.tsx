@@ -11,9 +11,10 @@ interface Props {
   onInsert: (text: string) => void;
   onReplace: (text: string) => void;
   onClose: () => void;
+  isMobile?: boolean;
 }
 
-export function AiChat({ onInsert, onReplace, onClose }: Props) {
+export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -114,7 +115,7 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
         flexDirection: 'column',
         height: '100%',
         background: '#0d0c0b',
-        borderLeft: '1px solid #2a2520',
+        borderLeft: isMobile ? 'none' : '1px solid #2a2520',
       }}
     >
       {/* Header do chat */}
@@ -123,7 +124,7 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0.75rem 1rem',
+          padding: isMobile ? '0.75rem 0.85rem' : '0.75rem 1rem',
           borderBottom: '1px solid #2a2520',
           flexShrink: 0,
         }}
@@ -140,19 +141,21 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
           >
             IA · Gerar Markdown
           </span>
-          <span
-            style={{
-              fontSize: '10px',
-              fontFamily: 'monospace',
-              color: '#3a3530',
-              background: '#1a1714',
-              padding: '1px 6px',
-              borderRadius: '3px',
-              letterSpacing: '0.05em',
-            }}
-          >
-            Groq · Llama 3.3
-          </span>
+          {!isMobile && (
+            <span
+              style={{
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                color: '#3a3530',
+                background: '#1a1714',
+                padding: '1px 6px',
+                borderRadius: '3px',
+                letterSpacing: '0.05em',
+              }}
+            >
+              Groq · Llama 3.3
+            </span>
+          )}
         </div>
         <button
           onClick={onClose}
@@ -177,14 +180,14 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '1rem',
+          padding: isMobile ? '0.85rem' : '1rem',
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
         }}
       >
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+          <div style={{ textAlign: 'center', marginTop: isMobile ? '1rem' : '2rem' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>✦</div>
             <p style={{ color: '#4a4440', fontSize: '13px', fontFamily: 'monospace', lineHeight: 1.6 }}>
               Descreve o conteúdo que queres gerar.<br />
@@ -206,8 +209,8 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
                     borderRadius: '4px',
                     color: '#8a7d6e',
                     fontFamily: 'monospace',
-                    fontSize: '11px',
-                    padding: '6px 10px',
+                    fontSize: isMobile ? '10px' : '11px',
+                    padding: isMobile ? '9px 10px' : '6px 10px',
                     cursor: 'pointer',
                     textAlign: 'left',
                     letterSpacing: '0.02em',
@@ -245,7 +248,7 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
             </span>
             <div
               style={{
-                maxWidth: '90%',
+                maxWidth: isMobile ? '100%' : '90%',
                 alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 background: msg.role === 'user' ? '#1e1b18' : '#141210',
                 border: `1px solid ${msg.role === 'user' ? '#2a2520' : '#1e1b18'}`,
@@ -283,7 +286,7 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
 
             {/* Botões de acção na última mensagem do assistente */}
             {msg.role === 'assistant' && i === messages.length - 1 && !streaming && msg.content && (
-              <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'flex-start', marginTop: '0.25rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'flex-start', marginTop: '0.25rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
                 <ActionButton
                   icon="↓"
                   label="Inserir"
@@ -309,9 +312,10 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
       {lastAssistant && !streaming && messages.length > 0 && (
         <div
           style={{
-            padding: '0.5rem 1rem',
+            padding: isMobile ? '0.75rem 0.85rem' : '0.5rem 1rem',
             borderTop: '1px solid #1e1b18',
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             gap: '0.5rem',
             flexShrink: 0,
           }}
@@ -334,7 +338,7 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
       {/* Input */}
       <div
         style={{
-          padding: '0.75rem 1rem',
+          padding: isMobile ? '0.75rem 0.85rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' : '0.75rem 1rem',
           borderTop: '1px solid #2a2520',
           flexShrink: 0,
           display: 'flex',
@@ -356,7 +360,7 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
             color: '#d4cec7',
             fontFamily: 'monospace',
             fontSize: '12px',
-            padding: '8px 10px',
+            padding: isMobile ? '10px' : '8px 10px',
             outline: 'none',
             resize: 'none',
             letterSpacing: '0.02em',
@@ -369,8 +373,8 @@ export function AiChat({ onInsert, onReplace, onClose }: Props) {
         <button
           onClick={streaming ? () => abortRef.current?.abort() : send}
           style={{
-            width: 36,
-            height: 36,
+            width: isMobile ? 42 : 36,
+            height: isMobile ? 42 : 36,
             borderRadius: '5px',
             border: 'none',
             background: streaming
