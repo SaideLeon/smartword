@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkSectionContent } from '@/lib/work/service';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+const PAGEBREAK_MARKER = '{pagebreak}';
+const PAGEBREAK_SECTIONS = new Set(['Introdução', 'Objectivos e Metodologia', 'Conclusão']);
+
+function normalizeSectionContent(content: string, sectionTitle: string): string {
+  const trimmed = content.trim();
+  const withoutTrailingBreaks = trimmed.replace(/\s*\{pagebreak\}\s*$/g, '').trimEnd();
+
+  if (PAGEBREAK_SECTIONS.has(sectionTitle)) {
+    return `${withoutTrailingBreaks}\n\n${PAGEBREAK_MARKER}`;
+  }
+
+  return withoutTrailingBreaks;
+}
 
 export async function POST(req: Request) {
   try {
@@ -51,6 +64,10 @@ Entre 250-450 palavras. Usa Markdown para listas e destaques quando melhorar a c
       ? subsectionInstruction
       : (sectionInstructions[section.title] ?? 'Desenvolve o conteúdo de forma académica e adequada ao ensino secundário/médio.');
 
+    const pagebreakInstruction = PAGEBREAK_SECTIONS.has(section.title)
+      ? `- Esta secção é pré/pós-textual: termina obrigatoriamente com ${PAGEBREAK_MARKER} na última linha`
+      : `- NÃO uses ${PAGEBREAK_MARKER} nesta secção (regra exclusiva para elementos pré/pós-textuais)`;
+
     const systemPrompt = `És um especialista académico a desenvolver um trabalho escolar do ensino secundário/médio em Moçambique sobre: "${session.topic}".
 
 ESBOÇO ORIENTADOR DO TRABALHO:
@@ -68,7 +85,8 @@ REGRAS ABSOLUTAS:
 - Português europeu/moçambicano correcto
 - Usa Markdown: negrito, listas, sub-títulos ### quando adequado
 - Mantém coerência terminológica com as secções anteriores
-- Tom académico mas acessível ao nível do ensino secundário/médio`.trim();
+- Tom académico mas acessível ao nível do ensino secundário/médio
+${pagebreakInstruction}`.trim();
 
     const response = await fetch(GROQ_BASE, {
       method: 'POST',
@@ -117,7 +135,8 @@ REGRAS ABSOLUTAS:
       async flush() {
         if (sessionId && accumulated) {
           try {
-            await saveWorkSectionContent(sessionId, sectionIndex, accumulated, session.sections);
+            const normalizedContent = normalizeSectionContent(accumulated, section.title);
+            await saveWorkSectionContent(sessionId, sectionIndex, normalizedContent, session.sections);
           } catch (e) {
             console.error('Erro ao guardar secção do trabalho:', e);
           }
