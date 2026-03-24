@@ -317,7 +317,7 @@ const SHARED_NUMBERING = {
       ],
     },
   ],
-};
+} as const;
 
 // ── Documento completo ────────────────────────────────────────────────────────
 
