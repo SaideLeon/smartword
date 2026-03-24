@@ -64,6 +64,7 @@ ${specificInstruction}
 
 REGRAS ABSOLUTAS:
 - Escreve APENAS o conteúdo da secção, sem introduções do tipo "Nesta secção…" ou "Vou desenvolver…"
+- NÃO incluas o título da secção no início do conteúdo — ele já é adicionado automaticamente
 - Português europeu/moçambicano correcto
 - Usa Markdown: negrito, listas, sub-títulos ### quando adequado
 - Mantém coerência terminológica com as secções anteriores
