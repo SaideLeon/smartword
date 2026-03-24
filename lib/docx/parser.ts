@@ -1,17 +1,22 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkMath from 'remark-math';
-import { DocumentNode, InlineNode } from './types';
+import remarkGfm from 'remark-gfm';
+import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 
 export function parseToAST(markdown: string): DocumentNode[] {
   // Preprocess Gemini-style math delimiters to standard markdown math delimiters
   const preprocessed = markdown
-    .replace(/\\\((.*?)\\\)/g, '$$$1$$') // \( ... \) to $...$
-    .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$'); // \[ ... \] to $$...$$
+    .replace(/\\\((.*?)\\\)/g, '$$$1$$')         // \( ... \) → $...$
+    .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$'); // \[ ... \] → $$...$$
 
-  const processor = unified().use(remarkParse).use(remarkMath);
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)   // activa tabelas GFM (e strikethrough, task lists, etc.)
+    .use(remarkMath);
+
   const ast = processor.parse(preprocessed);
-  
+
   function processInline(node: any): InlineNode | null {
     switch (node.type) {
       case 'text':
@@ -19,13 +24,23 @@ export function parseToAST(markdown: string): DocumentNode[] {
       case 'inlineMath':
         return { type: 'math_inline', latex: node.value };
       case 'strong':
-        return { type: 'strong', children: node.children.map(processInline).filter(Boolean) as InlineNode[] };
+        return {
+          type: 'strong',
+          children: node.children.map(processInline).filter(Boolean) as InlineNode[],
+        };
       case 'emphasis':
-        return { type: 'emphasis', children: node.children.map(processInline).filter(Boolean) as InlineNode[] };
+        return {
+          type: 'emphasis',
+          children: node.children.map(processInline).filter(Boolean) as InlineNode[],
+        };
       case 'inlineCode':
         return { type: 'inline_code', value: node.value };
       case 'link':
-        return { type: 'link', url: node.url, children: node.children.map(processInline).filter(Boolean) as InlineNode[] };
+        return {
+          type: 'link',
+          url: node.url,
+          children: node.children.map(processInline).filter(Boolean) as InlineNode[],
+        };
       default:
         return null;
     }
@@ -34,19 +49,49 @@ export function parseToAST(markdown: string): DocumentNode[] {
   function processBlock(node: any): DocumentNode | null {
     switch (node.type) {
       case 'paragraph':
-        return { type: 'paragraph', children: node.children.map(processInline).filter(Boolean) as InlineNode[] };
+        return {
+          type: 'paragraph',
+          children: node.children.map(processInline).filter(Boolean) as InlineNode[],
+        };
       case 'math':
         return { type: 'math_block', latex: node.value };
       case 'heading':
-        return { type: 'heading', level: node.depth as any, children: node.children.map(processInline).filter(Boolean) as InlineNode[] };
+        return {
+          type: 'heading',
+          level: node.depth as any,
+          children: node.children.map(processInline).filter(Boolean) as InlineNode[],
+        };
       case 'list':
         return {
           type: 'list',
           ordered: node.ordered,
-          items: node.children.map((item: any) => item.children.map(processBlock).filter(Boolean) as DocumentNode[])
+          items: node.children.map((item: any) =>
+            item.children.map(processBlock).filter(Boolean) as DocumentNode[],
+          ),
         };
       case 'blockquote':
-        return { type: 'blockquote', children: node.children.map(processBlock).filter(Boolean) as DocumentNode[] };
+        return {
+          type: 'blockquote',
+          children: node.children.map(processBlock).filter(Boolean) as DocumentNode[],
+        };
+
+      // ── Tabelas GFM ─────────────────────────────────────────────────────
+      case 'table': {
+        const rows: TableRowNode[] = node.children.map((row: any, rowIndex: number) => {
+          const cells: TableCellNode[] = row.children.map((cell: any) => ({
+            children: cell.children.map(processInline).filter(Boolean) as InlineNode[],
+          }));
+          return { isHeader: rowIndex === 0, cells };
+        });
+
+        return {
+          type: 'table',
+          // remark-gfm expõe align como 'left' | 'right' | 'center' | null
+          align: (node.align ?? []) as (TableAlign | null)[],
+          rows,
+        };
+      }
+
       default:
         return null;
     }
