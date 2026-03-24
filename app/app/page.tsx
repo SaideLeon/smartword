@@ -76,7 +76,7 @@ export default function Home() {
             fontSize: '15px', fontWeight: 400, letterSpacing: '0.06em',
             color: '#c9a96e', fontFamily: "'Georgia', serif", fontStyle: 'italic', lineHeight: 1.35,
           }}>
-            docx
+            Muneri
             <span style={{ color: '#5a5248', fontStyle: 'normal' }}> · </span>
             <span style={{ color: '#8a7d6e', fontStyle: 'normal', fontSize: '13px' }}>
               Markdown para Word com Equações Nativas
@@ -263,7 +263,7 @@ export default function Home() {
           display: 'flex', justifyContent: 'center', alignItems: 'center',
         }}>
           <span style={{ fontSize: '11px', color: '#3a3530', fontFamily: 'monospace', letterSpacing: '0.06em' }}>
-            temml · mathml2omml · docx · Quelimane, Moçambique
+            temml · mathml2omml · Muneri · Quelimane, Moçambique
           </span>
         </footer>
       )}
