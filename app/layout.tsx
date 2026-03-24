@@ -4,14 +4,14 @@ import 'temml/dist/Temml-Local.css';
 import './globals.css'; // Global styles
 
 export const metadata: Metadata = {
-  title: 'docx · Markdown para Word',
+  title: 'Muneri · Markdown para Word',
   description: 'Editor Markdown com exportação para Word e equações OMML, agora instalável como PWA.',
   manifest: '/manifest.webmanifest',
-  applicationName: 'docx',
+  applicationName: 'Muneri',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'docx',
+    title: 'Muneri',
   },
   formatDetection: {
     telephone: false,
