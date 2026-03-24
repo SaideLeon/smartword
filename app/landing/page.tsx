@@ -16,7 +16,7 @@ const LANDING_HTML = String.raw`
     <li><a href="#modos">Modos</a></li>
     <li><a href="#equacoes">Equações</a></li>
   </ul>
-  <a href="#cta" class="nav-cta">↓ Abrir app</a>
+  <a href="/app" class="nav-cta">↓ Abrir app</a>
 </nav>
 
 <section class="hero">
@@ -41,7 +41,7 @@ const LANDING_HTML = String.raw`
       </div>
     </div>
     <div class="hero-actions">
-      <a href="#cta" class="btn-primary">↓ Exportar .docx grátis</a>
+      <a href="/app" class="btn-primary">↓ Exportar .docx grátis</a>
       <a href="#features" class="btn-secondary">Ver funcionalidades →</a>
     </div>
   </div>
@@ -311,7 +311,7 @@ const LANDING_HTML = String.raw`
     </h2>
     <p class="cta-sub reveal">Grátis. Sem registo. Sem instalação obrigatória.</p>
     <div class="reveal" style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-      <a href="/" class="btn-primary" style="font-size:13px;padding:14px 32px">↓ Abrir docx — é grátis</a>
+      <a href="/app" class="btn-primary" style="font-size:13px;padding:14px 32px">↓ Abrir docx — é grátis</a>
     </div>
     <p class="reveal" style="margin-top:2rem;font-family:'DM Mono',monospace;font-size:10px;color:var(--faint);letter-spacing:0.08em">
       temml · mathml2omml · docx · Quelimane, Moçambique
