@@ -2,338 +2,93 @@
 
 import { useEffect } from 'react';
 
-const LANDING_HTML = String.raw`
-<div class="cursor" id="cursor"></div>
-<div class="cursor-ring" id="cursorRing"></div>
-
-<nav>
-  <div class="nav-logo">
-    <div class="nav-icon">∂</div>
-    <span class="nav-name">docx</span>
-  </div>
-  <ul class="nav-links">
-    <li><a href="#features">Funcionalidades</a></li>
-    <li><a href="#modos">Modos</a></li>
-    <li><a href="#equacoes">Equações</a></li>
-  </ul>
-  <a href="/app" class="nav-cta">↓ Abrir app</a>
-</nav>
-
-<section class="hero">
-  <div class="hero-left">
-    <p class="hero-eyebrow">LaTeX → OMML · PWA Instalável</p>
-    <h1 class="hero-h1">
-      Escreve em <em>Markdown.</em><br />
-      Exporta com equações<br />
-      <span class="outline-text">Word nativas.</span>
-    </h1>
-    <p class="hero-sub">
-      Editor académico que converte <code style="font-family:'DM Mono',monospace;font-size:0.85em;background:#e8dfc8;padding:1px 5px;border-radius:3px;">$...$</code> e <code style="font-family:'DM Mono',monospace;font-size:0.85em;background:#e8dfc8;padding:1px 5px;border-radius:3px;">$$...$$</code> em equações OMML — editáveis directamente no Word. Sem plugins. Sem imagens.
-    </p>
-    <div class="hero-code">
-      <div class="code-line">## Fórmula de Bhaskara</div>
-      <div class="code-line" style="height:8px"></div>
-      <div class="code-md">$$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$</div>
-      <div class="code-line" style="height:8px"></div>
-      <div style="display:flex;align-items:center;gap:0.75rem;">
-        <span class="code-arrow">→ OMML</span>
-        <span class="code-omml">equação editável no Word ✓</span>
+function LandingNav() {
+  return (
+    <nav>
+      <div className="nav-logo">
+        <div className="nav-icon">∂</div>
+        <span className="nav-name">docx</span>
       </div>
-    </div>
-    <div class="hero-actions">
-      <a href="/app" class="btn-primary">↓ Exportar .docx grátis</a>
-      <a href="#features" class="btn-secondary">Ver funcionalidades →</a>
-    </div>
-  </div>
+      <ul className="nav-links">
+        <li><a href="#features">Funcionalidades</a></li>
+        <li><a href="#modos">Modos</a></li>
+        <li><a href="#equacoes">Equações</a></li>
+      </ul>
+      <a href="/app" className="nav-cta">↓ Abrir app</a>
+    </nav>
+  );
+}
 
-  <div class="hero-right">
-    <div class="hero-mockup">
-      <div class="float-tag ft1">
-        <span class="ft-dot ft-green"></span>LaTeX → OMML activo
-      </div>
-      <div class="float-tag ft2">
-        <span class="ft-dot ft-gold"></span>187 linhas · 3880 chars
-      </div>
-      <div class="float-tag ft3">
-        <span class="ft-dot ft-teal"></span>PWA instalável
-      </div>
-
-      <div class="phone-frame">
-        <div class="phone-header">
-          <div class="phone-logo-icon">∂</div>
-          <span class="phone-logo-text">docx</span>
+function Hero() {
+  return (
+    <section className="hero">
+      <div className="hero-left">
+        <p className="hero-eyebrow">LaTeX → OMML · PWA Instalável</p>
+        <h1 className="hero-h1">
+          Escreve em <em>Markdown.</em><br />
+          Exporta com equações<br />
+          <span className="outline-text">Word nativas.</span>
+        </h1>
+        <p className="hero-sub">
+          Editor académico que converte <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', background: '#e8dfc8', padding: '1px 5px', borderRadius: '3px' }}>$...$</code> e <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', background: '#e8dfc8', padding: '1px 5px', borderRadius: '3px' }}>$$...$$</code> em equações OMML — editáveis directamente no Word. Sem plugins. Sem imagens.
+        </p>
+        <div className="hero-code">
+          <div className="code-line">## Fórmula de Bhaskara</div>
+          <div className="code-line" style={{ height: 8 }} />
+          <div className="code-md">{'$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$'}</div>
+          <div className="code-line" style={{ height: 8 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span className="code-arrow">→ OMML</span>
+            <span className="code-omml">equação editável no Word ✓</span>
+          </div>
         </div>
-        <div class="phone-body">
-          <div class="phone-line ph-h1"># Matemática</div>
-          <div class="phone-line ph-text">&nbsp;</div>
-          <div class="phone-line ph-h2">## 1. Bhaskara</div>
-          <div class="phone-line ph-text">&nbsp;</div>
-          <div class="phone-line ph-math">$$x = \frac{-b \pm</div>
-          <div class="phone-line ph-math">\sqrt{b^2-4ac}}{2a}$$</div>
-          <div class="phone-line ph-text">&nbsp;</div>
-          <div class="phone-line ph-text">Onde $\Delta = b^2 - 4ac$</div>
-          <div class="phone-line ph-text">é o discriminante...</div>
-          <div class="phone-line ph-text">&nbsp;</div>
-          <div class="phone-line ph-h2">## 2. Logaritmos</div>
-          <div class="phone-line ph-text">&nbsp;</div>
-          <div class="phone-line ph-math">$$\log_a b = x \iff</div>
-          <div class="phone-line ph-math">a^x = b$$</div>
-          <div class="phone-line ph-text">&nbsp;</div>
-          <div class="phone-line" style="color:#3a3530">···<span class="cursor-blink"></span></div>
-        </div>
-        <div class="phone-export">↓ Exportar matematica.docx</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="marquee-wrap">
-  <div class="marquee-track" id="marqueeTrack">
-    <div class="marquee-item">Markdown Editor <span>✦</span></div>
-    <div class="marquee-item">LaTeX → OMML <span>✦</span></div>
-    <div class="marquee-item">Equações Nativas Word <span>✦</span></div>
-    <div class="marquee-item">Modo TCC <span>✦</span></div>
-    <div class="marquee-item">Trabalho Escolar <span>✦</span></div>
-    <div class="marquee-item">IA Chat <span>✦</span></div>
-    <div class="marquee-item">PWA Offline <span>✦</span></div>
-    <div class="marquee-item">Export .docx <span>✦</span></div>
-    <div class="marquee-item">Quelimane, Moçambique <span>✦</span></div>
-    <div class="marquee-item">Markdown Editor <span>✦</span></div>
-    <div class="marquee-item">LaTeX → OMML <span>✦</span></div>
-    <div class="marquee-item">Equações Nativas Word <span>✦</span></div>
-    <div class="marquee-item">Modo TCC <span>✦</span></div>
-    <div class="marquee-item">Trabalho Escolar <span>✦</span></div>
-    <div class="marquee-item">IA Chat <span>✦</span></div>
-    <div class="marquee-item">PWA Offline <span>✦</span></div>
-    <div class="marquee-item">Export .docx <span>✦</span></div>
-    <div class="marquee-item">Quelimane, Moçambique <span>✦</span></div>
-  </div>
-</div>
-
-<section class="features" id="features">
-  <p class="section-label reveal">Funcionalidades</p>
-  <h2 class="section-h2 reveal">Tudo o que precisas para<br /><em>documentos académicos perfeitos.</em></h2>
-
-  <div class="features-grid reveal">
-    <div class="feat-card">
-      <div class="feat-icon">∑</div>
-      <h3 class="feat-title">Equações OMML Nativas</h3>
-      <p class="feat-desc">Converte LaTeX para OMML automaticamente. As equações exportadas são editáveis directamente no Microsoft Word — não são imagens.</p>
-      <span class="feat-tag">LaTeX → MathML → OMML</span>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">∂</div>
-      <h3 class="feat-title">Editor Markdown Limpo</h3>
-      <p class="feat-desc">Interface minimalista com numeração de linhas, importação de ficheiros .md por drag & drop, e suporte completo a GFM com tabelas.</p>
-      <span class="feat-tag">Markdown + GFM</span>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">↓</div>
-      <h3 class="feat-title">Export Word Profissional</h3>
-      <p class="feat-desc">Documentos A4 formatados com Times New Roman, espaçamento académico, tabelas estilizadas e numeração de páginas no rodapé.</p>
-      <span class="feat-tag">.docx · A4 · ABNT-ready</span>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">≡</div>
-      <h3 class="feat-title">Secções & Quebras de Página</h3>
-      <p class="feat-desc">Marcadores <code style="font-family:'DM Mono',monospace;font-size:0.8em;">{section}</code> e <code style="font-family:'DM Mono',monospace;font-size:0.8em;">{pagebreak}</code> inserem secções Word independentes com paginação reiniciada.</p>
-      <span class="feat-tag">Multi-secção</span>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">✦</div>
-      <h3 class="feat-title">IA Integrada</h3>
-      <p class="feat-desc">Chat com IA que gera Markdown com equações LaTeX prontas a exportar. Inserção directa no editor com um clique.</p>
-      <span class="feat-tag">Groq · Streaming</span>
-    </div>
-    <div class="feat-card">
-      <div class="feat-icon">📲</div>
-      <h3 class="feat-title">PWA Instalável</h3>
-      <p class="feat-desc">Instala como app nativa no Android ou iOS. Funciona offline com os ficheiros essenciais em cache. Sem necessidade de internet após instalação.</p>
-      <span class="feat-tag">Service Worker · Offline</span>
-    </div>
-  </div>
-</section>
-
-<section class="how">
-  <div class="how-inner">
-    <p class="section-label reveal">Como funciona</p>
-    <h2 class="section-h2 reveal">De Markdown a Word em <em>quatro passos.</em></h2>
-
-    <div class="steps">
-      <div class="step reveal">
-        <div class="step-num">01</div>
-        <h3 class="step-title">Escreve Markdown</h3>
-        <p class="step-desc">Usa a sintaxe Markdown normal com equações LaTeX inline <code style="font-family:'DM Mono',monospace;font-size:0.85em;color:#6a9e8f;">$...$</code> e em bloco <code style="font-family:'DM Mono',monospace;font-size:0.85em;color:#6a9e8f;">$$...$$</code>.</p>
-      </div>
-      <div class="step reveal" style="transition-delay:0.1s">
-        <div class="step-num">02</div>
-        <h3 class="step-title">Conversão Automática</h3>
-        <p class="step-desc">O motor converte LaTeX → MathML via Temml e depois MathML → OMML, preservando toda a estrutura matemática.</p>
-      </div>
-      <div class="step reveal" style="transition-delay:0.2s">
-        <div class="step-num">03</div>
-        <h3 class="step-title">Estrutura .docx</h3>
-        <p class="step-desc">O documento Word é montado com estilos académicos — fontes, margens, espaçamento, tabelas e rodapé com numeração.</p>
-      </div>
-      <div class="step reveal" style="transition-delay:0.3s">
-        <div class="step-num">04</div>
-        <h3 class="step-title">Descarrega e Edita</h3>
-        <p class="step-desc">Abre no Microsoft Word e encontras equações editáveis, prontas para ajustar, copiar ou reformatar.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="equations" id="equacoes">
-  <div class="eq-inner">
-    <h2 class="eq-title reveal">LaTeX que se torna <em style="color:var(--gold2)">equação real</em> no Word.</h2>
-
-    <div class="eq-grid reveal">
-      <div>
-        <p class="eq-label">Markdown / LaTeX</p>
-        <div class="eq-box dark">$$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$</div>
-      </div>
-      <div class="eq-arrow">→</div>
-      <div>
-        <p class="eq-label">Word (OMML nativo)</p>
-        <div class="eq-box">
-          <div class="eq-result" style="font-size:1.2rem">𝑥 = <sup>−𝑏 ± √(𝑏²−4𝑎𝑐)</sup>⁄<sub>2𝑎</sub></div>
+        <div className="hero-actions">
+          <a href="/app" className="btn-primary">↓ Exportar .docx grátis</a>
+          <a href="#features" className="btn-secondary">Ver funcionalidades →</a>
         </div>
       </div>
-    </div>
 
-    <div class="eq-grid reveal">
-      <div>
-        <p class="eq-label">Markdown / LaTeX</p>
-        <div class="eq-box dark">$$\log_a M = \frac{\log_b M}{\log_b a}$$</div>
-      </div>
-      <div class="eq-arrow">→</div>
-      <div>
-        <p class="eq-label">Word (OMML nativo)</p>
-        <div class="eq-box">
-          <div class="eq-result">log<sub>𝑎</sub> 𝑀 = <sup>log<sub>𝑏</sub> 𝑀</sup>⁄<sub>log<sub>𝑏</sub> 𝑎</sub></div>
+      <div className="hero-right">
+        <div className="hero-mockup">
+          <div className="float-tag ft1"><span className="ft-dot ft-green" />LaTeX → OMML activo</div>
+          <div className="float-tag ft2"><span className="ft-dot ft-gold" />187 linhas · 3880 chars</div>
+          <div className="float-tag ft3"><span className="ft-dot ft-teal" />PWA instalável</div>
+
+          <div className="phone-frame">
+            <div className="phone-header">
+              <div className="phone-logo-icon">∂</div>
+              <span className="phone-logo-text">docx</span>
+            </div>
+            <div className="phone-body">
+              <div className="phone-line ph-h1"># Matemática</div>
+              <div className="phone-line ph-text">&nbsp;</div>
+              <div className="phone-line ph-h2">## 1. Bhaskara</div>
+              <div className="phone-line ph-text">&nbsp;</div>
+              <div className="phone-line ph-math">{'$$x = \\frac{-b \\pm'}</div>
+              <div className="phone-line ph-math">{'\\sqrt{b^2-4ac}}{2a}$$'}</div>
+              <div className="phone-line ph-text">&nbsp;</div>
+              <div className="phone-line ph-text">Onde $\Delta = b^2 - 4ac$</div>
+              <div className="phone-line ph-text">é o discriminante...</div>
+              <div className="phone-line ph-text">&nbsp;</div>
+              <div className="phone-line ph-h2">## 2. Logaritmos</div>
+              <div className="phone-line ph-text">&nbsp;</div>
+              <div className="phone-line ph-math">$$\log_a b = x \iff</div>
+              <div className="phone-line ph-math">a^x = b$$</div>
+              <div className="phone-line ph-text">&nbsp;</div>
+              <div className="phone-line" style={{ color: '#3a3530' }}>···<span className="cursor-blink" /></div>
+            </div>
+            <div className="phone-export">↓ Exportar matematica.docx</div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
-
-<section class="modes" id="modos">
-  <p class="section-label reveal">Modos especializados</p>
-  <h2 class="section-h2 reveal">Muito mais do que um<br /><em>editor Markdown.</em></h2>
-
-  <div class="modes-grid">
-    <div class="mode-card mode-tcc reveal">
-      <div class="mode-header">
-        <span class="mode-emoji">📝</span>
-        <span class="mode-name">Modo TCC</span>
-      </div>
-      <div class="mode-body">
-        <h3 class="mode-title">Do esboço à conclusão, secção a secção.</h3>
-        <p class="mode-desc">Copiloto académico que gera, desenvolve e mantém a coerência do teu TCC ao longo de todas as secções.</p>
-        <ul class="mode-bullets">
-          <li>Geração de esboço estruturado com IA</li>
-          <li>Desenvolvimento de cada secção com contexto das anteriores</li>
-          <li>Compressão automática de contexto — sem limites de janela</li>
-          <li>Sessões persistentes com Supabase</li>
-          <li>Inserção directa no editor Markdown</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="mode-card mode-work reveal" style="transition-delay:0.1s">
-      <div class="mode-header">
-        <span class="mode-emoji">📚</span>
-        <span class="mode-name">Trabalho Escolar</span>
-      </div>
-      <div class="mode-body">
-        <h3 class="mode-title">Copiloto para o ensino secundário e médio.</h3>
-        <p class="mode-desc">Estrutura fixa (Índice, Introdução, Desenvolvimento, Conclusão, Referências) adaptada ao contexto moçambicano.</p>
-        <ul class="mode-bullets">
-          <li>6 secções pré-definidas + subtópicos do tema</li>
-          <li>Conteúdo contextualizado para Moçambique</li>
-          <li>Progresso visual secção a secção</li>
-          <li>Retoma trabalhos anteriores a qualquer momento</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="mode-card mode-ai reveal" style="transition-delay:0.2s">
-      <div class="mode-header">
-        <span class="mode-emoji">✦</span>
-        <span class="mode-name">IA Chat</span>
-      </div>
-      <div class="mode-body">
-        <h3 class="mode-title">Gera Markdown com equações LaTeX em segundos.</h3>
-        <p class="mode-desc">Chat com IA especializado em matemática e ciências. Respostas em Markdown com equações prontas a exportar.</p>
-        <ul class="mode-bullets">
-          <li>Explicações passo a passo com LaTeX</li>
-          <li>Exercícios resolvidos com solução</li>
-          <li>Inserção ou substituição do editor com um clique</li>
-          <li>Streaming em tempo real</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="mode-card reveal" style="transition-delay:0.3s;background:#faf6ee">
-      <div class="mode-header" style="border-color:var(--border)">
-        <span class="mode-emoji">📐</span>
-        <span class="mode-name" style="color:var(--muted)">Editor Principal</span>
-      </div>
-      <div class="mode-body">
-        <h3 class="mode-title">Editor Markdown completo com suporte LaTeX.</h3>
-        <p class="mode-desc">Escreve, importa ficheiros .md, insere quebras de página e secções, e exporta para Word em segundos.</p>
-        <ul class="mode-bullets" style="--gold2:var(--gold2)">
-          <li>Numeração de linhas em tempo real</li>
-          <li>Drag & drop de ficheiros .md</li>
-          <li>Marcadores {pagebreak} e {section}</li>
-          <li>Contador de linhas e caracteres</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="pwa-strip reveal">
-  <p class="pwa-text"><strong>PWA Pronta para Instalar</strong> — usa offline, sem internet</p>
-  <div class="pwa-badges">
-    <span class="pwa-badge">Android / Chrome: Instalar</span>
-    <span class="pwa-badge">iPhone / iPad: Partilhar → Ecrã inicial</span>
-  </div>
-</div>
-
-<section class="cta-section" id="cta">
-  <div class="cta-inner">
-    <p class="section-label reveal">Começa agora</p>
-    <h2 class="cta-h2 reveal">
-      O teu próximo documento<br />
-      <em>começa aqui.</em>
-    </h2>
-    <p class="cta-sub reveal">Grátis. Sem registo. Sem instalação obrigatória.</p>
-    <div class="reveal" style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-      <a href="/app" class="btn-primary" style="font-size:13px;padding:14px 32px">↓ Abrir docx — é grátis</a>
-    </div>
-    <p class="reveal" style="margin-top:2rem;font-family:'DM Mono',monospace;font-size:10px;color:var(--faint);letter-spacing:0.08em">
-      temml · mathml2omml · docx · Quelimane, Moçambique
-    </p>
-  </div>
-</section>
-
-<footer>
-  <div class="footer-left">
-    docx · Markdown para Word com Equações Nativas · 2026
-  </div>
-  <div class="footer-right">
-    feito com ∂ em Quelimane, Moçambique
-  </div>
-</footer>
-`;
+    </section>
+  );
+}
 
 export default function LandingPage() {
   useEffect(() => {
     const cursor = document.getElementById('cursor');
     const ring = document.getElementById('cursorRing');
-
     if (!cursor || !ring) return;
 
     let mx = 0;
@@ -342,38 +97,33 @@ export default function LandingPage() {
     let ry = 0;
     let frame = 0;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent) => {
       mx = e.clientX;
       my = e.clientY;
-      cursor.setAttribute('style', `transform: translate(${mx - 6}px, ${my - 6}px);`);
+      cursor.style.transform = `translate(${mx - 6}px, ${my - 6}px)`;
     };
 
-    const animateRing = () => {
+    const animate = () => {
       rx += (mx - rx) * 0.12;
       ry += (my - ry) * 0.12;
-      ring.setAttribute('style', `transform: translate(${rx - 18}px, ${ry - 18}px);`);
-      frame = requestAnimationFrame(animateRing);
+      ring.style.transform = `translate(${rx - 18}px, ${ry - 18}px)`;
+      frame = requestAnimationFrame(animate);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    frame = requestAnimationFrame(animateRing);
+    document.addEventListener('mousemove', onMove);
+    frame = requestAnimationFrame(animate);
 
     const reveals = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach((entry, i) => {
-          if (entry.isIntersecting) {
-            setTimeout(() => entry.target.classList.add('visible'), i * 40);
-          }
-        });
-      },
-      { threshold: 0.12 },
-    );
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) setTimeout(() => entry.target.classList.add('visible'), i * 40);
+      });
+    }, { threshold: 0.12 });
 
     reveals.forEach(el => observer.observe(el));
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousemove', onMove);
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
@@ -385,7 +135,184 @@ export default function LandingPage() {
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet" />
 
-      <main className="landing-page-root" dangerouslySetInnerHTML={{ __html: LANDING_HTML }} />
+      <main className="landing-page-root">
+        <div className="cursor" id="cursor" />
+        <div className="cursor-ring" id="cursorRing" />
+
+        <LandingNav />
+        <Hero />
+
+        <div className="marquee-wrap">
+          <div className="marquee-track">
+            {['Markdown Editor', 'LaTeX → OMML', 'Equações Nativas Word', 'Modo TCC', 'Trabalho Escolar', 'IA Chat', 'PWA Offline', 'Export .docx', 'Quelimane, Moçambique', 'Markdown Editor', 'LaTeX → OMML', 'Equações Nativas Word', 'Modo TCC', 'Trabalho Escolar', 'IA Chat', 'PWA Offline', 'Export .docx', 'Quelimane, Moçambique'].map((item, i) => (
+              <div className="marquee-item" key={`${item}-${i}`}>{item} <span>✦</span></div>
+            ))}
+          </div>
+        </div>
+
+        <section className="features" id="features">
+          <p className="section-label reveal">Funcionalidades</p>
+          <h2 className="section-h2 reveal">Tudo o que precisas para<br /><em>documentos académicos perfeitos.</em></h2>
+          <div className="features-grid reveal">
+            <div className="feat-card">
+              <div className="feat-icon">∑</div>
+              <h3 className="feat-title">Equações OMML Nativas</h3>
+              <p className="feat-desc">Converte LaTeX para OMML automaticamente. As equações exportadas são editáveis directamente no Microsoft Word — não são imagens.</p>
+              <span className="feat-tag">LaTeX → MathML → OMML</span>
+            </div>
+            <div className="feat-card">
+              <div className="feat-icon">∂</div>
+              <h3 className="feat-title">Editor Markdown Limpo</h3>
+              <p className="feat-desc">Interface minimalista com numeração de linhas, importação de ficheiros .md por drag & drop, e suporte completo a GFM com tabelas.</p>
+              <span className="feat-tag">Markdown + GFM</span>
+            </div>
+            <div className="feat-card">
+              <div className="feat-icon">↓</div>
+              <h3 className="feat-title">Export Word Profissional</h3>
+              <p className="feat-desc">Documentos A4 formatados com Times New Roman, espaçamento académico, tabelas estilizadas e numeração de páginas no rodapé.</p>
+              <span className="feat-tag">.docx · A4 · ABNT-ready</span>
+            </div>
+            <div className="feat-card">
+              <div className="feat-icon">≡</div>
+              <h3 className="feat-title">Secções & Quebras de Página</h3>
+              <p className="feat-desc">Marcadores <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.8em' }}>{'{section}'}</code> e <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.8em' }}>{'{pagebreak}'}</code> inserem secções Word independentes com paginação reiniciada.</p>
+              <span className="feat-tag">Multi-secção</span>
+            </div>
+            <div className="feat-card">
+              <div className="feat-icon">✦</div>
+              <h3 className="feat-title">IA Integrada</h3>
+              <p className="feat-desc">Chat com IA que gera Markdown com equações LaTeX prontas a exportar. Inserção directa no editor com um clique.</p>
+              <span className="feat-tag">Groq · Streaming</span>
+            </div>
+            <div className="feat-card">
+              <div className="feat-icon">📲</div>
+              <h3 className="feat-title">PWA Instalável</h3>
+              <p className="feat-desc">Instala como app nativa no Android ou iOS. Funciona offline com os ficheiros essenciais em cache. Sem necessidade de internet após instalação.</p>
+              <span className="feat-tag">Service Worker · Offline</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="how">
+          <div className="how-inner">
+            <p className="section-label reveal">Como funciona</p>
+            <h2 className="section-h2 reveal">De Markdown a Word em <em>quatro passos.</em></h2>
+            <div className="steps">
+              <div className="step reveal">
+                <div className="step-num">01</div>
+                <h3 className="step-title">Escreve Markdown</h3>
+                <p className="step-desc">Usa a sintaxe Markdown normal com equações LaTeX inline <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', color: '#6a9e8f' }}>$...$</code> e em bloco <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', color: '#6a9e8f' }}>$$...$$</code>.</p>
+              </div>
+              <div className="step reveal" style={{ transitionDelay: '0.1s' }}>
+                <div className="step-num">02</div>
+                <h3 className="step-title">Conversão Automática</h3>
+                <p className="step-desc">O motor converte LaTeX → MathML via Temml e depois MathML → OMML, preservando toda a estrutura matemática.</p>
+              </div>
+              <div className="step reveal" style={{ transitionDelay: '0.2s' }}>
+                <div className="step-num">03</div>
+                <h3 className="step-title">Estrutura .docx</h3>
+                <p className="step-desc">O documento Word é montado com estilos académicos — fontes, margens, espaçamento, tabelas e rodapé com numeração.</p>
+              </div>
+              <div className="step reveal" style={{ transitionDelay: '0.3s' }}>
+                <div className="step-num">04</div>
+                <h3 className="step-title">Descarrega e Edita</h3>
+                <p className="step-desc">Abre no Microsoft Word e encontras equações editáveis, prontas para ajustar, copiar ou reformatar.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="equations" id="equacoes">
+          <div className="eq-inner">
+            <h2 className="eq-title reveal">LaTeX que se torna <em style={{ color: 'var(--gold2)' }}>equação real</em> no Word.</h2>
+            <div className="eq-grid reveal">
+              <div>
+                <p className="eq-label">Markdown / LaTeX</p>
+                <div className="eq-box dark">{'$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$'}</div>
+              </div>
+              <div className="eq-arrow">→</div>
+              <div>
+                <p className="eq-label">Word (OMML nativo)</p>
+                <div className="eq-box"><div className="eq-result" style={{ fontSize: '1.2rem' }}>𝑥 = <sup>−𝑏 ± √(𝑏²−4𝑎𝑐)</sup>⁄<sub>2𝑎</sub></div></div>
+              </div>
+            </div>
+            <div className="eq-grid reveal">
+              <div>
+                <p className="eq-label">Markdown / LaTeX</p>
+                <div className="eq-box dark">{'$$\\log_a M = \\frac{\\log_b M}{\\log_b a}$$'}</div>
+              </div>
+              <div className="eq-arrow">→</div>
+              <div>
+                <p className="eq-label">Word (OMML nativo)</p>
+                <div className="eq-box"><div className="eq-result">log<sub>𝑎</sub> 𝑀 = <sup>log<sub>𝑏</sub> 𝑀</sup>⁄<sub>log<sub>𝑏</sub> 𝑎</sub></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="modes" id="modos">
+          <p className="section-label reveal">Modos especializados</p>
+          <h2 className="section-h2 reveal">Muito mais do que um<br /><em>editor Markdown.</em></h2>
+          <div className="modes-grid">
+            <div className="mode-card mode-tcc reveal">
+              <div className="mode-header"><span className="mode-emoji">📝</span><span className="mode-name">Modo TCC</span></div>
+              <div className="mode-body">
+                <h3 className="mode-title">Do esboço à conclusão, secção a secção.</h3>
+                <p className="mode-desc">Copiloto académico que gera, desenvolve e mantém a coerência do teu TCC ao longo de todas as secções.</p>
+                <ul className="mode-bullets">
+                  <li>Geração de esboço estruturado com IA</li><li>Desenvolvimento de cada secção com contexto das anteriores</li><li>Compressão automática de contexto — sem limites de janela</li><li>Sessões persistentes com Supabase</li><li>Inserção directa no editor Markdown</li>
+                </ul>
+              </div>
+            </div>
+            <div className="mode-card mode-work reveal" style={{ transitionDelay: '0.1s' }}>
+              <div className="mode-header"><span className="mode-emoji">📚</span><span className="mode-name">Trabalho Escolar</span></div>
+              <div className="mode-body">
+                <h3 className="mode-title">Copiloto para o ensino secundário e médio.</h3>
+                <p className="mode-desc">Estrutura fixa (Índice, Introdução, Desenvolvimento, Conclusão, Referências) adaptada ao contexto moçambicano.</p>
+                <ul className="mode-bullets"><li>6 secções pré-definidas + subtópicos do tema</li><li>Conteúdo contextualizado para Moçambique</li><li>Progresso visual secção a secção</li><li>Retoma trabalhos anteriores a qualquer momento</li></ul>
+              </div>
+            </div>
+            <div className="mode-card mode-ai reveal" style={{ transitionDelay: '0.2s' }}>
+              <div className="mode-header"><span className="mode-emoji">✦</span><span className="mode-name">IA Chat</span></div>
+              <div className="mode-body">
+                <h3 className="mode-title">Gera Markdown com equações LaTeX em segundos.</h3>
+                <p className="mode-desc">Chat com IA especializado em matemática e ciências. Respostas em Markdown com equações prontas a exportar.</p>
+                <ul className="mode-bullets"><li>Explicações passo a passo com LaTeX</li><li>Exercícios resolvidos com solução</li><li>Inserção ou substituição do editor com um clique</li><li>Streaming em tempo real</li></ul>
+              </div>
+            </div>
+            <div className="mode-card reveal" style={{ transitionDelay: '0.3s', background: '#faf6ee' }}>
+              <div className="mode-header" style={{ borderColor: 'var(--border)' }}><span className="mode-emoji">📐</span><span className="mode-name" style={{ color: 'var(--muted)' }}>Editor Principal</span></div>
+              <div className="mode-body">
+                <h3 className="mode-title">Editor Markdown completo com suporte LaTeX.</h3>
+                <p className="mode-desc">Escreve, importa ficheiros .md, insere quebras de página e secções, e exporta para Word em segundos.</p>
+                <ul className="mode-bullets"><li>Numeração de linhas em tempo real</li><li>Drag & drop de ficheiros .md</li><li>Marcadores {'{pagebreak}'} e {'{section}'}</li><li>Contador de linhas e caracteres</li></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="pwa-strip reveal">
+          <p className="pwa-text"><strong>PWA Pronta para Instalar</strong> — usa offline, sem internet</p>
+          <div className="pwa-badges"><span className="pwa-badge">Android / Chrome: Instalar</span><span className="pwa-badge">iPhone / iPad: Partilhar → Ecrã inicial</span></div>
+        </div>
+
+        <section className="cta-section" id="cta">
+          <div className="cta-inner">
+            <p className="section-label reveal">Começa agora</p>
+            <h2 className="cta-h2 reveal">O teu próximo documento<br /><em>começa aqui.</em></h2>
+            <p className="cta-sub reveal">Grátis. Sem registo. Sem instalação obrigatória.</p>
+            <div className="reveal" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href="/app" className="btn-primary" style={{ fontSize: 13, padding: '14px 32px' }}>↓ Abrir docx — é grátis</a>
+            </div>
+            <p className="reveal" style={{ marginTop: '2rem', fontFamily: "'DM Mono',monospace", fontSize: '10px', color: 'var(--faint)', letterSpacing: '0.08em' }}>temml · mathml2omml · docx · Quelimane, Moçambique</p>
+          </div>
+        </section>
+
+        <footer>
+          <div className="footer-left">docx · Markdown para Word com Equações Nativas · 2026</div>
+          <div className="footer-right">feito com ∂ em Quelimane, Moçambique</div>
+        </footer>
+      </main>
 
       <style jsx global>{`
         :root { --ink:#0f0e0d;--parchment:#f5f0e8;--gold:#c9a96e;--gold2:#8b6914;--shadow:#1e1a14;--muted:#6b6254;--faint:#c4b8a4;--green:#4a7c59;--teal:#3a8a7a;--border:#d8ceb8; }
@@ -405,7 +332,7 @@ export default function LandingPage() {
         .pwa-strip{background:var(--ink);padding:2rem 3rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}.pwa-text{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;color:#5a5248;text-transform:uppercase}.pwa-text strong{color:var(--gold)}.pwa-badges{display:flex;gap:.75rem}.pwa-badge{border:1px solid #3a3530;border-radius:20px;padding:5px 14px;font-family:'DM Mono',monospace;font-size:10px;color:#8a7d6e;letter-spacing:.05em}
         .cta-section{padding:9rem 3rem;text-align:center;position:relative;overflow:hidden}.cta-section:before{content:'docx';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(10rem,25vw,22rem);font-weight:700;color:rgba(0,0,0,.025);white-space:nowrap;pointer-events:none;z-index:0}.cta-inner{position:relative;z-index:1}.cta-section .section-label{justify-content:center}.cta-section .section-label:before{display:none}.cta-h2{font-family:'Playfair Display',serif;font-size:clamp(2.5rem,5vw,4rem);font-weight:400;line-height:1.15;color:var(--ink);margin:1rem 0 2rem}.cta-h2 em{color:var(--gold2)}.cta-sub{font-size:1.1rem;color:var(--muted);margin-bottom:2.5rem}footer{border-top:1px solid var(--border);padding:2rem 3rem;display:flex;align-items:center;justify-content:space-between;background:var(--parchment)}.footer-left{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--faint)}.footer-right{font-size:.85rem;color:var(--faint);font-style:italic}
         @keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes floatPhone{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-18px) rotate(.5deg)}}@keyframes floatTag1{0%,100%{transform:translateY(0)}60%{transform:translateY(-12px) translateX(4px)}}@keyframes floatTag2{0%,100%{transform:translateY(0)}45%{transform:translateY(-16px)}}@keyframes floatTag3{0%,100%{transform:translateY(0)}70%{transform:translateY(-10px) translateX(-3px)}}@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}.cursor-blink{display:inline-block;width:2px;height:1em;background:var(--gold);vertical-align:text-bottom;animation:blink 1s step-end infinite}.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease}.reveal.visible{opacity:1;transform:translateY(0)}
-        @media (max-width:900px){.hero{grid-template-columns:1fr}.hero-right{display:none}.features-grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr 1fr;gap:2rem}.steps:before{display:none}.modes-grid{grid-template-columns:1fr}nav{padding:1rem 1.5rem}.nav-links{display:none}.hero-left{padding:6rem 1.5rem 4rem}.features,.modes{padding:4rem 1.5rem}.cta-section{padding:5rem 1.5rem}.pwa-strip{flex-direction:column}footer{flex-direction:column;gap:.5rem;text-align:center}}
+        @media (max-width:900px){.hero{grid-template-columns:1fr}.hero-right{display:block;min-height:520px}.hero-mockup{position:relative;min-height:520px;padding:1.25rem}.features-grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr 1fr;gap:2rem}.steps:before{display:none}.modes-grid{grid-template-columns:1fr}nav{padding:1rem 1.5rem}.nav-links{display:none}.hero-left{padding:6rem 1.5rem 4rem}.features,.modes{padding:4rem 1.5rem}.cta-section{padding:5rem 1.5rem}.pwa-strip{flex-direction:column}footer{flex-direction:column;gap:.5rem;text-align:center}}
       `}</style>
     </>
   );
