@@ -38,7 +38,7 @@ const CELL_BORDERS = {
 };
 
 // ── Alinhamento de célula a partir do alinhamento GFM ───────────────────────
-function cellAlignment(align: TableAlign | null): AlignmentType {
+function cellAlignment(align: TableAlign | null): (typeof AlignmentType)[keyof typeof AlignmentType] {
   switch (align) {
     case 'center': return AlignmentType.CENTER;
     case 'right':  return AlignmentType.RIGHT;
