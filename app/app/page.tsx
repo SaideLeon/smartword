@@ -176,55 +176,6 @@ export default function Home() {
           gap: '1.25rem', minWidth: 0, minHeight: 0, transition: 'all 0.3s ease',
         }}>
           <div style={{ maxWidth: '960px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <h1 style={{
-                fontSize: isMobile ? '1.35rem' : 'clamp(1.4rem, 3vw, 2.2rem)',
-                fontWeight: 400, fontStyle: 'italic', color: '#e8e2d9',
-                margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em',
-              }}>
-                Escreva em Markdown,<br />
-                <span style={{ color: '#c9a96e' }}>exporte com equações Word nativas.</span>
-              </h1>
-              <p style={{
-                marginTop: '0.6rem', color: '#5a5248',
-                fontSize: isMobile ? '12px' : '13px',
-                fontFamily: 'monospace', letterSpacing: '0.04em', lineHeight: 1.5,
-              }}>
-                Suporta{' '}
-                <code style={{ color: '#c9a96e', background: '#1e1b18', padding: '1px 5px', borderRadius: '3px' }}>$...$</code>
-                {' '}e{' '}
-                <code style={{ color: '#c9a96e', background: '#1e1b18', padding: '1px 5px', borderRadius: '3px' }}>$$...$$</code>
-                {' '}convertidos para OMML — equações editáveis directamente no Word.
-              </p>
-            </div>
-
-            {/* PWA banner */}
-            <div style={{
-              display: 'flex', alignItems: isMobile ? 'stretch' : 'center',
-              justifyContent: 'space-between',
-              flexDirection: isMobile ? 'column' : 'row',
-              gap: '0.75rem', padding: isMobile ? '0.85rem' : '0.9rem 1rem',
-              border: '1px solid #2a2520', borderRadius: '10px',
-              background: 'rgba(26, 23, 20, 0.72)',
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: 0 }}>
-                <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#c9a96e', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  PWA pronta para instalar
-                </span>
-                <span style={{ color: '#8a7d6e', fontSize: isMobile ? '12px' : '13px', lineHeight: 1.5 }}>
-                  Adicione esta app ao ecrã inicial para abrir em modo standalone e manter os ficheiros essenciais em cache offline.
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                {['Android/Chrome: Instalar', 'iPhone/iPad: Partilhar → Ecrã inicial'].map(t => (
-                  <span key={t} style={{
-                    border: '1px solid #3a3229', borderRadius: '999px',
-                    padding: '0.35rem 0.7rem', fontSize: '11px',
-                    color: '#e8e2d9', fontFamily: 'monospace', letterSpacing: '0.06em',
-                  }}>{t}</span>
-                ))}
-              </div>
-            </div>
 
             {/* Filename input */}
             <div style={{
