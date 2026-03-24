@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartword-shell-v1';
+const CACHE_NAME = 'muneri-shell-v1';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/apple-icon.svg'];
 
 self.addEventListener('install', event => {

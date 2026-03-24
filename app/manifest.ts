@@ -2,8 +2,8 @@ import type {MetadataRoute} from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'docx · Markdown para Word',
-    short_name: 'docx',
+    name: 'Muneri · Markdown para Word',
+    short_name: 'Muneri',
     description: 'Editor Markdown com exportação para Word e equações OMML, instalável como aplicação PWA.',
     start_url: '/',
     scope: '/',
