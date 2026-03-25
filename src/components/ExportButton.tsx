@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { colors, editorTheme, fonts, gradients, withAlpha } from '@/lib/theme';
 
 interface Props {
   onClick: () => void;
@@ -49,14 +50,14 @@ export function ExportButton({ onClick, loading, filename = 'document', fullWidt
         background: loading
           ? '#1e1b18'
           : hovered
-            ? 'linear-gradient(135deg, #d4b47a 0%, #9a7820 100%)'
-            : 'linear-gradient(135deg, #c9a96e 0%, #8b6914 100%)',
+            ? gradients.goldHover
+            : gradients.gold,
         border: 'none',
         borderRadius: '5px',
         cursor: loading ? 'not-allowed' : 'pointer',
         opacity: loading ? 0.5 : 1,
         transition: 'all 0.2s ease',
-        boxShadow: hovered && !loading ? '0 4px 20px #c9a96e30' : '0 2px 8px #00000040',
+        boxShadow: hovered && !loading ? `0 4px 20px ${withAlpha(colors.gold, '30')}` : '0 2px 8px #00000040',
         transform: hovered && !loading ? 'translateY(-1px)' : 'none',
       }}
     >
@@ -66,14 +67,14 @@ export function ExportButton({ onClick, loading, filename = 'document', fullWidt
           height="15"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#8a7d6e"
+          stroke={colors.textMuted}
           strokeWidth="2"
           style={{ animation: 'spin 1s linear infinite' }}
         >
           <path d="M21 12a9 9 0 11-6.219-8.56" />
         </svg>
       ) : (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0f0e0d" strokeWidth="2.5">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={editorTheme.bg} strokeWidth="2.5">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
@@ -82,11 +83,11 @@ export function ExportButton({ onClick, loading, filename = 'document', fullWidt
 
       <span
         style={{
-          fontFamily: "'Georgia', serif",
+          fontFamily: fonts.serif,
           fontStyle: 'italic',
           fontSize: fullWidth ? '13px' : '14px',
           fontWeight: 400,
-          color: loading ? '#5a5248' : '#0f0e0d',
+          color: loading ? colors.textFaint : editorTheme.bg,
           letterSpacing: '0.01em',
           whiteSpace: 'nowrap',
         }}
