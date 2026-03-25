@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { saveWorkOutlineDraft } from '@/lib/work/service';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -19,6 +20,9 @@ Usa Markdown: ## para o título de cada secção, texto corrido para a descriç�
 Escreve em português europeu/moçambicano. Sê concreto e útil — o esboço serve de guia para o desenvolvimento posterior.`;
 
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { topic, sessionId } = await req.json();
 
