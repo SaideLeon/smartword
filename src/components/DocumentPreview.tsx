@@ -23,6 +23,8 @@ const PAGE_HEIGHT_MOBILE = 960;
 const PAGE_PADDING_DESKTOP = 96;
 const PAGE_PADDING_MOBILE = 56;
 const FOOTER_RESERVED_SPACE = 28;
+const BODY_FONT_SIZE_DESKTOP = 16;
+const BODY_FONT_SIZE_MOBILE = 12;
 
 export function DocumentPreview({ markdown, isMobile = false }: Props) {
   const documentNodes = useMemo(() => parseToAST(markdown), [markdown]);
@@ -33,6 +35,7 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
   const pageHeight = isMobile ? PAGE_HEIGHT_MOBILE : PAGE_HEIGHT_DESKTOP;
   const pagePadding = isMobile ? PAGE_PADDING_MOBILE : PAGE_PADDING_DESKTOP;
   const pageBodyHeight = pageHeight - pagePadding * 2 - FOOTER_RESERVED_SPACE;
+  const bodyFontSize = isMobile ? BODY_FONT_SIZE_MOBILE : BODY_FONT_SIZE_DESKTOP;
 
   useEffect(() => {
     const onResize = () => setMeasureTick((current) => current + 1);
@@ -93,7 +96,7 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
                 minHeight: `${pageHeight}px`,
                 padding: `${pagePadding}px`,
                 fontFamily: '"Times New Roman", Times, serif',
-                fontSize: '16px',
+                fontSize: `${bodyFontSize}px`,
                 lineHeight: 1.5,
               }}
             >
@@ -151,7 +154,7 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
           style={{
             width: `${PAGE_WIDTH - pagePadding * 2}px`,
             fontFamily: '"Times New Roman", Times, serif',
-            fontSize: '16px',
+            fontSize: `${bodyFontSize}px`,
             lineHeight: 1.5,
           }}
         >
@@ -253,7 +256,20 @@ function estimateFallbackHeight(node: DocumentNode): number {
 function PreviewBlockNode({ node }: { node: DocumentNode }) {
   switch (node.type) {
     case 'paragraph':
-      return <p style={{ margin: 0, textAlign: 'justify' }}>{renderInlineNodes(node.children)}</p>;
+      return (
+        <p
+          style={{
+            margin: 0,
+            textAlign: 'justify',
+            textJustify: 'inter-word',
+            hyphens: 'auto',
+            wordBreak: 'normal',
+            overflowWrap: 'break-word',
+          }}
+        >
+          {renderInlineNodes(node.children)}
+        </p>
+      );
     case 'heading': {
       const HeadingTag = `h${node.level}` as ElementType;
       const sizeMap: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
