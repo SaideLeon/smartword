@@ -28,6 +28,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
   const [outlineEdit, setOutlineEdit] = useState('');
   const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sessionsRegionId = 'tcc-recent-sessions';
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,9 +94,9 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {session && (
-              <button onClick={reset} style={ghostBtn(C.muted)} title="Nova sessão">↩</button>
+              <button onClick={reset} style={ghostBtn(C.muted)} title="Nova sessão" aria-label="Iniciar nova sessão de TCC">↩</button>
             )}
-            <button onClick={onClose} style={ghostBtn('#5a5248')} title="Fechar">×</button>
+            <button onClick={onClose} style={ghostBtn('#5a5248')} title="Fechar" aria-label="Fechar painel do modo TCC">×</button>
           </div>
         </div>
 
@@ -144,13 +145,20 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
               <Btn onClick={() => { startNew(); setShowSessions(false); }} color={C.accent}>
                 ✦ Iniciar novo TCC
               </Btn>
-              <Btn onClick={() => setShowSessions(v => !v)} color={C.muted} outline>
+              <Btn
+                onClick={() => setShowSessions(v => !v)}
+                color={C.muted}
+                outline
+                ariaLabel={showSessions ? 'Ocultar lista de sessões anteriores de TCC' : 'Mostrar lista de sessões anteriores de TCC'}
+                ariaExpanded={showSessions}
+                ariaControls={sessionsRegionId}
+              >
                 ↩ Retomar sessão anterior
               </Btn>
             </div>
 
             {showSessions && (
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div id={sessionsRegionId} style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 {recentSessions.length === 0 && (
                   <p style={{ color: C.textFaint, fontSize: '11px', fontFamily: 'monospace' }}>
                     Nenhuma sessão anterior encontrada.
@@ -274,12 +282,14 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
                       <button
                         onClick={() => insertSection(sec.index, onInsert)}
                         style={smallBtn(C.gold)} title="Inserir no editor"
+                        aria-label={`Inserir secção ${sec.title} no editor`}
                       >↓</button>
                     )}
                     <button
                       onClick={() => developSection(sec.index)}
                       style={smallBtn(C.accent)}
                       title={sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'}
+                      aria-label={sec.status === 'pending' ? `Desenvolver secção ${sec.title}` : `Reescrever secção ${sec.title}`}
                     >
                       {sec.status === 'pending' ? '✦' : '↻'}
                     </button>
@@ -429,10 +439,11 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 function Btn({
-  onClick, color, children, outline, flex, disabled,
+  onClick, color, children, outline, flex, disabled, ariaLabel, ariaExpanded, ariaControls,
 }: {
   onClick: () => void; color: string; children: React.ReactNode;
   outline?: boolean; flex?: boolean; disabled?: boolean;
+  ariaLabel?: string; ariaExpanded?: boolean; ariaControls?: string;
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -440,6 +451,9 @@ function Btn({
       className="press-feedback"
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
