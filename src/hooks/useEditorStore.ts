@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 
 export type SidePanel = 'none' | 'chat' | 'tcc' | 'work';
 
@@ -108,29 +109,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 export const useSidePanel = () => useEditorStore((s) => s.sidePanel);
 
 export const usePanelActions = () =>
-  useEditorStore((s) => ({
+  useEditorStore(
+    useShallow((s) => ({
     togglePanel: s.togglePanel,
     closePanel: s.closePanel,
     openPanel: s.openPanel,
-  }));
+    })),
+  );
 
 export const useEditorContent = () => useEditorStore((s) => s.content);
 
 export const useEditorMeta = () =>
-  useEditorStore((s) => ({
-    filename: s.filename,
-    currentStructure: s.currentStructure,
-    canUndo: s.undoStack.length > 0,
-    canRedo: s.redoStack.length > 0,
-  }));
+  useEditorStore(
+    useShallow((s) => ({
+      filename: s.filename,
+      currentStructure: s.currentStructure,
+      canUndo: s.undoStack.length > 0,
+      canRedo: s.redoStack.length > 0,
+    })),
+  );
 
 export const useEditorActions = () =>
-  useEditorStore((s) => ({
-    setContent: s.setContent,
-    clearDefaultContent: s.clearDefaultContent,
-    undo: s.undo,
-    redo: s.redo,
-    setFilename: s.setFilename,
-    setFilenameFromTopic: s.setFilenameFromTopic,
-    setCurrentStructure: s.setCurrentStructure,
-  }));
+  useEditorStore(
+    useShallow((s) => ({
+      setContent: s.setContent,
+      clearDefaultContent: s.clearDefaultContent,
+      undo: s.undo,
+      redo: s.redo,
+      setFilename: s.setFilename,
+      setFilenameFromTopic: s.setFilenameFromTopic,
+      setCurrentStructure: s.setCurrentStructure,
+    })),
+  );
