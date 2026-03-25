@@ -108,8 +108,8 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           }
         }
       }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
+    } catch (err: unknown) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) {
         setMessages(prev => {
           const updated = [...prev];
           updated[updated.length - 1] = {
@@ -197,6 +197,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
             borderRadius: '3px',
           }}
           title="Fechar chat"
+          aria-label="Fechar chat"
         >
           ×
         </button>
@@ -417,6 +418,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
             justifyContent: 'center',
           }}
           title={streaming ? 'Parar' : 'Enviar'}
+          aria-label={streaming ? 'Parar geração' : 'Enviar mensagem'}
         >
           {streaming ? '■' : '↑'}
         </button>
