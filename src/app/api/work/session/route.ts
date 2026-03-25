@@ -6,8 +6,12 @@ import {
   listWorkSessions,
   markWorkSectionInserted,
 } from '@/lib/work/service';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'work:session:get', maxRequests: 60, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -26,6 +30,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'work:session:post', maxRequests: 20, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const body = await req.json();
 
@@ -50,6 +57,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'work:session:delete', maxRequests: 20, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
