@@ -70,6 +70,23 @@ export async function approveOutline(
   return data as TccSession;
 }
 
+export async function saveTccResearchBrief(
+  id: string,
+  keywords: string[],
+  brief: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('tcc_sessions')
+    .update({
+      research_keywords: keywords,
+      research_brief: brief,
+      research_generated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
 // ─── Guardar conteúdo de uma secção desenvolvida ─────────────────────────────
 export async function saveSectionContent(
   id:      string,

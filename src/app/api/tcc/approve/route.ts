@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { approveOutline } from '@/lib/tcc/service';
+import { approveOutline, saveTccResearchBrief } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { generateResearchBrief } from '@/lib/research/brief';
 
 // POST /api/tcc/approve  { sessionId, outline }
 export async function POST(req: Request) {
@@ -15,6 +16,16 @@ export async function POST(req: Request) {
     }
 
     const session = await approveOutline(sessionId, outline.trim());
+
+    if (!session.research_brief) {
+      try {
+        const research = await generateResearchBrief(session.topic, outline.trim());
+        await saveTccResearchBrief(session.id, research.keywords, research.brief);
+      } catch (error) {
+        console.error('Falha ao gerar ficha técnica de pesquisa (tcc):', error);
+      }
+    }
+
     return NextResponse.json(session);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
