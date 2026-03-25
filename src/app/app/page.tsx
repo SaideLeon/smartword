@@ -43,7 +43,14 @@ export default function Home() {
 
   return (
     <main className="relative flex h-dvh min-h-screen flex-col overflow-hidden bg-[#0f0e0d] font-serif text-[#e8e2d9]">
-      <div className="pointer-events-none fixed inset-0 z-0 opacity-50 [background-image:url(\"data:image/svg+xml,%3Csvg_viewBox='0_0_200_200'_xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter_id='n'%3E%3CfeTurbulence_type='fractalNoise'_baseFrequency='0.9'_numOctaves='4'_stitchTiles='stitch'/%3E%3C/filter%3E%3Crect_width='100%25'_height='100%25'_filter='url(%23n)'_opacity='0.04'/%3E%3C/svg%3E\")] bg-[length:180px] bg-repeat" />
+      <div
+        className="pointer-events-none fixed inset-0 z-0 bg-repeat opacity-50"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
+          backgroundSize: '180px',
+        }}
+      />
 
       <header className="relative z-10 flex min-h-16 flex-shrink-0 flex-col items-start justify-between gap-3 border-b border-[#2a2520] bg-[rgba(15,14,13,0.85)] px-4 py-3 backdrop-blur md:flex-row md:items-center md:px-10 md:py-0">
         <div className="flex min-w-0 items-center gap-3">
