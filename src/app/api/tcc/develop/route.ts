@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getSession, saveSectionContent } from '@/lib/tcc/service';
 import { compressContextIfNeeded, buildOptimisedContext } from '@/lib/tcc/context-compressor';
 import type { TccSection } from '@/lib/tcc/types';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -63,6 +64,9 @@ REGRAS ABSOLUTAS:
 // ── Handler principal ────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'tcc:develop', maxRequests: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { sessionId, sectionIndex } = await req.json();
 

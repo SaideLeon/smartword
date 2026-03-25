@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/tcc/service';
+import { enforceRateLimit } from '@/lib/rate-limit';
 import {
   compressContextIfNeeded,
   analyseCompressionNeed,
@@ -11,6 +12,9 @@ import {
 // GET /api/tcc/compress?sessionId=...&targetSection=N
 // Retorna o estado de compressão sem executar nada.
 export async function GET(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'tcc:compress:get', maxRequests: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { searchParams } = new URL(req.url);
     const sessionId    = searchParams.get('sessionId');
@@ -47,6 +51,9 @@ export async function GET(req: Request) {
 // POST /api/tcc/compress  { sessionId, targetSectionIndex }
 // Executa a compressão (se necessário) e retorna a sessão actualizada.
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'tcc:compress:post', maxRequests: 12, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { sessionId, targetSectionIndex = 999 } = await req.json();
 

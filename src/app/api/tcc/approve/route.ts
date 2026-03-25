@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { approveOutline } from '@/lib/tcc/service';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 // POST /api/tcc/approve  { sessionId, outline }
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'tcc:approve', maxRequests: 20, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { sessionId, outline } = await req.json();
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -12,6 +13,9 @@ Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
 Usa notação LaTeX correcta para equações. Responde em português europeu.`;
 
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'chat:post', maxRequests: 20, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { messages } = await req.json();
 

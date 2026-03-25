@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkSectionContent } from '@/lib/work/service';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 const PAGEBREAK_MARKER = '{pagebreak}';
@@ -36,6 +37,9 @@ function normalizeSectionContent(content: string, sectionTitle: string): string 
 }
 
 export async function POST(req: Request) {
+  const limited = enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
   try {
     const { sessionId, sectionIndex } = await req.json();
 
