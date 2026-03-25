@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useThemeMode } from '@/hooks/useThemeMode';
 import { useEditorActions, useEditorMeta, usePanelActions, useSidePanel } from '@/hooks/useEditorStore';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
@@ -20,6 +21,8 @@ export default function Home() {
   const { canRedo, canUndo } = useEditorMeta();
   const { redo, undo } = useEditorActions();
   const isMobile = useIsMobile();
+  const { themeMode, toggleThemeMode } = useThemeMode();
+  const isDark = themeMode === 'dark';
 
   const handleInsert = useCallback(
     (text: string) => {
@@ -44,7 +47,7 @@ export default function Home() {
   );
 
   return (
-    <main className="relative flex h-dvh min-h-screen flex-col overflow-hidden bg-[#0f0e0d] font-serif text-[#e8e2d9]">
+    <main className={cn('relative flex h-dvh min-h-screen flex-col overflow-hidden font-serif transition-colors', isDark ? 'bg-[#0f0e0d] text-[#e8e2d9]' : 'bg-[#f6f1e8] text-[#221d16]')} data-theme={themeMode}>
       <div
         className="pointer-events-none fixed inset-0 z-0 bg-repeat opacity-50"
         style={{
@@ -83,8 +86,8 @@ export default function Home() {
       <EditorStatusBar markdown={markdown} loading={loading} filename={filename} isMobile={isMobile} onExport={exportDocx} />
 
       {!isMobile && (
-        <footer className="relative z-10 flex flex-shrink-0 items-center justify-center border-t border-[#1e1b18] px-10 py-3">
-          <span className="font-mono text-[11px] tracking-[0.06em] text-[#3a3530]">temml · mathml2omml · Muneri · Quelimane, Moçambique</span>
+        <footer className={cn('relative z-10 flex flex-shrink-0 items-center justify-center border-t px-10 py-3', isDark ? 'border-[#1e1b18]' : 'border-[#dfd4c3]')}>
+          <span className={cn('font-mono text-[11px] tracking-[0.06em]', isDark ? 'text-[#3a3530]' : 'text-[#8c8275]')}>temml · mathml2omml · Muneri · Quelimane, Moçambique</span>
         </footer>
       )}
 
