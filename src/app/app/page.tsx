@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useThemeMode } from '@/hooks/useThemeMode';
@@ -12,6 +12,7 @@ import { AiChatDrawer } from '@/components/AiChatDrawer';
 import { EditorHeader } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
+import { DocumentPreview } from '@/components/DocumentPreview';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
@@ -23,6 +24,7 @@ export default function Home() {
   const isMobile = useIsMobile();
   const { themeMode, toggleThemeMode } = useThemeMode();
   const isDark = themeMode === 'dark';
+  const [showEditor, setShowEditor] = useState(false);
 
   const handleInsert = useCallback(
     (text: string) => {
@@ -71,7 +73,26 @@ export default function Home() {
           <div className="mx-auto flex w-full max-w-[960px] flex-col gap-5">
             <EditorFileToolbar filename={filename} onFilenameChange={setFilename} />
 
-            <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />
+            <div className="-mt-3 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowEditor((current) => !current)}
+                className={cn(
+                  'rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors',
+                  isDark
+                    ? 'border-[#2e2924] text-[#5f574d] hover:border-[#4b4238] hover:text-[#a79a89]'
+                    : 'border-[#d8cbbb] text-[#9f8f7d] hover:border-[#bca991] hover:text-[#6e5d49]',
+                )}
+                title="Modo avançado"
+              >
+                {showEditor ? 'ocultar edição' : 'modo avançado'}
+              </button>
+            </div>
+
+            <div className={cn('grid gap-5', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
+              {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
+              <DocumentPreview markdown={markdown} isMobile={isMobile} />
+            </div>
           </div>
         </section>
 
