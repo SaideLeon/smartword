@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useThemeMode } from '@/hooks/useThemeMode';
 import { useEditorActions, useEditorMeta, usePanelActions, useSidePanel } from '@/hooks/useEditorStore';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
@@ -19,6 +20,8 @@ export default function Home() {
   const { canRedo, canUndo } = useEditorMeta();
   const { redo, undo } = useEditorActions();
   const isMobile = useIsMobile();
+  const { themeMode, toggleThemeMode } = useThemeMode();
+  const isDark = themeMode === 'dark';
 
   const handleInsert = useCallback(
     (text: string) => {
@@ -43,7 +46,7 @@ export default function Home() {
   );
 
   return (
-    <main className="relative flex h-dvh min-h-screen flex-col overflow-hidden bg-[#0f0e0d] font-serif text-[#e8e2d9]">
+    <main className={cn('relative flex h-dvh min-h-screen flex-col overflow-hidden font-serif transition-colors', isDark ? 'bg-[#0f0e0d] text-[#e8e2d9]' : 'bg-[#f6f1e8] text-[#221d16]')} data-theme={themeMode}>
       <div
         className="pointer-events-none fixed inset-0 z-0 bg-repeat opacity-50"
         style={{
@@ -53,32 +56,42 @@ export default function Home() {
         }}
       />
 
-      <header className="relative z-10 flex min-h-16 flex-shrink-0 flex-col items-start justify-between gap-3 border-b border-[#2a2520] bg-[rgba(15,14,13,0.85)] px-4 py-3 backdrop-blur md:flex-row md:items-center md:px-10 md:py-0">
+      <header className={cn('relative z-10 flex min-h-16 flex-shrink-0 flex-col items-start justify-between gap-3 border-b px-4 py-3 backdrop-blur md:flex-row md:items-center md:px-10 md:py-0', isDark ? 'border-[#2a2520] bg-[rgba(15,14,13,0.85)]' : 'border-[#d9cebb] bg-[rgba(246,241,232,0.88)]')}>
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-gradient-to-br from-[#c9a96e] to-[#8b6914] font-mono text-[13px] font-bold text-[#0f0e0d]">∂</span>
           <span className="font-serif text-[15px] italic tracking-[0.06em] text-[#c9a96e]">
             Muneri
-            <span className="not-italic text-[#5a5248]"> · </span>
-            <span className="text-[13px] not-italic text-[#8a7d6e]">Markdown para Word com Equações Nativas</span>
+            <span className={cn('not-italic', isDark ? 'text-[#5a5248]' : 'text-[#8a7d6e]')}> · </span>
+            <span className={cn('text-[13px] not-italic', isDark ? 'text-[#8a7d6e]' : 'text-[#6d6254]')}>Markdown para Word com Equações Nativas</span>
           </span>
         </div>
 
         <div className="flex w-full flex-wrap items-center justify-between gap-2 md:w-auto md:justify-end md:gap-3">
-          <PanelToggleButton active={sidePanel === 'work'} icon="📚" label="Trabalhos" closeLabel="Fechar Trabalhos" onClick={() => handleTogglePanel('work')} />
-          <PanelToggleButton active={sidePanel === 'tcc'} icon="📝" label="TCC" closeLabel="Fechar TCC" onClick={() => handleTogglePanel('tcc')} />
-          <PanelToggleButton active={sidePanel === 'chat'} icon="✦" label="IA" closeLabel="Fechar IA" onClick={() => handleTogglePanel('chat')} />
+          <PanelToggleButton active={sidePanel === 'work'} icon="📚" label="Trabalhos" closeLabel="Fechar Trabalhos" onClick={() => handleTogglePanel('work')} dark={isDark} />
+          <PanelToggleButton active={sidePanel === 'tcc'} icon="📝" label="TCC" closeLabel="Fechar TCC" onClick={() => handleTogglePanel('tcc')} dark={isDark} />
+          <PanelToggleButton active={sidePanel === 'chat'} icon="✦" label="IA" closeLabel="Fechar IA" onClick={() => handleTogglePanel('chat')} dark={isDark} />
+          <button
+            aria-label={isDark ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+            className={cn(
+              'press-feedback rounded border px-2.5 py-1.5 font-mono text-[11px] tracking-[0.08em]',
+              isDark ? 'border-[#2a2520] bg-[#1a1714] text-[#c9a96e]' : 'border-[#d9cebb] bg-[#fffaf1] text-[#8b6914]',
+            )}
+            onClick={toggleThemeMode}
+          >
+            {isDark ? '☀ Claro' : '🌙 Escuro'}
+          </button>
 
           <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <button aria-label="Desfazer" className="press-feedback rounded border border-[#2a2520] bg-[#1a1714] px-2 py-1 font-mono text-[11px] text-[#8a7d6e] disabled:opacity-40" disabled={!canUndo} onClick={undo}>
+            <button aria-label="Desfazer" className={cn('press-feedback rounded border px-2 py-1 font-mono text-[11px] disabled:opacity-40', isDark ? 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]' : 'border-[#d9cebb] bg-[#fffaf1] text-[#7a6f60]')} disabled={!canUndo} onClick={undo}>
               ↶
             </button>
-            <button aria-label="Refazer" className="press-feedback rounded border border-[#2a2520] bg-[#1a1714] px-2 py-1 font-mono text-[11px] text-[#8a7d6e] disabled:opacity-40" disabled={!canRedo} onClick={redo}>
+            <button aria-label="Refazer" className={cn('press-feedback rounded border px-2 py-1 font-mono text-[11px] disabled:opacity-40', isDark ? 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]' : 'border-[#d9cebb] bg-[#fffaf1] text-[#7a6f60]')} disabled={!canRedo} onClick={redo}>
               ↷
             </button>
           </div>
 
           <div className="flex min-w-0 items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#4a4440]">LaTeX → OMML</span>
+            <span className={cn('font-mono text-[11px] uppercase tracking-[0.08em]', isDark ? 'text-[#4a4440]' : 'text-[#7f7566]')}>LaTeX → OMML</span>
             <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#4a7c59] shadow-[0_0_6px_#4a7c59]" />
           </div>
         </div>
@@ -104,8 +117,8 @@ export default function Home() {
       <EditorStatusBar markdown={markdown} loading={loading} filename={filename} isMobile={isMobile} onExport={exportDocx} />
 
       {!isMobile && (
-        <footer className="relative z-10 flex flex-shrink-0 items-center justify-center border-t border-[#1e1b18] px-10 py-3">
-          <span className="font-mono text-[11px] tracking-[0.06em] text-[#3a3530]">temml · mathml2omml · Muneri · Quelimane, Moçambique</span>
+        <footer className={cn('relative z-10 flex flex-shrink-0 items-center justify-center border-t px-10 py-3', isDark ? 'border-[#1e1b18]' : 'border-[#dfd4c3]')}>
+          <span className={cn('font-mono text-[11px] tracking-[0.06em]', isDark ? 'text-[#3a3530]' : 'text-[#8c8275]')}>temml · mathml2omml · Muneri · Quelimane, Moçambique</span>
         </footer>
       )}
 
@@ -122,18 +135,20 @@ function PanelToggleButton({
   label,
   closeLabel,
   onClick,
+  dark,
 }: {
   active: boolean;
   icon: string;
   label: string;
   closeLabel: string;
   onClick: () => void;
+  dark: boolean;
 }) {
   return (
     <button
       className={cn(
         'press-feedback flex items-center gap-1 rounded border px-3 py-1.5 font-mono text-[12px] tracking-[0.05em] transition-colors',
-        active ? 'border-[#c9a96e55] bg-[#c9a96e22] text-[#c9a96e]' : 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]',
+        active ? 'border-[#c9a96e55] bg-[#c9a96e22] text-[#c9a96e]' : dark ? 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]' : 'border-[#d9cebb] bg-[#fffaf1] text-[#7a6f60]',
       )}
       onClick={onClick}
       aria-label={active ? closeLabel : label}
