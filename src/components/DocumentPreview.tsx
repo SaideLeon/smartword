@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, type ElementType, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from 'react';
 import temml from 'temml';
 import { parseToAST } from '@/lib/docx/parser';
 import type { DocumentNode, InlineNode, TableAlign, TableRowNode } from '@/lib/docx/types';
@@ -12,89 +12,242 @@ interface Props {
 
 type PreviewPage = {
   key: string;
-  nodes: DocumentNode[];
+  nodeIndexes: number[];
   startsNewSection: boolean;
+  hasOversizedBlock: boolean;
 };
 
+const PAGE_WIDTH = 794;
+const PAGE_HEIGHT_DESKTOP = 1123;
+const PAGE_HEIGHT_MOBILE = 960;
+const PAGE_PADDING_DESKTOP = 96;
+const PAGE_PADDING_MOBILE = 56;
+const FOOTER_RESERVED_SPACE = 28;
+
 export function DocumentPreview({ markdown, isMobile = false }: Props) {
-  const pages = useMemo(() => buildPages(markdown), [markdown]);
+  const documentNodes = useMemo(() => parseToAST(markdown), [markdown]);
+  const measureRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [nodeHeights, setNodeHeights] = useState<Record<number, number>>({});
+  const [measureTick, setMeasureTick] = useState(0);
+
+  const pageHeight = isMobile ? PAGE_HEIGHT_MOBILE : PAGE_HEIGHT_DESKTOP;
+  const pagePadding = isMobile ? PAGE_PADDING_MOBILE : PAGE_PADDING_DESKTOP;
+  const pageBodyHeight = pageHeight - pagePadding * 2 - FOOTER_RESERVED_SPACE;
+
+  useEffect(() => {
+    const onResize = () => setMeasureTick((current) => current + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useLayoutEffect(() => {
+    const measured: Record<number, number> = {};
+
+    for (let i = 0; i < documentNodes.length; i += 1) {
+      const node = documentNodes[i];
+      if (node.type === 'page_break' || node.type === 'section_break') continue;
+
+      const element = measureRefs.current[i];
+      if (!element) continue;
+
+      measured[i] = Math.ceil(element.getBoundingClientRect().height);
+    }
+
+    setNodeHeights((current) => {
+      const currentKeys = Object.keys(current);
+      const measuredKeys = Object.keys(measured);
+
+      if (currentKeys.length === measuredKeys.length) {
+        let equal = true;
+        for (const key of measuredKeys) {
+          if (Math.abs((current[Number(key)] ?? 0) - measured[Number(key)]) > 1) {
+            equal = false;
+            break;
+          }
+        }
+        if (equal) return current;
+      }
+
+      return measured;
+    });
+  }, [documentNodes, measureTick]);
+
+  const pages = useMemo(
+    () => paginateNodes(documentNodes, nodeHeights, pageBodyHeight),
+    [documentNodes, nodeHeights, pageBodyHeight],
+  );
 
   return (
-    <section className="rounded-xl border border-[#d9cec0] bg-[#d8d8d8] p-3 md:p-6">
+    <section className="relative rounded-xl border border-[#d9cec0] bg-[#d8d8d8] p-3 md:p-6">
       <header className="mb-3 flex items-center justify-between gap-3 md:mb-4">
-        <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4d4338]">Pré-visualização (A4)</h3>
-        <span className="font-sans text-[10px] uppercase tracking-[0.12em] text-[#6f6458]">Estilo Word · Times New Roman</span>
+        <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4d4338]">Pré-visualização (A4 virtual)</h3>
+        <span className="font-sans text-[10px] uppercase tracking-[0.12em] text-[#6f6458]">Paginação automática · estilo Word</span>
       </header>
 
       <div className="grid gap-4 md:gap-6">
         {pages.map((page, index) => (
-          <article
-            key={page.key}
-            className="mx-auto w-full max-w-[794px] bg-white text-[#111] shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
-            style={{
-              minHeight: isMobile ? '960px' : '1123px',
-              padding: isMobile ? '56px 44px' : '96px',
-              fontFamily: '"Times New Roman", Times, serif',
-              fontSize: '16px',
-              lineHeight: 1.5,
-            }}
-          >
-            {page.startsNewSection && (
-              <p style={{ margin: '0 0 1.2rem 0', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6d6458' }}>
-                Nova secção
-              </p>
+          <Fragment key={page.key}>
+            <article
+              className="mx-auto w-full max-w-[794px] bg-white text-[#111] shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
+              style={{
+                minHeight: `${pageHeight}px`,
+                padding: `${pagePadding}px`,
+                fontFamily: '"Times New Roman", Times, serif',
+                fontSize: '16px',
+                lineHeight: 1.5,
+              }}
+            >
+              {page.startsNewSection && (
+                <p style={{ margin: '0 0 1.2rem 0', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6d6458' }}>
+                  Nova secção
+                </p>
+              )}
+
+              <div style={{ display: 'grid', gap: '0.9rem' }}>
+                {page.nodeIndexes.length > 0
+                  ? page.nodeIndexes.map((nodeIndex) => (
+                      <PreviewBlockNode key={`${page.key}-${nodeIndex}`} node={documentNodes[nodeIndex]} />
+                    ))
+                  : <p style={{ margin: 0, color: '#6f665a' }}>Página em branco</p>}
+              </div>
+
+              {page.hasOversizedBlock && (
+                <div style={{ marginTop: '1rem', borderTop: '1px dashed #d9d9d9', paddingTop: '0.5rem', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '11px', color: '#807667' }}>
+                  Bloco longo demais para caber numa única página — mantendo íntegro para evitar cortes.
+                </div>
+              )}
+
+              <footer style={{ marginTop: '1.6rem', textAlign: 'center', fontSize: '12px', color: '#928575' }}>{index + 1}</footer>
+            </article>
+
+            {index < pages.length - 1 && (
+              <div
+                style={{
+                  margin: '0 auto',
+                  width: '100%',
+                  maxWidth: `${PAGE_WIDTH}px`,
+                  borderTop: '2px dashed #c8c8c8',
+                  background: '#ececec',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: '11px',
+                  letterSpacing: '0.04em',
+                  color: '#8c8c8c',
+                  userSelect: 'none',
+                }}
+              >
+                quebra automática de página
+              </div>
             )}
-
-            <div style={{ display: 'grid', gap: '0.9rem' }}>
-              {page.nodes.length > 0
-                ? page.nodes.map((node, nodeIndex) => <PreviewBlockNode key={nodeIndex} node={node} />)
-                : <p style={{ margin: 0, color: '#6f665a' }}>Página em branco</p>}
-            </div>
-
-            <footer style={{ marginTop: '1.6rem', textAlign: 'center', fontSize: '12px', color: '#928575' }}>{index + 1}</footer>
-          </article>
+          </Fragment>
         ))}
+      </div>
+
+      <div aria-hidden style={{ position: 'absolute', inset: '-99999px auto auto -99999px', width: `${PAGE_WIDTH}px`, visibility: 'hidden' }}>
+        <div
+          style={{
+            width: `${PAGE_WIDTH - pagePadding * 2}px`,
+            fontFamily: '"Times New Roman", Times, serif',
+            fontSize: '16px',
+            lineHeight: 1.5,
+          }}
+        >
+          {documentNodes.map((node, index) => {
+            if (node.type === 'page_break' || node.type === 'section_break') return null;
+
+            return (
+              <div
+                key={`measure-${index}`}
+                ref={(element) => {
+                  measureRefs.current[index] = element;
+                }}
+                style={{ marginBottom: '0.9rem' }}
+              >
+                <PreviewBlockNode node={node} />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
 }
 
-function buildPages(markdown: string): PreviewPage[] {
-  const nodes = parseToAST(markdown);
+function paginateNodes(nodes: DocumentNode[], heights: Record<number, number>, maxPageBodyHeight: number): PreviewPage[] {
   const pages: PreviewPage[] = [];
-  let currentNodes: DocumentNode[] = [];
+  let currentNodeIndexes: number[] = [];
+  let currentHeight = 0;
   let pendingSection = false;
+  let pageHasOversizedBlock = false;
 
-  const pushPage = () => {
+  const openNewPage = () => {
     pages.push({
       key: `page-${pages.length + 1}`,
-      nodes: currentNodes,
+      nodeIndexes: currentNodeIndexes,
       startsNewSection: pendingSection,
+      hasOversizedBlock: pageHasOversizedBlock,
     });
-    currentNodes = [];
+    currentNodeIndexes = [];
+    currentHeight = 0;
     pendingSection = false;
+    pageHasOversizedBlock = false;
   };
 
-  for (const node of nodes) {
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index];
+
     if (node.type === 'page_break') {
-      pushPage();
+      openNewPage();
       continue;
     }
 
     if (node.type === 'section_break') {
-      pushPage();
+      openNewPage();
       pendingSection = true;
       continue;
     }
 
-    currentNodes.push(node);
+    const nodeHeight = heights[index] ?? estimateFallbackHeight(node);
+
+    if (currentNodeIndexes.length > 0 && currentHeight + nodeHeight > maxPageBodyHeight) {
+      openNewPage();
+    }
+
+    if (nodeHeight > maxPageBodyHeight) {
+      pageHasOversizedBlock = true;
+    }
+
+    currentNodeIndexes.push(index);
+    currentHeight += nodeHeight;
   }
 
-  if (currentNodes.length > 0 || pages.length === 0) {
-    pushPage();
+  if (currentNodeIndexes.length > 0 || pages.length === 0) {
+    openNewPage();
   }
 
   return pages;
+}
+
+function estimateFallbackHeight(node: DocumentNode): number {
+  switch (node.type) {
+    case 'heading':
+      return 72;
+    case 'list':
+      return Math.max(90, node.items.length * 44);
+    case 'table':
+      return Math.max(120, node.rows.length * 46);
+    case 'math_block':
+      return 100;
+    case 'blockquote':
+      return 92;
+    case 'paragraph':
+      return 44;
+    default:
+      return 44;
+  }
 }
 
 function PreviewBlockNode({ node }: { node: DocumentNode }) {
