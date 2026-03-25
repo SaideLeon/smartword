@@ -12,6 +12,7 @@ import { AiChatDrawer } from '@/components/AiChatDrawer';
 import { EditorHeader } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
+import { DocumentPreview } from '@/components/DocumentPreview';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
@@ -71,7 +72,10 @@ export default function Home() {
           <div className="mx-auto flex w-full max-w-[960px] flex-col gap-5">
             <EditorFileToolbar filename={filename} onFilenameChange={setFilename} />
 
-            <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />
+              <DocumentPreview markdown={markdown} isMobile={isMobile} />
+            </div>
           </div>
         </section>
 
