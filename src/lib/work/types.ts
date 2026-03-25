@@ -18,4 +18,7 @@ export interface WorkSessionRecord {
   outline_approved: string | null;
   sections: WorkSection[];
   status: WorkStatus;
+  research_keywords: string[] | null;
+  research_brief: string | null;
+  research_generated_at: string | null;
 }

@@ -66,6 +66,9 @@ export async function POST(req: Request) {
           ).join('\n\n')
         }\n`
       : '';
+    const researchContext = session.research_brief
+      ? `\nFICHA TÉCNICA DE PESQUISA (gerada após aprovação do esboço e reutilizada em todas as secções):\n${session.research_brief}\n`
+      : '';
 
     const isSubsection = /^\d+\.\d+/.test(section.title);
 
@@ -92,6 +95,7 @@ Entre 250-450 palavras. Usa Markdown para listas e destaques quando melhorar a c
 ESBOÇO ORIENTADOR DO TRABALHO:
 ${outline}
 ${previousContext}
+${researchContext}
 A TUA TAREFA AGORA:
 Desenvolve APENAS a secção: "${section.title}"
 
@@ -104,8 +108,10 @@ REGRAS ABSOLUTAS:
 - Português europeu/moçambicano correcto
 - Usa Markdown: negrito, listas, sub-títulos ### quando adequado
 - Mantém coerência terminológica com as secções anteriores
+- Usa a ficha técnica de pesquisa como base factual prioritária e aplica apenas os pontos relevantes para esta secção
 - Tom académico mas acessível ao nível do ensino secundário/médio
-- NÃO incluas a palavra {pagebreak} no conteúdo — as quebras de página são geridas automaticamente pelo sistema`.trim();
+- NÃO incluas a palavra {pagebreak} no conteúdo — as quebras de página são geridas automaticamente pelo sistema
+- NÃO faças nova pesquisa web: utiliza exclusivamente o esboço, contexto anterior e ficha técnica já fornecida`.trim();
 
     const response = await fetch(GROQ_BASE, {
       method: 'POST',

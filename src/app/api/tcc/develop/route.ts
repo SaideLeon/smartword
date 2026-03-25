@@ -14,6 +14,7 @@ const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 function buildSystemPrompt(
   topic:          string,
   outline:        string,
+  researchBrief:  string | null,
   contextSummary: string | null,
   recentSectionsContent: string,
   currentSection: TccSection,
@@ -37,10 +38,17 @@ ${recentSectionsContent}`
     ? `[NOTA: As secções mais antigas foram comprimidas num resumo de contexto para optimizar a janela de tokens. As ${recentSectionsContent ? '2 secções' : '0 secções'} mais recentes estão completas acima.]`
     : '';
 
+  const researchContext = researchBrief
+    ? `FICHA TÉCNICA DE PESQUISA (web consultada uma única vez após aprovação do esboço; reutilizar em todas as secções):
+${researchBrief}`
+    : '';
+
   return `És um especialista académico a desenvolver um TCC sobre: "${topic}".
 
 ESBOÇO APROVADO (âncora estrutural — segue esta estrutura):
 ${outline}
+
+${researchContext}
 
 ${historicalContext}
 
@@ -56,9 +64,11 @@ REGRAS ABSOLUTAS:
 - Sem preâmbulos, sem meta-comentários, sem conclusões sobre o que vem a seguir
 - Texto académico puro, em português europeu, pronto para inserir directamente num TCC
 - Mantém coerência terminológica com o contexto fornecido acima
+- Usa a ficha técnica de pesquisa como base factual prioritária e aplica apenas os pontos relevantes para esta secção
 - Usa Markdown para formatação (negrito, listas quando necessário, sub-títulos com ###)
 - Extensão adequada ao nível académico: entre 300 e 600 palavras por secção
-- Não repitas conteúdo já mencionado no contexto histórico ou nas secções recentes`.trim();
+- Não repitas conteúdo já mencionado no contexto histórico ou nas secções recentes
+- Não realizes nova pesquisa web nesta fase`.trim();
 }
 
 // ── Handler principal ────────────────────────────────────────────────────────
@@ -99,6 +109,7 @@ export async function POST(req: Request) {
     const systemPrompt = buildSystemPrompt(
       session.topic,
       optimised.outline,
+      session.research_brief,
       optimised.contextSummary,
       optimised.recentSectionsContent,
       currentSection,

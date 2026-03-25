@@ -30,6 +30,9 @@ export interface TccSession {
   summary_covers_up_to: number | null;   // índice da última secção resumida
   summary_updated_at:   string | null;   // quando foi gerado
   total_tokens_estimate: number;         // estimativa acumulada de tokens
+  research_keywords: string[] | null;
+  research_brief: string | null;
+  research_generated_at: string | null;
 }
 
 // ── Tipos auxiliares para o sistema de compressão ─────────────────────────
