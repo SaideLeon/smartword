@@ -62,6 +62,23 @@ export async function approveWorkOutline(id: string, outline: string): Promise<W
   return data as WorkSessionRecord;
 }
 
+export async function saveWorkResearchBrief(
+  id: string,
+  keywords: string[],
+  brief: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('work_sessions')
+    .update({
+      research_keywords: keywords,
+      research_brief: brief,
+      research_generated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
 export async function saveWorkSectionContent(
   id: string,
   index: number,
