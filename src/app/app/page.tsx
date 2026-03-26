@@ -16,7 +16,7 @@ import { DocumentPreview } from '@/components/DocumentPreview';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
-  const { markdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown, setFilenameFromTopic } = useDocumentEditor();
+  const { markdown, previewMarkdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown, setFilenameFromTopic } = useDocumentEditor();
   const sidePanel = useSidePanel();
   const { togglePanel, closePanel } = usePanelActions();
   const { canRedo, canUndo } = useEditorMeta();
@@ -91,7 +91,7 @@ export default function Home() {
 
             <div className={cn('grid gap-5', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
               {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
-              <DocumentPreview markdown={markdown} isMobile={isMobile} />
+              <DocumentPreview markdown={previewMarkdown} isMobile={isMobile} />
             </div>
           </div>
         </section>
