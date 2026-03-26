@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { ChatMessageContent } from '@/components/ChatMessageContent';
-import { chatTheme, colors, editorTheme, fonts, gradients, ghostButtonStyle, withAlpha } from '@/lib/theme';
+import { chatTheme, colors, editorTheme, fonts, gradients, withAlpha } from '@/lib/theme';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -24,6 +24,39 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const actionFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const vars = useMemo(() => ({
+    '--chat-bg': chatTheme.bg,
+    '--chat-border': chatTheme.border,
+    '--chat-border-alt': chatTheme.borderAlt,
+    '--chat-accent': chatTheme.accent,
+    '--chat-accent-dim': chatTheme.accentDim,
+    '--chat-text': chatTheme.text,
+    '--chat-text-muted': chatTheme.textMuted,
+    '--chat-text-faint': chatTheme.textFaint,
+    '--chat-user-bg': chatTheme.userBg,
+    '--chat-assistant-bg': chatTheme.assistantBg,
+    '--editor-surface': editorTheme.surface,
+    '--editor-bg': editorTheme.bg,
+    '--editor-caret': editorTheme.caretColor,
+    '--text-dim': colors.textDim,
+    '--text-faint': colors.textFaint,
+    '--green': colors.green,
+    '--gold-dark': colors.goldDark,
+    '--chat-user-label': withAlpha(chatTheme.accent, '88'),
+    '--chat-assistant-label': withAlpha(colors.green, '88'),
+    '--insert-bg': withAlpha(colors.green, '22'),
+    '--insert-border': withAlpha(colors.green, '44'),
+    '--replace-bg': withAlpha(colors.goldDark, '22'),
+    '--replace-border': withAlpha(chatTheme.accent, '44'),
+    '--send-stop-bg': '#3a1a1a',
+    '--send-stop-fg': '#c9503a',
+    '--send-idle-bg': editorTheme.surface,
+    '--send-idle-fg': colors.textDim,
+    '--send-ready-bg': gradients.gold,
+    '--send-ready-fg': editorTheme.bg,
+    '--font-label': fonts.label,
+  } as CSSProperties), []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,7 +97,6 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Adiciona mensagem do assistente vazia para streaming
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
     try {
@@ -136,115 +168,39 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
   const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')?.content ?? '';
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: chatTheme.bg,
-        borderLeft: isMobile ? 'none' : `1px solid ${chatTheme.border}`,
-      }}
-    >
-      {/* Header do chat */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: isMobile ? '0.75rem 0.85rem' : '0.75rem 1rem',
-          borderBottom: `1px solid ${chatTheme.border}`,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '16px' }}>✦</span>
-          <span
-            style={{
-              fontSize: '13px',
-              fontFamily: fonts.label,
-              color: chatTheme.accent,
-              letterSpacing: '0.06em',
-            }}
-          >
-            IA · Gerar Markdown
-          </span>
+    <div style={vars} className={`flex h-full flex-col bg-[var(--chat-bg)] ${isMobile ? '' : 'border-l border-[var(--chat-border)]'}`}>
+      <div className={`flex shrink-0 items-center justify-between border-b border-[var(--chat-border)] ${isMobile ? 'px-[0.85rem] py-3' : 'px-4 py-3'}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-base">✦</span>
+          <span className="text-[13px] tracking-[0.06em] text-[var(--chat-accent)] [font-family:var(--font-label)]">IA · Gerar Markdown</span>
           {!isMobile && (
-            <span
-              style={{
-                fontSize: '10px',
-                fontFamily: fonts.label,
-                color: colors.textDim,
-                background: editorTheme.surface,
-                padding: '1px 6px',
-                borderRadius: '3px',
-                letterSpacing: '0.05em',
-              }}
-            >
+            <span className="rounded-[3px] bg-[var(--editor-surface)] px-1.5 py-px text-[10px] tracking-[0.05em] text-[var(--text-dim)] [font-family:var(--font-label)]">
               Groq · Llama 3.3
             </span>
           )}
         </div>
-        <button
-          className="press-feedback"
-          onClick={onClose}
-          style={ghostButtonStyle(colors.textFaint)}
-          title="Fechar chat"
-          aria-label="Fechar chat"
-        >
-          ×
-        </button>
+        <button className="press-feedback rounded px-1.5 py-0.5 text-xl leading-none text-[var(--text-faint)]" onClick={onClose} title="Fechar chat" aria-label="Fechar chat">×</button>
       </div>
 
-      {/* Mensagens */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: isMobile ? '0.85rem' : '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
-        }}
-      >
+      <div className={`flex flex-1 flex-col gap-4 overflow-y-auto ${isMobile ? 'p-[0.85rem]' : 'p-4'}`}>
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', marginTop: isMobile ? '1rem' : '2rem' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>✦</div>
-            <p style={{ color: chatTheme.textFaint, fontSize: '13px', fontFamily: fonts.label, lineHeight: 1.6 }}>
+          <div className={`text-center ${isMobile ? 'mt-4' : 'mt-8'}`}>
+            <div className="mb-3 text-[2rem]">✦</div>
+            <p className="text-[13px] leading-[1.6] text-[var(--chat-text-faint)] [font-family:var(--font-label)]">
               Descreve o conteúdo que queres gerar.<br />
               A IA devolve Markdown com equações LaTeX<br />
               prontas para exportar para Word.
             </p>
-            <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div className="mt-5 flex flex-col gap-2">
               {[
                 'Explica a fórmula de Bhaskara com exemplos',
                 'Cria exercícios sobre logaritmos com soluções',
                 'Resumo das propriedades das progressões aritméticas',
               ].map(sugestao => (
                 <button
-                  className="press-feedback"
+                  className={`press-feedback rounded border border-[var(--chat-border)] bg-[var(--editor-surface)] text-left tracking-[0.02em] text-[var(--chat-text-muted)] transition-colors hover:border-[var(--chat-accent-dim)] hover:text-[var(--chat-accent)] [font-family:var(--font-label)] ${isMobile ? 'px-[10px] py-[9px] text-[10px]' : 'px-[10px] py-1.5 text-[11px]'}`}
                   key={sugestao}
                   onClick={() => setInput(sugestao)}
-                  style={{
-                    background: editorTheme.surface,
-                    border: `1px solid ${chatTheme.border}`,
-                    borderRadius: '4px',
-                    color: chatTheme.textMuted,
-                    fontFamily: fonts.label,
-                    fontSize: isMobile ? '10px' : '11px',
-                    padding: isMobile ? '9px 10px' : '6px 10px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    letterSpacing: '0.02em',
-                    transition: 'border-color 0.15s, color 0.15s',
-                  }}
-                  onMouseOver={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = chatTheme.accentDim;
-                    (e.currentTarget as HTMLButtonElement).style.color = chatTheme.accent;
-                  }}
-                  onMouseOut={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = chatTheme.border;
-                    (e.currentTarget as HTMLButtonElement).style.color = chatTheme.textMuted;
-                  }}
                 >
                   {sugestao}
                 </button>
@@ -254,50 +210,25 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div key={i} className="flex flex-col gap-[0.35rem]">
             <span
-              style={{
-                fontSize: '10px',
-                fontFamily: fonts.label,
-                color: msg.role === 'user' ? withAlpha(chatTheme.accent, '88') : withAlpha(colors.green, '88'),
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              }}
+              className={`${msg.role === 'user' ? 'self-end text-[var(--chat-user-label)]' : 'self-start text-[var(--chat-assistant-label)]'} text-[10px] uppercase tracking-[0.08em] [font-family:var(--font-label)]`}
             >
               {msg.role === 'user' ? 'Tu' : '✦ IA'}
             </span>
             <div
-              style={{
-                maxWidth: isMobile ? '100%' : '90%',
-                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                background: msg.role === 'user' ? chatTheme.userBg : chatTheme.assistantBg,
-                border: `1px solid ${msg.role === 'user' ? chatTheme.border : chatTheme.borderAlt}`,
-                borderRadius: msg.role === 'user' ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
-                padding: '0.6rem 0.85rem',
-              }}
+              className={`${msg.role === 'user' ? 'self-end rounded-[8px_8px_2px_8px] border-[var(--chat-border)] bg-[var(--chat-user-bg)]' : 'self-start rounded-[8px_8px_8px_2px] border-[var(--chat-border-alt)] bg-[var(--chat-assistant-bg)]'} border px-[0.85rem] py-[0.6rem] ${isMobile ? 'max-w-full' : 'max-w-[90%]'}`}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <div className="flex flex-col gap-[0.2rem]">
                 <ChatMessageContent content={msg.content} role={msg.role} />
                 {streaming && i === messages.length - 1 && msg.role === 'assistant' && (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '2px',
-                      height: '13px',
-                      background: chatTheme.accent,
-                      marginLeft: '2px',
-                      verticalAlign: 'text-bottom',
-                      animation: 'blink 1s step-end infinite',
-                    }}
-                  />
+                  <span className="inline-block h-[13px] w-[2px] animate-pulse bg-[var(--chat-accent)] align-text-bottom" />
                 )}
               </div>
             </div>
 
-            {/* Botões de acção na última mensagem do assistente */}
             {msg.role === 'assistant' && i === messages.length - 1 && !streaming && msg.content && (
-              <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'flex-start', marginTop: '0.25rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+              <div className={`mt-1 flex flex-wrap gap-2 self-start ${isMobile ? 'w-full' : 'w-auto'}`}>
                 <ActionButton
                   icon="↓"
                   label="Inserir"
@@ -323,105 +254,35 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
         <div ref={bottomRef} />
       </div>
 
-      {/* Botões de inserção rápida se houver resposta */}
       {lastAssistant && !streaming && messages.length > 0 && (
-        <div
-          style={{
-            padding: isMobile ? '0.75rem 0.85rem' : '0.5rem 1rem',
-            borderTop: `1px solid ${chatTheme.borderAlt}`,
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: '0.5rem',
-            flexShrink: 0,
-          }}
-        >
-          <button
-            className="press-feedback"
-            onClick={() => handleInsert(lastAssistant)}
-            style={quickBtnStyle(withAlpha(colors.green, '22'), colors.green)}
-          >
+        <div className={`flex shrink-0 gap-2 border-t border-[var(--chat-border-alt)] ${isMobile ? 'flex-col px-[0.85rem] py-3' : 'flex-row px-4 py-2'}`}>
+          <button className="press-feedback flex-1 rounded border border-[var(--insert-border)] bg-[var(--insert-bg)] px-2 py-[5px] text-[11px] tracking-[0.04em] text-[var(--green)] [font-family:var(--font-label)]" onClick={() => handleInsert(lastAssistant)}>
             {recentAction === 'insert' ? '✓ Inserido no editor' : '↓ Inserir no editor'}
           </button>
-          <button
-            className="press-feedback"
-            onClick={() => handleReplace(lastAssistant)}
-            style={quickBtnStyle(withAlpha(colors.goldDark, '22'), chatTheme.accent)}
-          >
+          <button className="press-feedback flex-1 rounded border border-[var(--replace-border)] bg-[var(--replace-bg)] px-2 py-[5px] text-[11px] tracking-[0.04em] text-[var(--chat-accent)] [font-family:var(--font-label)]" onClick={() => handleReplace(lastAssistant)}>
             {recentAction === 'replace' ? '✓ Editor substituído' : '⟳ Substituir editor'}
           </button>
         </div>
       )}
 
-      {/* Input */}
-      <div
-        style={{
-          padding: isMobile ? '0.75rem 0.85rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' : '0.75rem 1rem',
-          borderTop: `1px solid ${chatTheme.border}`,
-          flexShrink: 0,
-          display: 'flex',
-          gap: '0.5rem',
-          alignItems: 'flex-end',
-        }}
-      >
+      <div className={`flex shrink-0 items-end gap-2 border-t border-[var(--chat-border)] ${isMobile ? 'px-[0.85rem] pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]' : 'px-4 py-3'}`}>
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Descreve o conteúdo a gerar… (Enter para enviar)"
           rows={2}
-          style={{
-            flex: 1,
-            background: editorTheme.surface,
-            border: `1px solid ${chatTheme.border}`,
-            borderRadius: '5px',
-            color: chatTheme.text,
-            fontFamily: fonts.label,
-            fontSize: '12px',
-            padding: isMobile ? '10px' : '8px 10px',
-            outline: 'none',
-            resize: 'none',
-            letterSpacing: '0.02em',
-            lineHeight: 1.5,
-            caretColor: editorTheme.caretColor,
-          }}
-          onFocus={e => (e.target.style.borderColor = withAlpha(chatTheme.accent, '55'))}
-          onBlur={e => (e.target.style.borderColor = chatTheme.border)}
+          className={`flex-1 resize-none rounded-[5px] border border-[var(--chat-border)] bg-[var(--editor-surface)] px-[10px] text-xs leading-[1.5] tracking-[0.02em] text-[var(--chat-text)] outline-none [caret-color:var(--editor-caret)] [font-family:var(--font-label)] focus:border-[color:var(--chat-accent)/0.55] ${isMobile ? 'py-[10px]' : 'py-2'}`}
         />
         <button
-          className="press-feedback"
+          className={`press-feedback flex shrink-0 items-center justify-center rounded-[5px] border-none text-base transition-all ${isMobile ? 'h-[42px] w-[42px]' : 'h-9 w-9'} ${streaming ? 'bg-[var(--send-stop-bg)] text-[var(--send-stop-fg)]' : input.trim() ? 'bg-[var(--send-ready-bg)] text-[var(--send-ready-fg)]' : 'bg-[var(--send-idle-bg)] text-[var(--send-idle-fg)]'}`}
           onClick={streaming ? () => abortRef.current?.abort() : send}
-          style={{
-            width: isMobile ? 42 : 36,
-            height: isMobile ? 42 : 36,
-            borderRadius: '5px',
-            border: 'none',
-            background: streaming
-              ? '#3a1a1a'
-              : input.trim()
-              ? gradients.gold
-              : editorTheme.surface,
-            color: streaming ? '#c9503a' : input.trim() ? editorTheme.bg : colors.textDim,
-            fontSize: '16px',
-            cursor: 'pointer',
-            flexShrink: 0,
-            transition: 'all 0.15s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
           title={streaming ? 'Parar' : 'Enviar'}
           aria-label={streaming ? 'Parar geração' : 'Enviar mensagem'}
         >
           {streaming ? '■' : '↑'}
         </button>
       </div>
-
-      <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
@@ -431,52 +292,22 @@ function ActionButton({
 }: {
   icon: string; label: string; title: string; onClick: () => void; color: string; activeLabel: string; isActive?: boolean;
 }) {
+  const vars = useMemo(() => ({
+    '--action-color': color,
+    '--action-bg': withAlpha(color, '22'),
+    '--action-border': withAlpha(color, '44'),
+    '--editor-surface': editorTheme.surface,
+  } as CSSProperties), [color]);
+
   return (
     <button
-      className="press-feedback"
+      className="press-feedback flex items-center gap-[0.3rem] rounded border border-[var(--action-border)] bg-[var(--editor-surface)] px-[10px] py-1 text-[11px] tracking-[0.04em] text-[var(--action-color)] transition-all hover:border-[var(--action-color)] hover:bg-[var(--action-bg)] [font-family:var(--font-label)]"
       onClick={onClick}
       title={title}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.3rem',
-        background: editorTheme.surface,
-        border: `1px solid ${withAlpha(color, '44')}`,
-        borderRadius: '4px',
-        color,
-        fontFamily: fonts.label,
-        fontSize: '11px',
-        padding: '4px 10px',
-        cursor: 'pointer',
-        transition: 'all 0.15s',
-        letterSpacing: '0.04em',
-      }}
-      onMouseOver={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = withAlpha(color, '22');
-        (e.currentTarget as HTMLButtonElement).style.borderColor = color;
-      }}
-      onMouseOut={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = editorTheme.surface;
-        (e.currentTarget as HTMLButtonElement).style.borderColor = withAlpha(color, '44');
-      }}
+      style={vars}
     >
       <span>{isActive ? '✓' : icon}</span>
       <span>{isActive ? activeLabel : label}</span>
     </button>
   );
-}
-
-function quickBtnStyle(bg: string, color: string): React.CSSProperties {
-  return {
-    flex: 1,
-    background: bg,
-    border: `1px solid ${withAlpha(color, '44')}`,
-    borderRadius: '4px',
-    color,
-    fontFamily: fonts.label,
-    fontSize: '11px',
-    padding: '5px 8px',
-    cursor: 'pointer',
-    letterSpacing: '0.04em',
-  };
 }
