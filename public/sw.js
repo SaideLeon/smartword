@@ -1,53 +1,87 @@
-const CACHE_NAME = 'muneri-shell-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/apple-icon.svg'];
+/* eslint-disable no-undef */
+const CACHE_VERSION = 'v2';
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()),
-  );
-});
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
-      .then(() => self.clients.claim()),
-  );
-});
+if (self.workbox) {
+  workbox.setConfig({debug: false});
 
-self.addEventListener('fetch', event => {
-  const {request} = event;
+  workbox.core.setCacheNameDetails({
+    prefix: 'muneri',
+    suffix: CACHE_VERSION,
+    precache: 'precache',
+    runtime: 'runtime',
+  });
 
-  if (request.method !== 'GET') {
-    return;
-  }
+  workbox.core.skipWaiting();
+  workbox.core.clientsClaim();
 
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+  workbox.precaching.precacheAndRoute([
+    {url: '/', revision: CACHE_VERSION},
+    {url: '/manifest.webmanifest', revision: CACHE_VERSION},
+    {url: '/icon.svg', revision: CACHE_VERSION},
+    {url: '/apple-icon.svg', revision: CACHE_VERSION},
+  ]);
 
-  if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/')));
-    return;
-  }
+  workbox.precaching.cleanupOutdatedCaches();
 
-  event.respondWith(
-    caches.match(request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(request).then(networkResponse => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-
-        const responseClone = networkResponse.clone();
-        void caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone));
-        return networkResponse;
-      });
+  // Navegação sempre privilegia rede para evitar editor defasado preso em cache.
+  workbox.routing.registerRoute(
+    ({request}) => request.mode === 'navigate',
+    new workbox.strategies.NetworkFirst({
+      cacheName: 'pages',
+      networkTimeoutSeconds: 4,
+      plugins: [
+        new workbox.cacheableResponse.CacheableResponsePlugin({
+          statuses: [0, 200],
+        }),
+      ],
     }),
   );
-});
+
+  // Assets estáticos podem usar StaleWhileRevalidate para abertura rápida sem congelar versão para sempre.
+  workbox.routing.registerRoute(
+    ({request}) => ['style', 'script', 'worker'].includes(request.destination),
+    new workbox.strategies.StaleWhileRevalidate({
+      cacheName: 'assets',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 80,
+          maxAgeSeconds: 7 * 24 * 60 * 60,
+          purgeOnQuotaError: true,
+        }),
+      ],
+    }),
+  );
+
+  workbox.routing.registerRoute(
+    ({request}) => ['image', 'font'].includes(request.destination),
+    new workbox.strategies.StaleWhileRevalidate({
+      cacheName: 'media',
+      plugins: [
+        new workbox.expiration.ExpirationPlugin({
+          maxEntries: 100,
+          maxAgeSeconds: 30 * 24 * 60 * 60,
+          purgeOnQuotaError: true,
+        }),
+      ],
+    }),
+  );
+
+  workbox.routing.setCatchHandler(async ({event}) => {
+    if (event.request.mode === 'navigate') {
+      return caches.match('/');
+    }
+
+    return Response.error();
+  });
+} else {
+  // Fallback mínimo se Workbox não carregar.
+  self.addEventListener('fetch', event => {
+    if (event.request.mode !== 'navigate') {
+      return;
+    }
+
+    event.respondWith(fetch(event.request).catch(() => caches.match('/')));
+  });
+}
