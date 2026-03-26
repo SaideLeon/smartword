@@ -23,16 +23,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0f0e0d' },
-    { media: '(prefers-color-scheme: light)', color: '#f5f0e8' },
-  ],
-  colorScheme: 'dark light',
+  themeColor: '#0f0e0d',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" data-theme="dark">
       <body suppressHydrationWarning>
         <PwaRegistrar />
         {children}
