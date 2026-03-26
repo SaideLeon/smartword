@@ -34,6 +34,9 @@ export function AiChatDrawer({ open, onClose, onInsert, onReplace, isMobile = fa
     const panel = panelRef.current;
     if (!panel) return;
 
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
     const firstFocusable = focusable[0] ?? panel;
     firstFocusable.focus();
@@ -67,12 +70,11 @@ export function AiChatDrawer({ open, onClose, onInsert, onReplace, isMobile = fa
       }
     };
 
-    document.addEventListener('keydown', onKeyDown);
-    document.body.style.overflow = 'hidden';
+    panel.addEventListener('keydown', onKeyDown);
 
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = '';
+      panel.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
       lastActiveElementRef.current?.focus();
     };
   }, [open, onClose]);
@@ -81,9 +83,9 @@ export function AiChatDrawer({ open, onClose, onInsert, onReplace, isMobile = fa
 
   return (
     <>
-      <button
-        aria-label="Fechar chat IA"
-        className="fixed inset-0 z-[60] cursor-default bg-black/45"
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-[60] bg-black/45"
         onClick={onClose}
       />
       <aside

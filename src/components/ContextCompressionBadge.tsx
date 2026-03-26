@@ -42,7 +42,7 @@ export function ContextCompressionBadge({ status }: Props) {
     >
       {/* Ícone de estado */}
       <span
-        className={`h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-500 ease-in-out ${dotTone} ${showPulse ? 'animate-pulse' : ''}`}
+        className={`h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-500 ease-in-out ${dotTone} ${showPulse ? 'animate-[compression-pulse_1s_ease-in-out_3]' : ''}`}
       />
 
       <span className={mainTextTone}>
