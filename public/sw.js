@@ -1,87 +1,118 @@
-/* eslint-disable no-undef */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
+const PRECACHE = `muneri-precache-${CACHE_VERSION}`;
+const PAGES_CACHE = `muneri-pages-${CACHE_VERSION}`;
+const ASSETS_CACHE = `muneri-assets-${CACHE_VERSION}`;
+const MEDIA_CACHE = `muneri-media-${CACHE_VERSION}`;
 
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js');
+const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/apple-icon.svg'];
+const ASSET_DESTINATIONS = new Set(['style', 'script', 'worker']);
+const MEDIA_DESTINATIONS = new Set(['image', 'font']);
 
-if (self.workbox) {
-  workbox.setConfig({debug: false});
-
-  workbox.core.setCacheNameDetails({
-    prefix: 'muneri',
-    suffix: CACHE_VERSION,
-    precache: 'precache',
-    runtime: 'runtime',
-  });
-
-  workbox.core.skipWaiting();
-  workbox.core.clientsClaim();
-
-  workbox.precaching.precacheAndRoute([
-    {url: '/', revision: CACHE_VERSION},
-    {url: '/manifest.webmanifest', revision: CACHE_VERSION},
-    {url: '/icon.svg', revision: CACHE_VERSION},
-    {url: '/apple-icon.svg', revision: CACHE_VERSION},
-  ]);
-
-  workbox.precaching.cleanupOutdatedCaches();
-
-  // Navegação sempre privilegia rede para evitar editor defasado preso em cache.
-  workbox.routing.registerRoute(
-    ({request}) => request.mode === 'navigate',
-    new workbox.strategies.NetworkFirst({
-      cacheName: 'pages',
-      networkTimeoutSeconds: 4,
-      plugins: [
-        new workbox.cacheableResponse.CacheableResponsePlugin({
-          statuses: [0, 200],
-        }),
-      ],
-    }),
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches
+      .open(PRECACHE)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting()),
   );
+});
 
-  // Assets estáticos podem usar StaleWhileRevalidate para abertura rápida sem congelar versão para sempre.
-  workbox.routing.registerRoute(
-    ({request}) => ['style', 'script', 'worker'].includes(request.destination),
-    new workbox.strategies.StaleWhileRevalidate({
-      cacheName: 'assets',
-      plugins: [
-        new workbox.expiration.ExpirationPlugin({
-          maxEntries: 80,
-          maxAgeSeconds: 7 * 24 * 60 * 60,
-          purgeOnQuotaError: true,
-        }),
-      ],
-    }),
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(key => !key.endsWith(CACHE_VERSION))
+            .map(key => caches.delete(key)),
+        ),
+      )
+      .then(() => self.clients.claim()),
   );
+});
 
-  workbox.routing.registerRoute(
-    ({request}) => ['image', 'font'].includes(request.destination),
-    new workbox.strategies.StaleWhileRevalidate({
-      cacheName: 'media',
-      plugins: [
-        new workbox.expiration.ExpirationPlugin({
-          maxEntries: 100,
-          maxAgeSeconds: 30 * 24 * 60 * 60,
-          purgeOnQuotaError: true,
-        }),
-      ],
-    }),
-  );
+self.addEventListener('fetch', event => {
+  const {request} = event;
 
-  workbox.routing.setCatchHandler(async ({event}) => {
-    if (event.request.mode === 'navigate') {
-      return caches.match('/');
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirst(request, PAGES_CACHE, '/'));
+    return;
+  }
+
+  if (ASSET_DESTINATIONS.has(request.destination)) {
+    event.respondWith(staleWhileRevalidate(request, ASSETS_CACHE, 80));
+    return;
+  }
+
+  if (MEDIA_DESTINATIONS.has(request.destination)) {
+    event.respondWith(staleWhileRevalidate(request, MEDIA_CACHE, 100));
+  }
+});
+
+async function networkFirst(request, cacheName, fallbackPath) {
+  const cache = await caches.open(cacheName);
+
+  try {
+    const networkResponse = await fetch(request);
+    if (isCacheable(networkResponse)) {
+      await cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch {
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
     }
 
-    return Response.error();
-  });
-} else {
-  // Fallback mínimo se Workbox não carregar.
-  self.addEventListener('fetch', event => {
-    if (event.request.mode !== 'navigate') {
-      return;
-    }
+    const fallbackResponse = await caches.match(fallbackPath);
+    return fallbackResponse ?? Response.error();
+  }
+}
 
-    event.respondWith(fetch(event.request).catch(() => caches.match('/')));
-  });
+async function staleWhileRevalidate(request, cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+
+  const networkPromise = fetch(request)
+    .then(async networkResponse => {
+      if (isCacheable(networkResponse)) {
+        await cache.put(request, networkResponse.clone());
+        await trimCache(cache, maxEntries);
+      }
+      return networkResponse;
+    })
+    .catch(() => undefined);
+
+  if (cachedResponse) {
+    void networkPromise;
+    return cachedResponse;
+  }
+
+  const networkResponse = await networkPromise;
+  return networkResponse ?? Response.error();
+}
+
+function isCacheable(response) {
+  return Boolean(response && (response.status === 200 || response.status === 0));
+}
+
+async function trimCache(cache, maxEntries) {
+  const keys = await cache.keys();
+  const overflow = keys.length - maxEntries;
+
+  if (overflow <= 0) {
+    return;
+  }
+
+  await Promise.all(keys.slice(0, overflow).map(key => cache.delete(key)));
 }
