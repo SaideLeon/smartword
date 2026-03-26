@@ -43,7 +43,18 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
     '--text-faint': colors.textFaint,
     '--green': colors.green,
     '--gold-dark': colors.goldDark,
-    '--gradient-gold': gradients.gold,
+    '--chat-user-label': withAlpha(chatTheme.accent, '88'),
+    '--chat-assistant-label': withAlpha(colors.green, '88'),
+    '--insert-bg': withAlpha(colors.green, '22'),
+    '--insert-border': withAlpha(colors.green, '44'),
+    '--replace-bg': withAlpha(colors.goldDark, '22'),
+    '--replace-border': withAlpha(chatTheme.accent, '44'),
+    '--send-stop-bg': '#3a1a1a',
+    '--send-stop-fg': '#c9503a',
+    '--send-idle-bg': editorTheme.surface,
+    '--send-idle-fg': colors.textDim,
+    '--send-ready-bg': gradients.gold,
+    '--send-ready-fg': editorTheme.bg,
     '--font-label': fonts.label,
   } as CSSProperties), []);
 
@@ -201,8 +212,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
         {messages.map((msg, i) => (
           <div key={i} className="flex flex-col gap-[0.35rem]">
             <span
-              className={`${msg.role === 'user' ? 'self-end' : 'self-start'} text-[10px] uppercase tracking-[0.08em] [font-family:var(--font-label)]`}
-              style={{ color: msg.role === 'user' ? withAlpha(chatTheme.accent, '88') : withAlpha(colors.green, '88') }}
+              className={`${msg.role === 'user' ? 'self-end text-[var(--chat-user-label)]' : 'self-start text-[var(--chat-assistant-label)]'} text-[10px] uppercase tracking-[0.08em] [font-family:var(--font-label)]`}
             >
               {msg.role === 'user' ? 'Tu' : '✦ IA'}
             </span>
@@ -212,7 +222,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
               <div className="flex flex-col gap-[0.2rem]">
                 <ChatMessageContent content={msg.content} role={msg.role} />
                 {streaming && i === messages.length - 1 && msg.role === 'assistant' && (
-                  <span className="inline-block h-[13px] w-[2px] animate-[blink_1s_step-end_infinite] bg-[var(--chat-accent)] align-text-bottom" />
+                  <span className="inline-block h-[13px] w-[2px] animate-pulse bg-[var(--chat-accent)] align-text-bottom" />
                 )}
               </div>
             </div>
@@ -246,10 +256,10 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
 
       {lastAssistant && !streaming && messages.length > 0 && (
         <div className={`flex shrink-0 gap-2 border-t border-[var(--chat-border-alt)] ${isMobile ? 'flex-col px-[0.85rem] py-3' : 'flex-row px-4 py-2'}`}>
-          <button className="press-feedback flex-1 rounded border px-2 py-[5px] text-[11px] tracking-[0.04em] [font-family:var(--font-label)]" onClick={() => handleInsert(lastAssistant)} style={{ background: withAlpha(colors.green, '22'), borderColor: withAlpha(colors.green, '44'), color: colors.green }}>
+          <button className="press-feedback flex-1 rounded border border-[var(--insert-border)] bg-[var(--insert-bg)] px-2 py-[5px] text-[11px] tracking-[0.04em] text-[var(--green)] [font-family:var(--font-label)]" onClick={() => handleInsert(lastAssistant)}>
             {recentAction === 'insert' ? '✓ Inserido no editor' : '↓ Inserir no editor'}
           </button>
-          <button className="press-feedback flex-1 rounded border px-2 py-[5px] text-[11px] tracking-[0.04em] [font-family:var(--font-label)]" onClick={() => handleReplace(lastAssistant)} style={{ background: withAlpha(colors.goldDark, '22'), borderColor: withAlpha(chatTheme.accent, '44'), color: chatTheme.accent }}>
+          <button className="press-feedback flex-1 rounded border border-[var(--replace-border)] bg-[var(--replace-bg)] px-2 py-[5px] text-[11px] tracking-[0.04em] text-[var(--chat-accent)] [font-family:var(--font-label)]" onClick={() => handleReplace(lastAssistant)}>
             {recentAction === 'replace' ? '✓ Editor substituído' : '⟳ Substituir editor'}
           </button>
         </div>
@@ -265,26 +275,14 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           className={`flex-1 resize-none rounded-[5px] border border-[var(--chat-border)] bg-[var(--editor-surface)] px-[10px] text-xs leading-[1.5] tracking-[0.02em] text-[var(--chat-text)] outline-none [caret-color:var(--editor-caret)] [font-family:var(--font-label)] focus:border-[color:var(--chat-accent)/0.55] ${isMobile ? 'py-[10px]' : 'py-2'}`}
         />
         <button
-          className={`press-feedback flex shrink-0 items-center justify-center rounded-[5px] text-base transition-all ${isMobile ? 'h-[42px] w-[42px]' : 'h-9 w-9'}`}
+          className={`press-feedback flex shrink-0 items-center justify-center rounded-[5px] border-none text-base transition-all ${isMobile ? 'h-[42px] w-[42px]' : 'h-9 w-9'} ${streaming ? 'bg-[var(--send-stop-bg)] text-[var(--send-stop-fg)]' : input.trim() ? 'bg-[var(--send-ready-bg)] text-[var(--send-ready-fg)]' : 'bg-[var(--send-idle-bg)] text-[var(--send-idle-fg)]'}`}
           onClick={streaming ? () => abortRef.current?.abort() : send}
-          style={{
-            border: 'none',
-            background: streaming ? '#3a1a1a' : input.trim() ? gradients.gold : editorTheme.surface,
-            color: streaming ? '#c9503a' : input.trim() ? editorTheme.bg : colors.textDim,
-          }}
           title={streaming ? 'Parar' : 'Enviar'}
           aria-label={streaming ? 'Parar geração' : 'Enviar mensagem'}
         >
           {streaming ? '■' : '↑'}
         </button>
       </div>
-
-      <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
