@@ -1,13 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorActions, useEditorContent, useEditorMeta } from '@/hooks/useEditorStore';
+
+const PREVIEW_DEBOUNCE_MS = 200;
 
 export function useDocumentEditor() {
   const markdown = useEditorContent();
+  const [previewMarkdown, setPreviewMarkdown] = useState(markdown);
   const { filename } = useEditorMeta();
   const { setContent, setFilename, clearDefaultContent, setFilenameFromTopic } = useEditorActions();
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setPreviewMarkdown(markdown);
+    }, PREVIEW_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [markdown]);
 
   const exportDocx = async () => {
     setLoading(true);
@@ -39,6 +50,7 @@ export function useDocumentEditor() {
 
   return {
     markdown,
+    previewMarkdown,
     setMarkdown: setContent,
     filename,
     setFilename,
