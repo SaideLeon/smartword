@@ -6,7 +6,6 @@
 
 import { useState, useEffect } from 'react';
 import type { CompressionStatus } from '@/hooks/useTccSession';
-import { tccTheme as C } from '@/lib/theme';
 
 interface Props {
   status: CompressionStatus;
@@ -27,33 +26,26 @@ export function ContextCompressionBadge({ status }: Props) {
   // Não mostra nada se compressão nunca foi activada
   if (!status.active && !status.justCompressed) return null;
 
-  return (
-    <div style={{
-      display:       'flex',
-      alignItems:    'center',
-      gap:           '0.4rem',
-      padding:       '0.3rem 0.65rem',
-      borderRadius:  '4px',
-      background:    showPulse ? C.goldDim : C.accentDim,
-      border:        `1px solid ${showPulse ? C.gold : C.accent}44`,
-      transition:    'all 0.5s ease',
-      fontSize:      '10px',
-      fontFamily:    'monospace',
-      letterSpacing: '0.06em',
-    }}>
-      {/* Ícone de estado */}
-      <span style={{
-        width:        6,
-        height:       6,
-        borderRadius: '50%',
-        background:   showPulse ? C.gold : C.accent,
-        boxShadow:    showPulse ? `0 0 6px ${C.gold}` : `0 0 4px ${C.accent}88`,
-        flexShrink:   0,
-        transition:   'all 0.5s ease',
-        animation:    showPulse ? 'compressionPulse 1s ease-in-out 3' : 'none',
-      }} />
+  const badgeTone = showPulse
+    ? 'border-[#c9a96e44] bg-[#c9a96e33]'
+    : 'border-[#6a9e5f44] bg-[#6a9e5f44]';
 
-      <span style={{ color: showPulse ? C.gold : C.textDim }}>
+  const dotTone = showPulse
+    ? 'bg-[#c9a96e] shadow-[0_0_6px_#c9a96e]'
+    : 'bg-[#6a9e5f] shadow-[0_0_4px_#6a9e5f88]';
+
+  const mainTextTone = showPulse ? 'text-[#c9a96e]' : 'text-[#7a9272]';
+
+  return (
+    <div
+      className={`flex items-center gap-1.5 rounded px-[0.65rem] py-[0.3rem] font-mono text-[10px] tracking-[0.06em] transition-all duration-500 ease-in-out border ${badgeTone}`}
+    >
+      {/* Ícone de estado */}
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-500 ease-in-out ${dotTone} ${showPulse ? 'animate-pulse' : ''}`}
+      />
+
+      <span className={mainTextTone}>
         {showPulse
           ? '✦ Contexto comprimido'
           : `∑ Resumo activo · ${status.summaryLength} chars`
@@ -62,22 +54,10 @@ export function ContextCompressionBadge({ status }: Props) {
 
       {/* Tooltip com mais detalhe */}
       {status.coveredUpTo !== null && !showPulse && (
-        <span style={{
-          color:       C.textFaint,
-          borderLeft:  `1px solid ${C.border}`,
-          paddingLeft: '0.4rem',
-          marginLeft:  '0.1rem',
-        }}>
+        <span className="ml-0.5 border-l border-[#1e2a1e] pl-1.5 text-[#3a4e36]">
           secções 0–{status.coveredUpTo} resumidas
         </span>
       )}
-
-      <style>{`
-        @keyframes compressionPulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.6; transform: scale(1.4); }
-        }
-      `}</style>
     </div>
   );
 }
