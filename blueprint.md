@@ -99,4 +99,4 @@ O arquivo central acumula estado de interface, lógica de IA e renderização de
 ---
 
 ### Conclusão do Lead Técnico
-O Muneri tem um potencial disruptivo real no mercado acadêmico lusófono. A chave do sucesso técnico será a **transição de um "script funcional" para uma "plataforma estruturada"**. A refatoração proposta não só facilitará a manutenção, mas permitirá a inclusão de funcionalidades como referenciamento ABNT automático e colaboração em tempo real no futuro.
+O Muneri tem um potencial disruptivo real no mercado acadêmico lusófono. A chave do sucesso técnico será a **transição de um "script funcional" para uma "plataforma estruturada"**. 
