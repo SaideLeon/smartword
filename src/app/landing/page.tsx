@@ -36,14 +36,14 @@ function Hero() {
           <span className="outline-text">Word nativas.</span>
         </h1>
         <p className="hero-sub">
-          Editor académico que converte <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', background: '#e8dfc8', padding: '1px 5px', borderRadius: '3px' }}>$...$</code> e <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', background: '#e8dfc8', padding: '1px 5px', borderRadius: '3px' }}>$$...$$</code> em equações OMML — editáveis directamente no Word. Sem plugins. Sem imagens.
+          Editor académico que converte <code className="bg-[#e8dfc8] px-[5px] py-[1px] font-['DM_Mono',monospace] text-[0.85em] rounded-[3px]">$...$</code> e <code className="bg-[#e8dfc8] px-[5px] py-[1px] font-['DM_Mono',monospace] text-[0.85em] rounded-[3px]">$$...$$</code> em equações OMML — editáveis directamente no Word. Sem plugins. Sem imagens.
         </p>
         <div className="hero-code">
           <div className="code-line">## Fórmula de Bhaskara</div>
-          <div className="code-line" style={{ height: 8 }} />
+          <div className="code-line h-2" />
           <div className="code-md">{'$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$'}</div>
-          <div className="code-line" style={{ height: 8 }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="code-line h-2" />
+          <div className="flex items-center gap-3">
             <span className="code-arrow">→ OMML</span>
             <span className="code-omml">equação editável no Word ✓</span>
           </div>
@@ -81,7 +81,7 @@ function Hero() {
               <div className="phone-line ph-math">$$\log_a b = x \iff</div>
               <div className="phone-line ph-math">a^x = b$$</div>
               <div className="phone-line ph-text">&nbsp;</div>
-              <div className="phone-line" style={{ color: '#3a3530' }}>···<span className="cursor-blink" /></div>
+              <div className="phone-line text-[#3a3530]">···<span className="cursor-blink" /></div>
             </div>
             <div className="phone-export">↓ Exportar matematica.docx</div>
           </div>
@@ -183,7 +183,7 @@ export default function LandingPage() {
             <div className="feat-card">
               <div className="feat-icon">≡</div>
               <h3 className="feat-title">Secções & Quebras de Página</h3>
-              <p className="feat-desc">Marcadores <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.8em' }}>{'{section}'}</code> e <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.8em' }}>{'{pagebreak}'}</code> inserem secções Word independentes com paginação reiniciada.</p>
+              <p className="feat-desc">Marcadores <code className="font-['DM_Mono',monospace] text-[0.8em]">{'{section}'}</code> e <code className="font-['DM_Mono',monospace] text-[0.8em]">{'{pagebreak}'}</code> inserem secções Word independentes com paginação reiniciada.</p>
               <span className="feat-tag">Multi-secção</span>
             </div>
             <div className="feat-card">
@@ -209,19 +209,19 @@ export default function LandingPage() {
               <div className="step reveal">
                 <div className="step-num">01</div>
                 <h3 className="step-title">Escreve Markdown</h3>
-                <p className="step-desc">Usa a sintaxe Markdown normal com equações LaTeX inline <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', color: '#6a9e8f' }}>$...$</code> e em bloco <code style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.85em', color: '#6a9e8f' }}>$$...$$</code>.</p>
+                <p className="step-desc">Usa a sintaxe Markdown normal com equações LaTeX inline <code className="font-['DM_Mono',monospace] text-[0.85em] text-[#6a9e8f]">$...$</code> e em bloco <code className="font-['DM_Mono',monospace] text-[0.85em] text-[#6a9e8f]">$$...$$</code>.</p>
               </div>
-              <div className="step reveal" style={{ transitionDelay: '0.1s' }}>
+              <div className="step reveal [transition-delay:0.1s]">
                 <div className="step-num">02</div>
                 <h3 className="step-title">Conversão Automática</h3>
                 <p className="step-desc">O motor converte LaTeX → MathML via Temml e depois MathML → OMML, preservando toda a estrutura matemática.</p>
               </div>
-              <div className="step reveal" style={{ transitionDelay: '0.2s' }}>
+              <div className="step reveal [transition-delay:0.2s]">
                 <div className="step-num">03</div>
                 <h3 className="step-title">Estrutura .docx</h3>
                 <p className="step-desc">O documento Word é montado com estilos académicos — fontes, margens, espaçamento, tabelas e rodapé com numeração.</p>
               </div>
-              <div className="step reveal" style={{ transitionDelay: '0.3s' }}>
+              <div className="step reveal [transition-delay:0.3s]">
                 <div className="step-num">04</div>
                 <h3 className="step-title">Descarrega e Edita</h3>
                 <p className="step-desc">Abre no Microsoft Word e encontras equações editáveis, prontas para ajustar, copiar ou reformatar.</p>
@@ -232,7 +232,7 @@ export default function LandingPage() {
 
         <section className="equations" id="equacoes">
           <div className="eq-inner">
-            <h2 className="eq-title reveal">LaTeX que se torna <em style={{ color: 'var(--gold2)' }}>equação real</em> no Word.</h2>
+            <h2 className="eq-title reveal">LaTeX que se torna <em className="text-[var(--gold2)]">equação real</em> no Word.</h2>
             <div className="eq-grid reveal">
               <div>
                 <p className="eq-label">Markdown / LaTeX</p>
@@ -241,7 +241,7 @@ export default function LandingPage() {
               <div className="eq-arrow">→</div>
               <div>
                 <p className="eq-label">Word (OMML nativo)</p>
-                <div className="eq-box"><div className="eq-result" style={{ fontSize: '1.2rem' }}>𝑥 = <sup>−𝑏 ± √(𝑏²−4𝑎𝑐)</sup>⁄<sub>2𝑎</sub></div></div>
+                <div className="eq-box"><div className="eq-result text-[1.2rem]">𝑥 = <sup>−𝑏 ± √(𝑏²−4𝑎𝑐)</sup>⁄<sub>2𝑎</sub></div></div>
               </div>
             </div>
             <div className="eq-grid reveal">
@@ -272,7 +272,7 @@ export default function LandingPage() {
                 </ul>
               </div>
             </div>
-            <div className="mode-card mode-work reveal" style={{ transitionDelay: '0.1s' }}>
+            <div className="mode-card mode-work reveal [transition-delay:0.1s]">
               <div className="mode-header"><span className="mode-emoji">📚</span><span className="mode-name">Trabalho Escolar</span></div>
               <div className="mode-body">
                 <h3 className="mode-title">Copiloto para o ensino secundário e médio.</h3>
@@ -280,7 +280,7 @@ export default function LandingPage() {
                 <ul className="mode-bullets"><li>6 secções pré-definidas + subtópicos do tema</li><li>Conteúdo contextualizado para Moçambique</li><li>Progresso visual secção a secção</li><li>Retoma trabalhos anteriores a qualquer momento</li></ul>
               </div>
             </div>
-            <div className="mode-card mode-ai reveal" style={{ transitionDelay: '0.2s' }}>
+            <div className="mode-card mode-ai reveal [transition-delay:0.2s]">
               <div className="mode-header"><span className="mode-emoji">✦</span><span className="mode-name">IA Chat</span></div>
               <div className="mode-body">
                 <h3 className="mode-title">Gera Markdown com equações LaTeX em segundos.</h3>
@@ -288,8 +288,8 @@ export default function LandingPage() {
                 <ul className="mode-bullets"><li>Explicações passo a passo com LaTeX</li><li>Exercícios resolvidos com solução</li><li>Inserção ou substituição do editor com um clique</li><li>Streaming em tempo real</li></ul>
               </div>
             </div>
-            <div className="mode-card reveal" style={{ transitionDelay: '0.3s', background: '#faf6ee' }}>
-              <div className="mode-header" style={{ borderColor: 'var(--border)' }}><span className="mode-emoji">📐</span><span className="mode-name" style={{ color: 'var(--muted)' }}>Editor Principal</span></div>
+            <div className="mode-card reveal bg-[#faf6ee] [transition-delay:0.3s]">
+              <div className="mode-header border-[var(--border)]"><span className="mode-emoji">📐</span><span className="mode-name text-[var(--muted)]">Editor Principal</span></div>
               <div className="mode-body">
                 <h3 className="mode-title">Editor Markdown completo com suporte LaTeX.</h3>
                 <p className="mode-desc">Escreve, importa ficheiros .md, insere quebras de página e secções, e exporta para Word em segundos.</p>
@@ -309,10 +309,10 @@ export default function LandingPage() {
             <p className="section-label reveal">Começa agora</p>
             <h2 className="cta-h2 reveal">O teu próximo documento<br /><em>começa aqui.</em></h2>
             <p className="cta-sub reveal">Grátis. Sem registo. Sem instalação obrigatória.</p>
-            <div className="reveal" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="/app" className="btn-primary" style={{ fontSize: 13, padding: '14px 32px' }}>↓ Abrir Muneri — é grátis</a>
+            <div className="reveal flex flex-wrap justify-center gap-4">
+              <a href="/app" className="btn-primary px-8 py-[14px] text-[13px]">↓ Abrir Muneri — é grátis</a>
             </div>
-            <p className="reveal" style={{ marginTop: '2rem', fontFamily: "'DM Mono',monospace", fontSize: '10px', color: 'var(--faint)', letterSpacing: '0.08em' }}>temml · mathml2omml · Muneri · Quelimane, Moçambique</p>
+            <p className="reveal mt-8 font-['DM_Mono',monospace] text-[10px] tracking-[0.08em] text-[var(--faint)]">temml · mathml2omml · Muneri · Quelimane, Moçambique</p>
           </div>
         </section>
 
