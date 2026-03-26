@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #0f0e0d;
+  --color-surface: #1a1714;
+  --color-surface-alt: #141210;
+  --color-gold: #c9a96e;
+  --color-text-secondary: #d4cec7;
+  --color-text-muted: #8a7d6e;
+  --color-text-faint: #5a5248;
+  --color-text-dim: #3a3530;
+  --color-border-strong: #2a2520;
+  --color-border-subtle: #1e1b18;
+  --color-green: #4a7c59;
+}
+
 
 .press-feedback {
   position: relative;

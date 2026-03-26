@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
-import { colors, editorTheme, fonts, withAlpha } from '@/lib/theme';
+import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react';
 
 interface Props {
   value: string;
@@ -16,26 +15,6 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [recentAction, setRecentAction] = useState<'import' | 'clear' | 'pagebreak' | 'section' | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const vars = useMemo(() => ({
-    '--editor-surface': editorTheme.surface,
-    '--editor-surface-alt': editorTheme.surfaceAlt,
-    '--editor-border': editorTheme.border,
-    '--editor-border-subtle': editorTheme.borderSubtle,
-    '--editor-caret': editorTheme.caretColor,
-    '--text-secondary': colors.textSecondary,
-    '--text-muted': colors.textMuted,
-    '--text-faint': colors.textFaint,
-    '--text-dim': colors.textDim,
-    '--gold': colors.gold,
-    '--gold-33': withAlpha(colors.gold, '33'),
-    '--gold-88': withAlpha(colors.gold, '88'),
-    '--gold-11': withAlpha(colors.gold, '11'),
-    '--gold-08': withAlpha(colors.gold, '08'),
-    '--green': colors.green,
-    '--font-label': fonts.label,
-    '--font-mono': fonts.mono,
-  } as CSSProperties), []);
 
   useEffect(() => () => {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
@@ -110,15 +89,15 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const lineCount = value.split('\n').length;
 
   return (
-    <div style={vars} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className={`flex justify-between gap-3 px-0.5 ${isMobile ? 'flex-col items-stretch' : 'flex-row items-center'}`}>
-        <span className="shrink-0 text-[11px] uppercase tracking-[0.1em] text-[var(--text-faint)] [font-family:var(--font-label)]">Editor Markdown</span>
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">Editor Markdown</span>
 
         <div className={`flex flex-wrap gap-1.5 ${isMobile ? 'w-full items-stretch' : 'w-auto items-center'}`}>
           {uploadedFilename && (
-            <div className={`flex items-center gap-1.5 rounded border border-[var(--gold-33)] bg-[var(--editor-surface)] px-2 py-[3px] ${isMobile ? 'max-w-full' : ''}`}>
-              <span className="truncate text-[11px] text-[var(--gold)] [font-family:var(--font-label)]">📄 {uploadedFilename}</span>
-              <button className="press-feedback flex items-center rounded px-0.5 text-xs leading-none text-[var(--text-faint)]" onClick={clearFile} title="Limpar" aria-label="Limpar ficheiro importado">
+            <div className={`flex items-center gap-1.5 rounded border border-[#c9a96e33] bg-surface px-2 py-[3px] ${isMobile ? 'max-w-full' : ''}`}>
+              <span className="truncate font-mono text-[11px] text-gold">📄 {uploadedFilename}</span>
+              <button className="press-feedback flex items-center rounded px-0.5 text-xs leading-none text-text-faint" onClick={clearFile} title="Limpar" aria-label="Limpar ficheiro importado">
                 {recentAction === 'clear' ? '✓' : '×'}
               </button>
             </div>
@@ -141,7 +120,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
             onClick={() => insertAtCursor('{pagebreak}', 'pagebreak')}
             label={recentAction === 'pagebreak' ? 'Inserido ✓' : '↕ Quebra de pág.'}
             title="Insere uma quebra de página (não reinicia numeração)"
-            color={colors.textMuted}
+            tone="muted"
             fullWidth={isMobile}
           />
 
@@ -149,7 +128,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
             onClick={() => insertAtCursor('{section}', 'section')}
             label={recentAction === 'section' ? 'Inserido ✓' : '≡ Nova secção'}
             title="Insere uma nova secção (paginação reinicia em 1)"
-            color={colors.greenBright}
+            tone="section"
             fullWidth={isMobile}
           />
         </div>
@@ -157,11 +136,11 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
 
       <div className="flex flex-wrap gap-4 px-0.5">
         {[
-          { marker: '{pagebreak}', desc: 'quebra de página', color: colors.textFaint },
-          { marker: '{section}', desc: 'nova secção · paginação reinicia em 1', color: colors.green },
-        ].map(({ marker, desc, color }) => (
-          <span key={marker} className="text-[10px] tracking-[0.04em] text-[var(--text-dim)] [font-family:var(--font-label)]">
-            <code className="rounded-[3px] bg-[var(--editor-surface)] px-[5px] py-px" style={{ color }}>{marker}</code>
+          { marker: '{pagebreak}', desc: 'quebra de página', markerClassName: 'text-text-faint' },
+          { marker: '{section}', desc: 'nova secção · paginação reinicia em 1', markerClassName: 'text-green' },
+        ].map(({ marker, desc, markerClassName }) => (
+          <span key={marker} className="font-mono text-[10px] tracking-[0.04em] text-text-dim">
+            <code className={`rounded-[3px] bg-surface px-[5px] py-px ${markerClassName}`}>{marker}</code>
             {' '}→ {desc}
           </span>
         ))}
@@ -171,28 +150,28 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`relative rounded-md border bg-[var(--editor-surface-alt)] transition-[border-color,box-shadow] ${dragging ? 'border-[var(--gold-88)] shadow-[0_0_0_3px_var(--gold-11),inset_0_0_40px_var(--gold-08)]' : 'border-[var(--editor-border)]'}`}
+        className={`relative rounded-md border bg-surface-alt transition-[border-color,box-shadow] ${dragging ? 'border-[#c9a96e88] shadow-[0_0_0_3px_#c9a96e11,inset_0_0_40px_#c9a96e08]' : 'border-border-strong'}`}
       >
         {dragging && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-md bg-[var(--gold-08)]">
-            <svg className="h-10 w-10 text-[var(--gold)] opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-md bg-[#c9a96e08]">
+            <svg className="h-10 w-10 text-gold opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            <span className={`text-[var(--gold)] opacity-80 tracking-[0.08em] [font-family:var(--font-label)] ${isMobile ? 'text-xs' : 'text-[13px]'}`}>Largar ficheiro .md aqui</span>
+            <span className={`font-mono text-gold opacity-80 tracking-[0.08em] ${isMobile ? 'text-xs' : 'text-[13px]'}`}>Largar ficheiro .md aqui</span>
           </div>
         )}
 
         <div className="flex overflow-hidden rounded-md">
-          <div aria-hidden className={`pointer-events-none select-none overflow-hidden border-r border-[var(--editor-border-subtle)] bg-[#111009] py-[14px] ${isMobile ? 'min-w-9' : 'min-w-11'}`}>
+          <div aria-hidden className={`pointer-events-none select-none overflow-hidden border-r border-border-subtle bg-[#111009] py-[14px] ${isMobile ? 'min-w-9' : 'min-w-11'}`}>
             <div className="flex flex-col items-end">
               {value.split('\n').slice(0, 200).map((_, i) => (
-                <span key={i} className={`block pr-2.5 tracking-[-0.02em] text-[var(--text-dim)] [font-family:var(--font-label)] ${isMobile ? 'text-[10px]' : 'text-[11px]'} leading-[1.65]`}>
+                <span key={i} className={`block pr-2.5 font-mono tracking-[-0.02em] text-text-dim ${isMobile ? 'text-[10px]' : 'text-[11px]'} leading-[1.65]`}>
                   {i + 1}
                 </span>
               ))}
-              {lineCount > 200 && <span className="pt-0.5 pr-2 text-[10px] text-[var(--editor-border)] [font-family:var(--font-label)]">···</span>}
+              {lineCount > 200 && <span className="pt-0.5 pr-2 font-mono text-[10px] text-border-strong">···</span>}
             </div>
           </div>
 
@@ -201,15 +180,15 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
             value={value}
             onChange={e => onChange(e.target.value)}
             spellCheck={false}
-            className={`flex-1 resize-y border-none bg-transparent text-[var(--text-secondary)] outline-none [caret-color:var(--editor-caret)] [font-family:var(--font-mono)] tracking-[0.01em] leading-[1.65] ${isMobile ? 'min-h-[360px] p-3 text-xs' : 'min-h-[480px] px-4 py-[14px] text-[13px]'}`}
+            className={`flex-1 resize-y border-none bg-transparent font-mono text-text-secondary caret-gold outline-none tracking-[0.01em] leading-[1.65] ${isMobile ? 'min-h-[360px] p-3 text-xs' : 'min-h-[480px] px-4 py-[14px] text-[13px]'}`}
             placeholder={'# Título\n\nEscreva o seu Markdown aqui...\n\nEquações inline: $ax^2 + bx + c = 0$\n\nEquações em bloco:\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$'}
           />
         </div>
       </div>
 
-      <p className="m-0 px-0.5 text-[11px] leading-[1.5] tracking-[0.04em] text-[var(--text-dim)] [font-family:var(--font-label)]">
-        Arraste um ficheiro <span className="text-[var(--text-faint)]">.md</span> para o editor, ou clique em{' '}
-        <span className="text-[var(--text-faint)]">Importar .md</span> para carregar.
+      <p className="m-0 px-0.5 font-mono text-[11px] leading-[1.5] tracking-[0.04em] text-text-dim">
+        Arraste um ficheiro <span className="text-text-faint">.md</span> para o editor, ou clique em{' '}
+        <span className="text-text-faint">Importar .md</span> para carregar.
       </p>
 
       <input ref={fileInputRef} type="file" accept=".md,.txt" onChange={handleFileInput} className="hidden" />
@@ -218,29 +197,24 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
 }
 
 function ToolbarBtn({
-  onClick, label, icon, title, color = colors.textMuted, fullWidth = false,
+  onClick, label, icon, title, tone = 'muted', fullWidth = false,
 }: {
   onClick: () => void;
   label: string;
   icon?: ReactNode;
   title?: string;
-  color?: string;
+  tone?: 'muted' | 'section';
   fullWidth?: boolean;
 }) {
-  const vars = useMemo(() => ({
-    '--btn-color': color,
-    '--btn-border-hover': withAlpha(color, '55'),
-    '--editor-surface': editorTheme.surface,
-    '--editor-border': editorTheme.border,
-    '--font-label': fonts.label,
-  } as CSSProperties), [color]);
+  const toneClassName = tone === 'section'
+    ? 'text-[#6a9e5f] hover:border-[#6a9e5f55]'
+    : 'text-text-muted hover:border-[#8a7d6e55]';
 
   return (
     <button
-      className={`press-feedback flex items-center justify-center gap-1.5 rounded border border-[var(--editor-border)] bg-[var(--editor-surface)] px-[10px] py-[5px] text-[11px] tracking-[0.06em] text-[var(--btn-color)] transition-all hover:border-[var(--btn-border-hover)] hover:brightness-110 [font-family:var(--font-label)] ${fullWidth ? 'w-full' : 'w-auto'}`}
+      className={`press-feedback flex items-center justify-center gap-1.5 rounded border border-border-strong bg-surface px-[10px] py-[5px] font-mono text-[11px] tracking-[0.06em] transition-all hover:brightness-110 ${toneClassName} ${fullWidth ? 'w-full' : 'w-auto'}`}
       onClick={onClick}
       title={title}
-      style={vars}
     >
       {icon}
       {label}
