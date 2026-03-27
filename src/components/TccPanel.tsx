@@ -23,6 +23,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
+  const [outlineSuggestions, setOutlineSuggestions] = useState('');
   const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
@@ -32,7 +33,10 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
   }, [streamingText, step]);
 
   useEffect(() => {
-    if (step === 'review_outline') setOutlineEdit(outline);
+    if (step === 'review_outline') {
+      setOutlineEdit(outline);
+      setOutlineSuggestions('');
+    }
   }, [step, outline]);
 
   useEffect(() => {
@@ -149,7 +153,16 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
           <div className="flex flex-col gap-3">
             <Label>Revê o esboço gerado. Podes editar directamente antes de aprovar.</Label>
             <textarea value={outlineEdit} onChange={(e) => setOutlineEdit(e.target.value)} rows={18} className="min-h-32 resize-y rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
-            <div className="flex gap-2"><Btn onClick={() => approveOutline()} color={C.accent} flex>✓ Aprovar esboço</Btn><Btn onClick={requestNewOutline} color={C.muted} outline flex>↻ Gerar novo</Btn></div>
+            <div className="flex flex-col gap-2">
+              <Label>Antes de aprovar, adiciona sugestões para regenerar a estrutura.</Label>
+              <input
+                value={outlineSuggestions}
+                onChange={(e) => setOutlineSuggestions(e.target.value)}
+                placeholder="Ex: reforçar revisão de literatura e delimitar melhor metodologia"
+                className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+              />
+            </div>
+            <div className="flex gap-2"><Btn onClick={() => approveOutline(outlineEdit)} color={C.accent} flex>✓ Aprovar esboço</Btn><Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex>↻ Regenerar com sugestões</Btn></div>
           </div>
         )}
 
