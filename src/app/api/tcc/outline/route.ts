@@ -13,6 +13,7 @@ Ao gerar um esboço, segue SEMPRE esta estrutura em Markdown:
 - Inclui uma breve descrição (1-2 frases) do que cada secção deve conter
 - O esboço deve ser adequado para um TCC académico de nível universitário
 - Adapta a estrutura ao tópico fornecido
+- Define explicitamente que a redacção e referenciação seguem APA (7.ª edição)
 
 Formato obrigatório de resposta:
 # Esboço do TCC: [Título sugerido]

@@ -313,7 +313,9 @@ export function useTccSession(): UseTccSession {
     const sec = session.sections.find(s => s.index === index);
     if (!sec?.content) return;
 
-    onInsert(`### ${sec.title}\n\n${sec.content}`);
+    const isSubsection = /^\d+\.\d+/.test(sec.title);
+    const heading = isSubsection ? '###' : '##';
+    onInsert(`${heading} ${sec.title}\n\n${sec.content}`);
 
     try {
       await fetch('/api/tcc/session', {
