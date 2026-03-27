@@ -36,6 +36,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
   const [outlineSuggestions, setOutlineSuggestions] = useState('');
+  const [isApprovingOutline, setIsApprovingOutline] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
@@ -176,6 +177,16 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
     if (!topic) return;
     onTopicChange(topic);
     submitTopic(topic);
+  };
+
+  const handleApproveOutline = async () => {
+    if (isApprovingOutline) return;
+    setIsApprovingOutline(true);
+    try {
+      await approveOutline(outlineEdit);
+    } finally {
+      setIsApprovingOutline(false);
+    }
   };
 
   const statusLabel = (status: string) => {
@@ -349,8 +360,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
                 />
               </div>
               <div className="flex gap-2">
-                <Btn onClick={() => approveOutline(outlineEdit)} color={C.accent} flex>✓ Aprovar esboço</Btn>
-                <Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex>↻ Regenerar</Btn>
+                <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline}>
+                  {isApprovingOutline ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[#0f0e0d]/35 border-t-[#0f0e0d]" />
+                      Pensando...
+                    </span>
+                  ) : '✓ Aprovar esboço'}
+                </Btn>
+                <Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex disabled={isApprovingOutline}>↻ Regenerar</Btn>
               </div>
             </div>
           )}
