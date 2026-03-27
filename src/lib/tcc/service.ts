@@ -142,27 +142,46 @@ export async function deleteSession(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-// ─── Utilitário: extrair secções de nível 2 do esboço Markdown ───────────────
+// ─── Utilitário: extrair secções accionáveis do esboço Markdown ───────────────
 function extractSections(outline: string): TccSection[] {
   const lines = outline.split('\n');
+  const raw: { title: string; level: 2 | 3 }[] = [];
   const sections: TccSection[] = [];
   let index = 0;
 
   for (const line of lines) {
-    // Captura linhas ## Título  (nível 2 = capítulo principal)
-    const match = line.match(/^##\s+(.+)/);
-    if (match) {
-      sections.push({
-        index,
-        title:   match[1].trim(),
-        status:  'pending',
-        content: '',
-      });
-      index++;
-    }
+    const h2 = line.match(/^##\s+(.+)/);
+    const h3 = line.match(/^###\s+(.+)/);
+
+    if (h2) raw.push({ title: h2[1].trim(), level: 2 });
+    else if (h3) raw.push({ title: h3[1].trim(), level: 3 });
   }
 
-  // Fallback: se não houver ## usa # de nível 2+
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i].level === 2) {
+      const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
+      if (!nextIsH3) {
+        sections.push({
+          index,
+          title: raw[i].title,
+          status: 'pending',
+          content: '',
+        });
+        index++;
+      }
+      continue;
+    }
+
+    sections.push({
+      index,
+      title: raw[i].title,
+      status: 'pending',
+      content: '',
+    });
+    index++;
+  }
+
+  // Fallback: se não houver ##/### usa # de nível 1-3
   if (sections.length === 0) {
     for (const line of lines) {
       const match = line.match(/^#{1,3}\s+(.+)/);
