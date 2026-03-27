@@ -28,7 +28,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
       <div className="flex w-full flex-wrap items-center justify-between gap-2 md:w-auto md:justify-end md:gap-3">
         <PanelToggleButton active={sidePanel === 'work'} icon="📚" label="Trabalhos" closeLabel="Fechar Trabalhos" onClick={() => onTogglePanel('work')} />
         <PanelToggleButton active={sidePanel === 'tcc'} icon="📝" label="TCC" closeLabel="Fechar TCC" onClick={() => onTogglePanel('tcc')} />
-        <PanelToggleButton active={sidePanel === 'chat'} icon="✦" label="IA" closeLabel="Fechar IA" onClick={() => onTogglePanel('chat')} />
+        <PanelToggleButton active={sidePanel === 'chat'} icon="✦" label="IA" closeLabel="Fechar IA" onClick={() => onTogglePanel('chat')} variant="gold" />
 
         <div className="ml-auto flex items-center gap-2 md:ml-0">
           <button aria-label="Desfazer" className="press-feedback rounded border border-[#2a2520] bg-[#1a1714] px-2 py-1 font-mono text-[11px] text-[#8a7d6e] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>
@@ -54,18 +54,24 @@ function PanelToggleButton({
   label,
   closeLabel,
   onClick,
+  variant = 'default',
 }: {
   active: boolean;
   icon: string;
   label: string;
   closeLabel: string;
   onClick: () => void;
+  variant?: 'default' | 'gold';
 }) {
   return (
     <button
       className={cn(
         'press-feedback flex items-center gap-1 rounded border px-3 py-1.5 font-mono text-[12px] tracking-[0.05em] transition-colors',
-        active ? 'border-[#c9a96e55] bg-[#c9a96e22] text-[#c9a96e]' : 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]',
+        active
+          ? 'border-[#c9a96e55] bg-[#c9a96e22] text-[#c9a96e]'
+          : variant === 'gold'
+            ? 'border-[#c9a96e33] bg-[#1a1714] text-[#c9a96e99] hover:border-[#c9a96e66] hover:text-[#c9a96e]'
+            : 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]',
       )}
       onClick={onClick}
       aria-label={active ? closeLabel : label}
