@@ -6,6 +6,7 @@ import {
 } from 'docx';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 import { convertLatexToOmml } from './math-converter';
+import { buildChart } from './chart-builder';
 
 // ── Constantes de layout ─────────────────────────────────────────────────────
 const PAGE_CONTENT_WIDTH_DXA = convertMillimetersToTwip(210 - 30 - 20);
@@ -221,6 +222,9 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
 
     case 'page_break':
       return new Paragraph({ children: [new PageBreak()] });
+
+    case 'chart':
+      return buildChart(node);
 
     case 'section_break':
       return null;
