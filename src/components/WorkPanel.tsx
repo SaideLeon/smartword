@@ -218,7 +218,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
       <div style={vars} className={`flex h-full flex-col bg-[var(--panel-bg)] ${isMobile ? '' : 'border-l border-[var(--panel-border)]'}`}>
 
         {/* Cabeçalho */}
-        <div className="flex shrink-0 items-center justify-between border-b border-[var(--panel-border)] bg-[rgba(10,13,10,0.95)] px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-3">
           <div className="flex items-center gap-2">
             <span className="text-base">📚</span>
             <span className="font-mono text-[13px] tracking-[0.06em] text-[var(--panel-accent)]">Trabalho Escolar</span>
@@ -239,7 +239,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
                 ↩
               </button>
             )}
-            <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[#5a5248]" title="Fechar" aria-label="Fechar painel">×</button>
+            <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-text-faint)]" title="Fechar" aria-label="Fechar painel">×</button>
           </div>
         </div>
 
@@ -363,7 +363,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
                 <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline}>
                   {isApprovingOutline ? (
                     <span className="inline-flex items-center gap-2">
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[#0f0e0d]/35 border-t-[#0f0e0d]" />
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border border-black/35 border-t-black" />
                       Pensando...
                     </span>
                   ) : '✓ Aprovar esboço'}
@@ -561,7 +561,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
 
           {/* Erros */}
           {(error || coverAgent.error) && (
-            <div className="rounded border border-[#6a2020] bg-[#3a0a0a] px-3 py-2 font-mono text-[11px] text-[#e07070]">
+            <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">
               ⚠ {error || coverAgent.error}
             </div>
           )}
@@ -618,7 +618,7 @@ function Btn({
       style={{
         background: outline ? 'transparent' : hov ? color : `${color}cc`,
         borderColor: `${color}${outline ? '88' : '00'}`,
-        color: outline ? color : '#0f0e0d',
+        color: outline ? color : '#131313',
         opacity: disabled ? 0.4 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
       }}
