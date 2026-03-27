@@ -13,32 +13,32 @@
 
 export const colors = {
   // Fundos
-  ink:        '#0f0e0d',   // fundo principal da app
-  surface:    '#1a1714',   // superfícies (inputs, cards)
-  surfaceAlt: '#141210',   // variante mais escura (editor textarea)
-  overlay:    '#0d0c0b',   // painéis laterais (chat IA)
+  ink:        '#131313',
+  surface:    '#1c1c1c',
+  surfaceAlt: '#232323',
+  overlay:    '#1c1c1c',
 
   // Ouro — cor de destaque primária
-  gold:       '#c9a96e',
-  goldDark:   '#8b6914',
-  goldDim:    '#c9a96e22',
-  goldFaint:  '#c9a96e11',
+  gold:       '#f59e0b',
+  goldDark:   '#f97316',
+  goldDim:    '#f59e0b22',
+  goldFaint:  '#f59e0b11',
 
   // Texto
-  textPrimary:  '#e8e2d9',   // texto principal
-  textSecondary:'#d4cec7',   // texto secundário (editor)
-  textMuted:    '#8a7d6e',   // legendas, labels
-  textFaint:    '#5a5248',   // placeholder, decorativo
-  textVeryFaint:'#4a4440',   // quase invisível
-  textDim:      '#3a3530',   // contador de linhas, footer
+  textPrimary:  '#e8e8e8',
+  textSecondary:'#9a9a9a',
+  textMuted:    '#606060',
+  textFaint:    '#4f4f4f',
+  textVeryFaint:'#404040',
+  textDim:      '#505050',
 
   // Bordas
-  borderStrong: '#2a2520',   // bordas principais
-  borderSubtle: '#1e1b18',   // bordas secundárias / separadores
+  borderStrong: '#2f2f2f',
+  borderSubtle: '#252525',
 
   // Estado — sucesso/verde (editor, exportação)
-  green:       '#4a7c59',
-  greenBright: '#6a9e5f',    // usado no TCC
+  green:       '#00d6a0',
+  greenBright: '#00d6a0',
 
   // Estado — erro
   errorBg:    '#3a0a0a',
@@ -52,33 +52,33 @@ export const colors = {
 // ─── Tema do painel TCC (verde escuro) ───────────────────────────────────────
 
 export const tccTheme = {
-  bg:         '#0b0d0b',
-  surface:    '#111411',
-  border:     '#1e2a1e',
-  accent:     '#6a9e5f',
-  accentDim:  '#6a9e5f44',
-  accentFaint:'#6a9e5f11',
-  muted:      '#4a6644',
-  text:       '#d0dcc8',
-  textDim:    '#7a9272',
-  textFaint:  '#3a4e36',
+  bg:         '#1c1c1c',
+  surface:    '#232323',
+  border:     '#2f2f2f',
+  accent:     '#00d6a0',
+  accentDim:  '#00d6a044',
+  accentFaint:'#00d6a011',
+  muted:      '#9a9a9a',
+  text:       '#e8e8e8',
+  textDim:    '#9a9a9a',
+  textFaint:  '#606060',
   gold:       colors.gold,
-  goldDim:    '#c9a96e33',
+  goldDim:    '#f59e0b33',
 } as const;
 
 // ─── Tema do painel Trabalho Escolar (teal) ───────────────────────────────────
 
 export const workTheme = {
-  bg:         '#0a0d0a',
-  surface:    '#111611',
-  border:     '#1a2a1a',
-  accent:     '#5a9e8f',
-  accentDim:  '#5a9e8f44',
-  accentFaint:'#5a9e8f11',
-  muted:      '#3a6e60',
-  text:       '#c8dcd6',
-  textDim:    '#6a9e90',
-  textFaint:  '#2a4e44',
+  bg:         '#1c1c1c',
+  surface:    '#232323',
+  border:     '#2f2f2f',
+  accent:     '#00d6a0',
+  accentDim:  '#00d6a044',
+  accentFaint:'#00d6a011',
+  muted:      '#9a9a9a',
+  text:       '#e8e8e8',
+  textDim:    '#9a9a9a',
+  textFaint:  '#606060',
   gold:       colors.gold,
 } as const;
 
@@ -103,25 +103,25 @@ export const editorTheme = {
 // ─── Tema do chat IA (ouro/escuro) ────────────────────────────────────────────
 
 export const chatTheme = {
-  bg:         '#0d0c0b',
-  surface:    '#141210',
+  bg:         '#1c1c1c',
+  surface:    '#232323',
   border:     colors.borderStrong,
   borderAlt:  colors.borderSubtle,
   accent:     colors.gold,
   accentDim:  colors.goldDim,
-  text:       '#d4cec7',
-  textMuted:  '#8a7d6e',
-  textFaint:  '#4a4440',
-  userBg:     '#1e1b18',
-  assistantBg:'#141210',
+  text:       '#e8e8e8',
+  textMuted:  '#9a9a9a',
+  textFaint:  '#606060',
+  userBg:     '#2c2c2c',
+  assistantBg:'#232323',
 } as const;
 
 // ─── Gradientes ───────────────────────────────────────────────────────────────
 
 export const gradients = {
-  gold:        'linear-gradient(135deg, #c9a96e 0%, #8b6914 100%)',
-  goldHover:   'linear-gradient(135deg, #d4b47a 0%, #9a7820 100%)',
-  logoIcon:    'linear-gradient(135deg, #c9a96e 0%, #8b6914 100%)',
+  gold:        'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
+  goldHover:   'linear-gradient(135deg, #f7ac2a 0%, #fb8b36 100%)',
+  logoIcon:    'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
   tccProgress: `linear-gradient(90deg, ${tccTheme.muted}, ${tccTheme.accent})`,
   workProgress:`linear-gradient(90deg, ${workTheme.muted}, ${workTheme.accent})`,
 } as const;
@@ -129,9 +129,9 @@ export const gradients = {
 // ─── Tipografia ───────────────────────────────────────────────────────────────
 
 export const fonts = {
-  serif:  "'Georgia', 'Times New Roman', serif",
-  mono:   "'Courier New', 'Courier', monospace",
-  label:  'monospace',  // usado em labels, badges, botões
+  serif:  "'Manrope', sans-serif",
+  mono:   "'JetBrains Mono', monospace",
+  label:  "'JetBrains Mono', monospace",
 } as const;
 
 // ─── Tamanhos de fonte comuns ─────────────────────────────────────────────────

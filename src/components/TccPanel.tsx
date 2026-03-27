@@ -89,7 +89,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
       style={vars}
       className={`flex h-full flex-col bg-[var(--panel-bg)] ${isMobile ? '' : 'border-l border-[var(--panel-border)]'}`}
     >
-      <div className="flex shrink-0 flex-col gap-1.5 border-b border-[var(--panel-border)] bg-[rgba(11,13,11,0.95)] px-4 py-3">
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-base">📝</span>
@@ -104,7 +104,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
             {session && (
               <button onClick={reset} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)]" title="Nova sessão" aria-label="Iniciar nova sessão de TCC">↩</button>
             )}
-            <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[#5a5248]" title="Fechar" aria-label="Fechar painel do modo TCC">×</button>
+            <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-text-faint)]" title="Fechar" aria-label="Fechar painel do modo TCC">×</button>
           </div>
         </div>
         <ContextCompressionBadge status={compressionStatus} />
@@ -177,7 +177,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
               <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline}>
                 {isApprovingOutline ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[#0f0e0d]/35 border-t-[#0f0e0d]" />
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border border-black/35 border-t-black" />
                     Pensando...
                   </span>
                 ) : '✓ Aprovar esboço'}
@@ -214,7 +214,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
         {step === 'developing' && (
           <div>
             {session && activeSectionIdx !== null && <Label>A desenvolver: <span className="text-[var(--panel-accent)]">{session.sections.find((s) => s.index === activeSectionIdx)?.title}</span></Label>}
-            {compressionStatus.justCompressed && <div className="mb-2 rounded border border-[#c9a96e33] bg-[#c9a96e11] px-3 py-1.5 font-mono text-[10px] text-[var(--panel-gold)]">✦ Contexto comprimido automaticamente para optimizar a janela de tokens</div>}
+            {compressionStatus.justCompressed && <div className="mb-2 rounded border border-[var(--panel-gold)]/30 bg-[var(--panel-gold)]/10 px-3 py-1.5 font-mono text-[10px] text-[var(--panel-gold)]">✦ Contexto comprimido automaticamente para optimizar a janela de tokens</div>}
             <StreamBox text={streamingText} />
           </div>
         )}
@@ -227,7 +227,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
           </div>
         )}
 
-        {error && <div className="rounded border border-[#6a2020] bg-[#3a0a0a] px-3 py-2 font-mono text-[11px] text-[#e07070]">⚠ {error}</div>}
+        {error && <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">⚠ {error}</div>}
 
         <div ref={bottomRef} />
       </div>
@@ -265,7 +265,7 @@ function Btn({ onClick, color, children, outline, flex, disabled, ariaLabel, ari
       aria-controls={ariaControls}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ background: outline ? 'transparent' : hov ? color : `${color}cc`, borderColor: `${color}${outline ? '88' : '00'}`, color: outline ? color : '#0f0e0d', opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      style={{ background: outline ? 'transparent' : hov ? color : `${color}cc`, borderColor: `${color}${outline ? '88' : '00'}`, color: outline ? color : '#131313', opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       {children}
     </button>

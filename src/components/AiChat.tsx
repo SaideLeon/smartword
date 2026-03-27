@@ -169,12 +169,12 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
 
   return (
     <div style={vars} className={`flex h-full flex-col bg-[var(--chat-bg)] ${isMobile ? '' : 'border-l border-[var(--chat-border)]'}`}>
-      <div className={`flex shrink-0 items-center justify-between border-b border-[var(--chat-border)] ${isMobile ? 'px-[0.85rem] py-3' : 'px-4 py-3'}`}>
+      <div className={`flex shrink-0 items-center justify-between border-b border-[var(--chat-border)] ${isMobile ? 'px-[0.85rem] py-3' : 'px-3 py-3'}`}>
         <div className="flex items-center gap-2">
           <span className="text-base">✦</span>
-          <span className="text-[13px] tracking-[0.06em] text-[var(--chat-accent)] [font-family:var(--font-label)]">IA · Gerar Markdown</span>
+          <span className="text-[11px] tracking-[0.08em] text-[var(--chat-accent)] [font-family:var(--font-label)]">IA · GERAR MARKDOWN</span>
           {!isMobile && (
-            <span className="rounded-[3px] bg-[var(--editor-surface)] px-1.5 py-px text-[10px] tracking-[0.05em] text-[var(--text-dim)] [font-family:var(--font-label)]">
+            <span className="rounded-md border border-[var(--chat-border)] bg-[var(--editor-surface)] px-1.5 py-px text-[9px] tracking-[0.05em] text-[var(--text-dim)] [font-family:var(--font-label)]">
               Groq · Llama 3.3
             </span>
           )}
@@ -182,7 +182,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
         <button className="press-feedback rounded px-1.5 py-0.5 text-xl leading-none text-[var(--text-faint)]" onClick={onClose} title="Fechar chat" aria-label="Fechar chat">×</button>
       </div>
 
-      <div className={`flex flex-1 flex-col gap-4 overflow-y-auto ${isMobile ? 'p-[0.85rem]' : 'p-4'}`}>
+      <div className={`no-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto ${isMobile ? 'p-[0.85rem]' : 'p-3'}`}>
         {messages.length === 0 && (
           <div className={`text-center ${isMobile ? 'mt-4' : 'mt-8'}`}>
             <div className="mb-3 text-[2rem]">✦</div>
@@ -198,7 +198,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
                 'Resumo das propriedades das progressões aritméticas',
               ].map(sugestao => (
                 <button
-                  className={`press-feedback rounded border border-[var(--chat-border)] bg-[var(--editor-surface)] text-left tracking-[0.02em] text-[var(--chat-text-muted)] transition-colors hover:border-[var(--chat-accent-dim)] hover:text-[var(--chat-accent)] [font-family:var(--font-label)] ${isMobile ? 'px-[10px] py-[9px] text-[10px]' : 'px-[10px] py-1.5 text-[11px]'}`}
+                  className={`press-feedback rounded-lg border border-[var(--chat-border)] bg-[var(--editor-surface)] text-left tracking-[0.02em] text-[var(--chat-text-muted)] transition-colors hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] [font-family:var(--font-label)] ${isMobile ? 'px-[10px] py-[9px] text-[10px]' : 'px-[10px] py-1.5 text-[11px]'}`}
                   key={sugestao}
                   onClick={() => setInput(sugestao)}
                 >
@@ -211,13 +211,11 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
 
         {messages.map((msg, i) => (
           <div key={i} className="flex flex-col gap-[0.35rem]">
-            <span
-              className={`${msg.role === 'user' ? 'self-end text-[var(--chat-user-label)]' : 'self-start text-[var(--chat-assistant-label)]'} text-[10px] uppercase tracking-[0.08em] [font-family:var(--font-label)]`}
-            >
+            <span className={`${msg.role === 'user' ? 'self-end text-[var(--chat-user-label)]' : 'self-start text-[var(--chat-assistant-label)]'} text-[9px] uppercase tracking-[0.08em] [font-family:var(--font-label)]`}>
               {msg.role === 'user' ? 'Tu' : '✦ IA'}
             </span>
             <div
-              className={`${msg.role === 'user' ? 'self-end rounded-[8px_8px_2px_8px] border-[var(--chat-border)] bg-[var(--chat-user-bg)]' : 'self-start rounded-[8px_8px_8px_2px] border-[var(--chat-border-alt)] bg-[var(--chat-assistant-bg)]'} border px-[0.85rem] py-[0.6rem] ${isMobile ? 'max-w-full' : 'max-w-[90%]'}`}
+              className={`${msg.role === 'user' ? 'self-end rounded-[8px_8px_2px_8px] border-[var(--chat-border)] bg-[var(--chat-user-bg)]' : 'self-start rounded-[8px_8px_8px_2px] border-[var(--chat-border-alt)] bg-[var(--chat-assistant-bg)]'} border px-[0.85rem] py-[0.6rem] ${isMobile ? 'max-w-full' : 'max-w-[92%]'}`}
             >
               <div className="flex flex-col gap-[0.2rem]">
                 <ChatMessageContent content={msg.content} role={msg.role} />
@@ -265,14 +263,14 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
         </div>
       )}
 
-      <div className={`flex shrink-0 items-end gap-2 border-t border-[var(--chat-border)] ${isMobile ? 'px-[0.85rem] pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]' : 'px-4 py-3'}`}>
+      <div className={`flex shrink-0 items-end gap-2 border-t border-[var(--chat-border)] ${isMobile ? 'px-[0.85rem] pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]' : 'px-3 py-3'}`}>
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Descreve o conteúdo a gerar… (Enter para enviar)"
           rows={2}
-          className={`flex-1 resize-none rounded-[5px] border border-[var(--chat-border)] bg-[var(--editor-surface)] px-[10px] text-xs leading-[1.5] tracking-[0.02em] text-[var(--chat-text)] outline-none [caret-color:var(--editor-caret)] [font-family:var(--font-label)] focus:border-[color:var(--chat-accent)/0.55] ${isMobile ? 'py-[10px]' : 'py-2'}`}
+          className={`flex-1 resize-none rounded-md border border-[var(--chat-border)] bg-[var(--editor-surface)] px-[10px] text-xs leading-[1.5] tracking-[0.02em] text-[var(--chat-text)] outline-none [caret-color:var(--editor-caret)] [font-family:var(--font-label)] focus:border-[var(--chat-accent)] ${isMobile ? 'py-[10px]' : 'py-2'}`}
         />
         <button
           className={`press-feedback flex shrink-0 items-center justify-center rounded-[5px] border-none text-base transition-all ${isMobile ? 'h-[42px] w-[42px]' : 'h-9 w-9'} ${streaming ? 'text-[var(--send-stop-fg)]' : input.trim() ? 'text-[var(--send-ready-fg)]' : 'bg-[var(--send-idle-bg)] text-[var(--send-idle-fg)]'}`}
