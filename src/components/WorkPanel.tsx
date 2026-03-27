@@ -399,9 +399,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
               )}
 
               {/* Input do agente */}
-              {(coverAgent.step === 'asking' || coverAgent.step === 'awaiting_form') &&
-               coverAgent.step !== 'done_with_cover' &&
-               coverAgent.step !== 'done_without_cover' && (
+              {(coverAgent.step === 'asking' || coverAgent.step === 'awaiting_form') && (
                 <div className="flex items-end gap-2">
                   <input
                     value={agentInput}
