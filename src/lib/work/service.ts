@@ -135,18 +135,31 @@ export async function deleteWorkSession(id: string): Promise<void> {
 function extractSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
   const raw: { title: string; level: 2 | 3 }[] = [];
+  const isAutomaticIndex = (title: string) => (
+    title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim() === 'indice'
+  );
 
   for (const line of lines) {
     const h2 = line.match(/^##\s+(.+)/);
     const h3 = line.match(/^###\s+(.+)/);
 
-    if (h2) raw.push({ title: h2[1].trim(), level: 2 });
-    else if (h3) raw.push({ title: h3[1].trim(), level: 3 });
+    if (h2) {
+      const title = h2[1].trim();
+      if (!isAutomaticIndex(title)) raw.push({ title, level: 2 });
+    } else if (h3) {
+      const title = h3[1].trim();
+      if (!isAutomaticIndex(title)) raw.push({ title, level: 3 });
+    }
   }
 
   if (raw.length === 0) {
     return [
-      'Índice',
       'Introdução',
       'Objectivos e Metodologia',
       'Desenvolvimento Teórico',

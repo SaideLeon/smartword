@@ -7,16 +7,16 @@ const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 const SYSTEM = `És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
 
-O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenhuma), na sessão "4. Desenvolvimento Teórico" deve haver titulos do tema(exemplo: 4.1 Conceito de correio eletronico, 4.2 Historia de correio eletronico), a estrutura principal é essa:
-1. Índice
-2. Introdução
-3. Objectivos e Metodologia
-4. Desenvolvimento Teórico
-5. Conclusão
-6. Referências Bibliográficas
+O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenhuma), na sessão "3. Desenvolvimento Teórico" deve haver titulos do tema(exemplo: 3.1 Conceito de correio eletronico, 3.2 Historia de correio eletronico), a estrutura principal é essa:
+1. Introdução
+2. Objectivos e Metodologia
+3. Desenvolvimento Teórico
+4. Conclusão
+5. Referências Bibliográficas
 
 Para cada secção, descreve em 2-4 frases o que o aluno deve abordar nessa secção, tendo em conta o tópico específico.
 Usa Markdown: ## para o título de cada secção, texto corrido para a descrição.
+NÃO incluas "Índice" em nenhuma posição do esboço, pois o índice é gerado automaticamente no Microsoft Word.
 Escreve em português europeu/moçambicano. Sê concreto e útil — o esboço serve de guia para o desenvolvimento posterior.`;
 
 export async function POST(req: Request) {
@@ -24,7 +24,11 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   try {
-    const { topic, sessionId } = await req.json();
+    const { topic, sessionId, suggestions } = await req.json();
+    const cleanedSuggestions = typeof suggestions === 'string' ? suggestions.trim() : '';
+    const suggestionBlock = cleanedSuggestions
+      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${cleanedSuggestions}\n\nAplica estas sugestões com prioridade e regenera o esboço completo.`
+      : '';
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
@@ -39,7 +43,7 @@ export async function POST(req: Request) {
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: SYSTEM },
-          { role: 'user', content: `Gera o esboço orientador para um trabalho escolar sobre: "${topic}"` },
+          { role: 'user', content: `Gera o esboço orientador para um trabalho escolar sobre: "${topic}"${suggestionBlock}` },
         ],
         stream: true,
         max_tokens: 1024,

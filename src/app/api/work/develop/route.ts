@@ -73,7 +73,6 @@ export async function POST(req: Request) {
     const isSubsection = /^\d+\.\d+/.test(section.title);
 
     const sectionInstructions: Record<string, string> = {
-      'Índice': 'Formata como um índice real com os títulos das secções e páginas fictícias (ex: pág. 1, pág. 2…). Apresenta de forma limpa, sem desenvolvimento de conteúdo.',
       'Introdução': 'Apresenta o tema, contextualiza a sua importância, indica brevemente a estrutura do trabalho. Entre 200-350 palavras.',
       'Objectivos e Metodologia': 'Define 3-5 objectivos claros (geral e específicos) e descreve a metodologia usada (pesquisa bibliográfica, qualitativa, etc.). Entre 200-300 palavras.',
       'Desenvolvimento Teórico': 'Desenvolve o conteúdo principal com profundidade, usando subtítulos (###) para organizar os temas. Entre 400-700 palavras. Inclui conceitos, factos, exemplos e referências a autores quando relevante.',

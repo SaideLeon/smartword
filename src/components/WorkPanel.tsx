@@ -20,6 +20,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
+  const [outlineSuggestions, setOutlineSuggestions] = useState('');
   const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'work-recent-sessions';
@@ -42,7 +43,10 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
   }, [streamingText, step]);
 
   useEffect(() => {
-    if (step === 'review_outline') setOutlineEdit(session?.outline_draft ?? '');
+    if (step === 'review_outline') {
+      setOutlineEdit(session?.outline_draft ?? '');
+      setOutlineSuggestions('');
+    }
   }, [step, session]);
 
   useEffect(() => {
@@ -93,7 +97,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
             <p className="mb-6 font-mono text-[13px] leading-[1.65] text-[var(--panel-text-dim)]">Copiloto para trabalhos do ensino secundário e médio.<br />Gera e desenvolve cada secção do teu trabalho,<br />secção a secção.</p>
             <div className="mb-5 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 text-left">
               <div className="mb-2 font-mono text-[10px] tracking-[0.08em] text-[var(--panel-text-dim)]">ESTRUTURA DO TRABALHO</div>
-              {['Índice', 'Introdução', 'Objectivos e Metodologia', 'Desenvolvimento Teórico', 'Conclusão', 'Referências Bibliográficas'].map((s, i) => <div key={s} className="py-0.5 font-mono text-[11px] text-[var(--panel-text-dim)]">{i + 1}. {s}</div>)}
+              {['Introdução', 'Objectivos e Metodologia', 'Desenvolvimento Teórico', 'Conclusão', 'Referências Bibliográficas'].map((s, i) => <div key={s} className="py-0.5 font-mono text-[11px] text-[var(--panel-text-dim)]">{i + 1}. {s}</div>)}
             </div>
             <div className="flex flex-col gap-2.5">
               <Btn onClick={() => { startNew(); setShowSessions(false); }} color={C.accent}>✦ Iniciar trabalho</Btn>
@@ -128,7 +132,16 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
           <div className="flex flex-col gap-3">
             <Label>Esboço gerado. Podes editar antes de aprovar.</Label>
             <textarea value={outlineEdit} onChange={(e) => setOutlineEdit(e.target.value)} rows={16} className="min-h-32 resize-y rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
-            <div className="flex gap-2"><Btn onClick={() => approveOutline(outlineEdit)} color={C.accent} flex>✓ Aprovar esboço</Btn><Btn onClick={requestNewOutline} color={C.muted} outline flex>↻ Gerar novo</Btn></div>
+            <div className="flex flex-col gap-2">
+              <Label>Antes de aprovar, podes pedir ajustes para regenerar o esboço.</Label>
+              <input
+                value={outlineSuggestions}
+                onChange={(e) => setOutlineSuggestions(e.target.value)}
+                placeholder="Ex: incluir mais foco em impactos sociais e exemplos locais"
+                className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+              />
+            </div>
+            <div className="flex gap-2"><Btn onClick={() => approveOutline(outlineEdit)} color={C.accent} flex>✓ Aprovar esboço</Btn><Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex>↻ Regenerar com sugestões</Btn></div>
           </div>
         )}
 
