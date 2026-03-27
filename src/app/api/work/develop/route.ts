@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       'Objectivos e Metodologia': 'Define 3-5 objectivos claros (geral e específicos) e descreve a metodologia usada (pesquisa bibliográfica, qualitativa, etc.). Entre 200-300 palavras.',
       'Desenvolvimento Teórico': 'Desenvolve o conteúdo principal com profundidade, usando subtítulos (###) para organizar os temas. Entre 400-700 palavras. Inclui conceitos, factos, exemplos e referências a autores quando relevante.',
       'Conclusão': 'Resume os pontos principais abordados, responde aos objectivos e apresenta uma reflexão final. Entre 150-250 palavras.',
-      'Referências Bibliográficas': 'Lista no mínimo 5 referências no formato APA adaptado ao contexto moçambicano. Inclui livros, sites académicos e artigos relacionados com o tema.',
+      'Referências Bibliográficas': 'Lista no mínimo 5 referências no formato APA (7.ª edição). Inclui livros, sites académicos e artigos relacionados com o tema.',
     };
 
     const subsectionInstruction = `Desenvolve este subtópico de forma aprofundada e académica. \
@@ -109,6 +109,7 @@ REGRAS ABSOLUTAS:
 - Mantém coerência terminológica com as secções anteriores
 - Usa a ficha técnica de pesquisa como base factual prioritária e aplica apenas os pontos relevantes para esta secção
 - Tom académico mas acessível ao nível do ensino secundário/médio
+- Norma de redacção e referenciação obrigatória: APA (7.ª edição)
 - NÃO incluas a palavra {pagebreak} no conteúdo — as quebras de página são geridas automaticamente pelo sistema
 - NÃO faças nova pesquisa web: utiliza exclusivamente o esboço, contexto anterior e ficha técnica já fornecida`.trim();
 

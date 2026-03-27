@@ -66,6 +66,7 @@ REGRAS ABSOLUTAS:
 - Mantém coerência terminológica com o contexto fornecido acima
 - Usa a ficha técnica de pesquisa como base factual prioritária e aplica apenas os pontos relevantes para esta secção
 - Usa Markdown para formatação (negrito, listas quando necessário, sub-títulos com ###)
+- Norma de redacção e referenciação obrigatória: APA (7.ª edição)
 - Extensão adequada ao nível académico: entre 300 e 600 palavras por secção
 - Não repitas conteúdo já mencionado no contexto histórico ou nas secções recentes
 - Não realizes nova pesquisa web nesta fase`.trim();

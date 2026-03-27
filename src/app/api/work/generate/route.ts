@@ -17,6 +17,7 @@ O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenh
 Para cada secção, descreve em 2-4 frases o que o aluno deve abordar nessa secção, tendo em conta o tópico específico.
 Usa Markdown: ## para o título de cada secção, texto corrido para a descrição.
 NÃO incluas "Índice" em nenhuma posição do esboço, pois o índice é gerado automaticamente no Microsoft Word.
+Norma de redacção obrigatória para todo o trabalho: APA (7.ª edição).
 Escreve em português europeu/moçambicano. Sê concreto e útil — o esboço serve de guia para o desenvolvimento posterior.`;
 
 export async function POST(req: Request) {
