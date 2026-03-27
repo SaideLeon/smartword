@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, ImportedXmlComponent,
   ExternalHyperlink, IParagraphOptions, AlignmentType, convertMillimetersToTwip,
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
-  PageBreak, Footer, PageNumber, NumberFormat,
+  PageBreak, Footer, PageNumber, NumberFormat, SectionType,
 } from 'docx';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 import { convertLatexToOmml } from './math-converter';
@@ -67,7 +67,6 @@ async function buildTableRow(
       const styledRuns = row.isHeader
         ? runs.map((run: any) => {
             if (run instanceof TextRun) {
-              // ── FIX: use run.text / run.root to extract the actual text ──
               const text = (run as any).text ?? (run as any).options?.text ?? '';
               return new TextRun({ text, bold: true, color: COLOR_HEADER_FG });
             }
@@ -176,8 +175,6 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
         5: HeadingLevel.HEADING_5, 6: HeadingLevel.HEADING_6,
       };
 
-      // ── FIX: pass bold + color directly into buildInline so the text
-      //    is never lost when trying to clone a TextRun via .options ──────
       const children = await Promise.all(
         node.children.map(c => buildInline(c, { bold: true, color: '000000' }))
       );
@@ -251,9 +248,11 @@ function buildPageNumberFooter(): Footer {
   });
 }
 
-// ── Estilos partilhados ───────────────────────────────────────────────────────
+// ── Estilos e numeração partilhados ──────────────────────────────────────────
+//
+//  Exportados para que generateDocxWithCover possa reutilizá-los sem duplicar.
 
-const SHARED_STYLES = {
+export const SHARED_STYLES = {
   default: {
     document: {
       run: { font: 'Times New Roman', size: 24 },
@@ -308,7 +307,7 @@ const SHARED_STYLES = {
   ],
 };
 
-const SHARED_NUMBERING = {
+export const SHARED_NUMBERING = {
   config: [
     {
       reference: 'ordered-list',
@@ -324,9 +323,14 @@ const SHARED_NUMBERING = {
   ],
 } as const;
 
-// ── Documento completo ────────────────────────────────────────────────────────
+// ── Secções de conteúdo (exportada para uso em generateDocxWithCover) ─────────
 
-export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> {
+/**
+ * Constrói e devolve o array de secções do conteúdo do trabalho.
+ * Cada {section} no markdown origina uma nova secção com propriedades independentes.
+ * A primeira secção de conteúdo arranca sempre em nova página (NEXT_PAGE).
+ */
+export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> {
   const sectionAsts: DocumentNode[][] = [[]];
 
   for (const node of ast) {
@@ -337,8 +341,8 @@ export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> 
     }
   }
 
-  const sections = await Promise.all(
-    sectionAsts.map(async (nodes) => {
+  return Promise.all(
+    sectionAsts.map(async (nodes, sectionIndex) => {
       const children: any[] = [];
 
       for (const node of nodes) {
@@ -355,6 +359,8 @@ export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> 
 
       return {
         properties: {
+          // A primeira secção de conteúdo arranca sempre em nova página
+          type: SectionType.NEXT_PAGE,
           page: {
             size: PAGE_SIZE,
             margin: PAGE_MARGIN,
@@ -371,6 +377,12 @@ export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> 
       };
     }),
   );
+}
+
+// ── Documento completo (API original — inalterada) ────────────────────────────
+
+export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> {
+  const sections = await buildContentSections(ast);
 
   return new Document({
     styles:    SHARED_STYLES,
