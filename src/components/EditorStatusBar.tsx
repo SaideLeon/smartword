@@ -12,9 +12,10 @@ interface Props {
 
 export function EditorStatusBar({ markdown, loading, filename, isMobile, onExport }: Props) {
   return (
-    <div className="relative z-20 flex flex-shrink-0 flex-col items-stretch justify-between gap-3 border-t border-[#2a2520] bg-[rgba(15,14,13,0.95)] px-4 py-3 backdrop-blur md:flex-row md:items-center md:px-8">
-      <div className="font-mono text-[11px] tracking-[0.05em] text-[#3a3530]">
-        {markdown.split('\n').length} linhas · {markdown.length} caracteres
+    <div className="relative z-20 flex flex-shrink-0 flex-col items-stretch gap-3 border-t border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 md:flex-row md:items-center md:justify-between md:px-4">
+      <div className="flex items-center gap-3">
+        <span className="mono text-[9px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">{markdown.split('\n').length} linhas</span>
+        <span className="mono text-[9px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">{markdown.length} caracteres</span>
       </div>
       <ExportButton onClick={onExport} loading={loading} filename={filename} fullWidth={isMobile} />
     </div>
