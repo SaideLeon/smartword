@@ -24,6 +24,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
   const [outlineSuggestions, setOutlineSuggestions] = useState('');
+  const [isApprovingOutline, setIsApprovingOutline] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
@@ -65,6 +66,16 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
     if (!topic) return;
     onTopicChange(topic);
     submitTopic(topic);
+  };
+
+  const handleApproveOutline = async () => {
+    if (isApprovingOutline) return;
+    setIsApprovingOutline(true);
+    try {
+      await approveOutline(outlineEdit);
+    } finally {
+      setIsApprovingOutline(false);
+    }
   };
 
   const statusLabel = (s: TccSection) => {
@@ -162,7 +173,17 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
                 className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
               />
             </div>
-            <div className="flex gap-2"><Btn onClick={() => approveOutline(outlineEdit)} color={C.accent} flex>✓ Aprovar esboço</Btn><Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex>↻ Regenerar com sugestões</Btn></div>
+            <div className="flex gap-2">
+              <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline}>
+                {isApprovingOutline ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[#0f0e0d]/35 border-t-[#0f0e0d]" />
+                    Pensando...
+                  </span>
+                ) : '✓ Aprovar esboço'}
+              </Btn>
+              <Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex disabled={isApprovingOutline}>↻ Regenerar com sugestões</Btn>
+            </div>
           </div>
         )}
 
