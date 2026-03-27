@@ -1,72 +1,40 @@
-import { BarChart, ChartAxisTickMark, type IChartOptions, LineChart, Paragraph, PieChart } from 'docx';
+import { Paragraph, TextRun } from 'docx';
 import type { ChartNode } from './types';
 
-const CHART_COLORS = [
-  '1F3864',
-  '2E75B6',
-  '70AD47',
-  'ED7D31',
-  'FFC000',
-  '5A96A0',
-  'C55A11',
-  '833C00',
-];
+const CHART_SYMBOL: Record<ChartNode['chartType'], string> = {
+  bar: '▇',
+  line: '▁',
+  pie: '◔',
+  area: '▆',
+};
 
-function buildChartOptions(node: ChartNode): IChartOptions {
-  const data = node.series.map((serie, index) => ({
-    name: serie.label,
-    labels: node.labels,
-    values: serie.data,
-    color: CHART_COLORS[index % CHART_COLORS.length],
-  }));
-
-  return {
-    title: node.title,
-    data,
-    series: node.series.map((serie, index) => ({
-      name: serie.label,
-      color: CHART_COLORS[index % CHART_COLORS.length],
-    })),
-    width: 16_200_000,
-    height: 8_000_000,
-    axisTick: {
-      x: { major: ChartAxisTickMark.OUTSIDE },
-      y: { major: ChartAxisTickMark.OUTSIDE },
-    },
-  };
+function formatValue(value: number): string {
+  if (Number.isFinite(value)) return `${value}`;
+  return '0';
 }
 
+/**
+ * Fallback textual representation for charts.
+ *
+ * The current `docx` package version used by this project does not export
+ * chart classes (BarChart, LineChart, PieChart, etc.), so we render a
+ * readable data summary instead of native Office chart XML.
+ */
 export function buildChart(node: ChartNode): Paragraph {
-  const options = buildChartOptions(node);
+  const symbol = CHART_SYMBOL[node.chartType] ?? '•';
+  const title = node.title?.trim() ? `${node.title.trim()} (${node.chartType})` : `Gráfico (${node.chartType})`;
 
-  switch (node.chartType) {
-    case 'bar':
-      return new Paragraph({ children: [new BarChart(options)] });
+  const lines = node.series.map((serie) => {
+    const points = node.labels.map((label, idx) => `${label}: ${formatValue(serie.data[idx] ?? 0)}`);
+    return `${symbol} ${serie.label} — ${points.join(' | ')}`;
+  });
 
-    case 'line':
-      return new Paragraph({ children: [new LineChart(options)] });
-
-    case 'pie':
-      return new Paragraph({
-        children: [
-          new PieChart({
-            ...options,
-            data: [options.data[0]],
-          }),
-        ],
-      });
-
-    case 'area':
-      return new Paragraph({
-        children: [
-          new LineChart({
-            ...options,
-            smooth: false,
-          }),
-        ],
-      });
-
-    default:
-      return new Paragraph({ children: [new BarChart(options)] });
-  }
+  return new Paragraph({
+    spacing: { before: 200, after: 200 },
+    children: [
+      new TextRun({ text: title, bold: true }),
+      new TextRun({ text: '\n' }),
+      new TextRun({ text: lines.join('\n') || `${symbol} Sem dados` }),
+    ],
+  });
 }

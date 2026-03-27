@@ -132,7 +132,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
           </div>
         )}
 
-        {(step === 'outline_approved' || step === 'section_ready') && session && (
+        {(step === 'outline_approved' || step === 'developing' || step === 'section_ready') && session && (
           <div className="flex flex-col gap-2">
             <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
             {session.sections.map((sec) => {
