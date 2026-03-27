@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useEditorActions, useEditorContent, useEditorMeta } from '@/hooks/useEditorStore';
+import { formalizePreviewHeadings } from '@/lib/preview-heading-formalizer';
 
 const PREVIEW_DEBOUNCE_MS = 200;
 
 export function useDocumentEditor() {
   const markdown = useEditorContent();
-  const [previewMarkdown, setPreviewMarkdown] = useState(markdown);
+  const [previewMarkdown, setPreviewMarkdown] = useState(() => formalizePreviewHeadings(markdown));
   const { filename } = useEditorMeta();
   const { setContent, setFilename, clearDefaultContent, setFilenameFromTopic } = useEditorActions();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      setPreviewMarkdown(markdown);
+      setPreviewMarkdown(formalizePreviewHeadings(markdown));
     }, PREVIEW_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeoutId);
