@@ -3,6 +3,7 @@ import remarkParse from 'remark-parse';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
+import { parseChartBlock } from './chart-parser';
 
 export function parseToAST(markdown: string): DocumentNode[] {
   // Preprocess Gemini-style math delimiters to standard markdown math delimiters
@@ -85,6 +86,17 @@ export function parseToAST(markdown: string): DocumentNode[] {
         };
 
       // ── Tabelas GFM ──────────────────────────────────────────────────────
+      case 'code': {
+        if (node.lang === 'chart') {
+          return parseChartBlock(node.value as string);
+        }
+
+        return {
+          type: 'paragraph',
+          children: [{ type: 'inline_code', value: node.value }],
+        };
+      }
+
       case 'table': {
         const rows: TableRowNode[] = node.children.map((row: any, rowIndex: number) => {
           const cells: TableCellNode[] = row.children.map((cell: any) => ({

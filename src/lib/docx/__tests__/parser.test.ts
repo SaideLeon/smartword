@@ -25,6 +25,42 @@ describe('parseToAST', () => {
     expect(blockMath && blockMath.type === 'math_block' ? blockMath.latex : null).toBe('x^2+y^2=z^2');
   });
 
+
+  it('converte bloco ```chart``` em nó de gráfico', () => {
+    const markdown = [
+      '```chart',
+      'type: line',
+      'title: Receita',
+      'labels: [Jan, Fev, Mar]',
+      'series:',
+      '  - label: 2025',
+      '    data: [10, 12, 18]',
+      '```',
+    ].join('\n');
+
+    const ast = parseToAST(markdown);
+    const chartNode = ast[0];
+
+    expect(chartNode?.type).toBe('chart');
+    if (!chartNode || chartNode.type !== 'chart') throw new Error('Gráfico não encontrado');
+
+    expect(chartNode.chartType).toBe('line');
+    expect(chartNode.labels).toEqual(['Jan', 'Fev', 'Mar']);
+    expect(chartNode.series[0]?.data).toEqual([10, 12, 18]);
+  });
+
+  it('converte bloco de código comum em parágrafo com inline_code', () => {
+    const ast = parseToAST('```ts\nconst x = 1;\n```');
+
+    expect(ast[0]?.type).toBe('paragraph');
+    if (!ast[0] || ast[0].type !== 'paragraph') throw new Error('Parágrafo não encontrado');
+
+    expect(ast[0].children[0]).toEqual({
+      type: 'inline_code',
+      value: 'const x = 1;',
+    });
+  });
+
   it('mantém tabelas GFM no AST', () => {
     const markdown = [
       '| Coluna A | Coluna B |',
