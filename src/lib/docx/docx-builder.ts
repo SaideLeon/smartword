@@ -276,12 +276,12 @@ export const SHARED_STYLES = {
     },
     {
       id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal',
-      run: { bold: true, color: '000000', size: 32 },
+      run: { bold: true, color: '000000', size: 24 },
       paragraph: { spacing: { before: 240, after: 120 } },
     },
     {
       id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal',
-      run: { bold: true, color: '000000', size: 28 },
+      run: { bold: true, color: '000000', size: 24 },
       paragraph: { spacing: { before: 200, after: 100 } },
     },
     {
