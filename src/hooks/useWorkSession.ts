@@ -181,20 +181,28 @@ export function useWorkSession() {
     }
   }, []);
 
-  const submitTopic = useCallback(async (topic: string) => {
+  const generateOutline = useCallback(async (
+    topic: string,
+    options?: { sessionId?: string; suggestions?: string },
+  ) => {
     setError(null);
     setStreamingText('');
     setStep('generating_outline');
 
     try {
-      const sessionRes = await fetch('/api/work/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic }),
-      });
-      if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
-      const newSession: WorkSessionRecord = await sessionRes.json();
-      setSession(newSession);
+      let activeSessionId = options?.sessionId;
+
+      if (!activeSessionId) {
+        const sessionRes = await fetch('/api/work/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic }),
+        });
+        if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
+        const newSession: WorkSessionRecord = await sessionRes.json();
+        setSession(newSession);
+        activeSessionId = newSession.id;
+      }
 
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -202,7 +210,11 @@ export function useWorkSession() {
       const res = await fetch('/api/work/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, sessionId: newSession.id }),
+        body: JSON.stringify({
+          topic,
+          sessionId: activeSessionId,
+          suggestions: options?.suggestions?.trim() || undefined,
+        }),
         signal: ctrl.signal,
       });
 
@@ -239,6 +251,10 @@ export function useWorkSession() {
     }
   }, []);
 
+  const submitTopic = useCallback(async (topic: string) => {
+    await generateOutline(topic);
+  }, [generateOutline]);
+
   const approveOutline = useCallback(async (outline: string) => {
     if (!session) return;
     try {
@@ -256,10 +272,10 @@ export function useWorkSession() {
     }
   }, [session]);
 
-  const requestNewOutline = useCallback(() => {
+  const requestNewOutline = useCallback((suggestions?: string) => {
     if (!session) return;
-    submitTopic(session.topic);
-  }, [session, submitTopic]);
+    generateOutline(session.topic, { sessionId: session.id, suggestions });
+  }, [generateOutline, session]);
 
   const developSection = useCallback(async (index: number) => {
     if (!session) return;

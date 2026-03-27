@@ -24,7 +24,11 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   try {
-    const { topic, sessionId } = await req.json();
+    const { topic, sessionId, suggestions } = await req.json();
+    const cleanedSuggestions = typeof suggestions === 'string' ? suggestions.trim() : '';
+    const suggestionBlock = cleanedSuggestions
+      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${cleanedSuggestions}\n\nAplica estas sugestões com prioridade e regenera o esboço completo.`
+      : '';
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
@@ -39,7 +43,7 @@ export async function POST(req: Request) {
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: SYSTEM },
-          { role: 'user', content: `Gera o esboço orientador para um trabalho escolar sobre: "${topic}"` },
+          { role: 'user', content: `Gera o esboço orientador para um trabalho escolar sobre: "${topic}"${suggestionBlock}` },
         ],
         stream: true,
         max_tokens: 1024,

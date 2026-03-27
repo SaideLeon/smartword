@@ -36,8 +36,8 @@ interface UseTccSession {
 
   startNew:          () => void;
   submitTopic:       (topic: string) => Promise<void>;
-  approveOutline:    () => Promise<void>;
-  requestNewOutline: () => void;
+  approveOutline:    (outlineOverride?: string) => Promise<void>;
+  requestNewOutline: (suggestions?: string) => Promise<void>;
   developSection:    (index: number) => Promise<void>;
   insertSection:     (index: number, onInsert: (text: string) => void) => Promise<void>;
   backToOutline:     () => void;
@@ -122,20 +122,28 @@ export function useTccSession(): UseTccSession {
   }, [updateCompressionStatus]);
 
   // ── Criar sessão e gerar esboço ──────────────────────────────────────────────
-  const submitTopic = useCallback(async (topic: string) => {
+  const generateOutline = useCallback(async (
+    topic: string,
+    options?: { sessionId?: string; suggestions?: string },
+  ) => {
     setError(null);
     setStreamingText('');
     setStep('generating_outline');
 
     try {
-      const sessionRes = await fetch('/api/tcc/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic }),
-      });
-      if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
-      const newSession: TccSession = await sessionRes.json();
-      setSession(newSession);
+      let activeSessionId = options?.sessionId;
+
+      if (!activeSessionId) {
+        const sessionRes = await fetch('/api/tcc/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic }),
+        });
+        if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
+        const newSession: TccSession = await sessionRes.json();
+        setSession(newSession);
+        activeSessionId = newSession.id;
+      }
 
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -143,7 +151,11 @@ export function useTccSession(): UseTccSession {
       const outlineRes = await fetch('/api/tcc/outline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: newSession.id, topic }),
+        body: JSON.stringify({
+          sessionId: activeSessionId,
+          topic,
+          suggestions: options?.suggestions?.trim() || undefined,
+        }),
         signal: ctrl.signal,
       });
       if (!outlineRes.ok) throw new Error('Erro ao gerar esboço');
@@ -175,15 +187,20 @@ export function useTccSession(): UseTccSession {
     }
   }, []);
 
+  const submitTopic = useCallback(async (topic: string) => {
+    await generateOutline(topic);
+  }, [generateOutline]);
+
   // ── Aprovar esboço ───────────────────────────────────────────────────────────
-  const approveOutline = useCallback(async () => {
+  const approveOutline = useCallback(async (outlineOverride?: string) => {
     if (!session) return;
     setError(null);
+    const outlineToApprove = outlineOverride?.trim() || outline;
     try {
       const res = await fetch('/api/tcc/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, outline }),
+        body: JSON.stringify({ sessionId: session.id, outline: outlineToApprove }),
       });
       if (!res.ok) throw new Error('Erro ao aprovar esboço');
       const updated: TccSession = await res.json();
@@ -194,12 +211,12 @@ export function useTccSession(): UseTccSession {
     }
   }, [session, outline]);
 
-  const requestNewOutline = useCallback(() => {
+  const requestNewOutline = useCallback(async (suggestions?: string) => {
     if (!session) return;
     setOutline('');
     setStreamingText('');
-    submitTopic(session.topic);
-  }, [session, submitTopic]);
+    await generateOutline(session.topic, { sessionId: session.id, suggestions });
+  }, [generateOutline, session]);
 
   // ── Desenvolver secção (com compressão automática integrada) ─────────────────
   const developSection = useCallback(async (index: number) => {
