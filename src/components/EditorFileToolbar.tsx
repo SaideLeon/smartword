@@ -7,21 +7,20 @@ interface Props {
 
 export function EditorFileToolbar({ filename, onFilenameChange }: Props) {
   return (
-    <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
-      <label className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.1em] text-[#5a5248]">
-        Nome do ficheiro
-      </label>
-      <div className="relative w-full md:w-auto">
-        <input
-          type="text"
-          value={filename}
-          onChange={(e) => onFilenameChange(e.target.value)}
-          className="w-full rounded border border-[#2a2520] bg-[#1a1714] px-2.5 py-1.5 pr-12 font-mono text-[13px] tracking-[0.02em] text-[#c9a96e] outline-none transition-colors focus:border-[#c9a96e55] md:w-[220px]"
-          aria-label="Nome do ficheiro"
-        />
-        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[11px] text-[#4a4440]">
-          .docx
-        </span>
+    <div className="flex items-center gap-2">
+      <div className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-[linear-gradient(135deg,#1e3a5f,#2d5a8e)] text-sm">📄</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="mono text-[11px] font-bold text-[var(--text-primary)]">Workspace</span>
+        <div className="relative mt-1">
+          <input
+            type="text"
+            value={filename}
+            onChange={(e) => onFilenameChange(e.target.value)}
+            className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-1.5 pr-14 text-[11px] text-[var(--text-secondary)] outline-none transition-colors focus:border-[var(--accent-amber)]"
+            aria-label="Nome do ficheiro"
+          />
+          <span className="mono pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)]">.docx</span>
+        </div>
       </div>
     </div>
   );

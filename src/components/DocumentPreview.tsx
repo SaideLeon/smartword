@@ -17,11 +17,11 @@ type PreviewPage = {
   hasOversizedBlock: boolean;
 };
 
-const PAGE_WIDTH = 794;
-const PAGE_HEIGHT_DESKTOP = 1123;
-const PAGE_HEIGHT_MOBILE = 960;
-const PAGE_PADDING_DESKTOP = 96;
-const PAGE_PADDING_MOBILE = 56;
+const PAGE_WIDTH = 620;
+const PAGE_HEIGHT_DESKTOP = 880;
+const PAGE_HEIGHT_MOBILE = 780;
+const PAGE_PADDING_DESKTOP = 72;
+const PAGE_PADDING_MOBILE = 52;
 const FOOTER_RESERVED_SPACE = 28;
 const BODY_FONT_SIZE_DESKTOP = 16;
 const BODY_FONT_SIZE_MOBILE = 12;
@@ -81,17 +81,18 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
   );
 
   return (
-    <section className="relative rounded-xl border border-[#d9cec0] bg-[#d8d8d8] p-3 md:p-6">
-      <header className="mb-3 flex items-center justify-between gap-3 md:mb-4">
-        <h3 className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4d4338]">Pré-visualização (A4 virtual)</h3>
-        <span className="font-sans text-[10px] uppercase tracking-[0.12em] text-[#6f6458]">Paginação automática · estilo Word</span>
+    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-base)]">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-3 py-2">
+        <h3 className="mono text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Canvas A4</h3>
+        <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Paginação automática</span>
       </header>
 
-      <div className="grid gap-4 md:gap-6">
+      <div className="no-scrollbar flex-1 overflow-y-auto p-4">
+        <div className="grid gap-4">
         {pages.map((page, index) => (
           <Fragment key={page.key}>
             <article
-              className="mx-auto w-full max-w-[794px] bg-white text-[#111] shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
+              className="mx-auto w-full max-w-[620px] rounded-[4px] bg-white text-[#111] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
               style={{
                 minHeight: `${pageHeight}px`,
                 padding: `${pagePadding}px`,
@@ -128,17 +129,17 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
                 style={{
                   margin: '0 auto',
                   width: '100%',
-                  maxWidth: `${PAGE_WIDTH}px`,
-                  borderTop: '2px dashed #c8c8c8',
-                  background: '#ececec',
-                  height: '32px',
+                  maxWidth: '620px',
+                  borderTop: '1px dashed #2f2f2f',
+                  background: '#171717',
+                  height: '24px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  fontSize: '11px',
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontSize: '9px',
                   letterSpacing: '0.04em',
-                  color: '#8c8c8c',
+                  color: '#606060',
                   userSelect: 'none',
                 }}
               >
@@ -147,6 +148,7 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
             )}
           </Fragment>
         ))}
+        </div>
       </div>
 
       <div aria-hidden style={{ position: 'absolute', inset: '-99999px auto auto -99999px', width: `${PAGE_WIDTH}px`, visibility: 'hidden' }}>

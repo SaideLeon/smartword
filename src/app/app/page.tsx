@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useThemeMode } from '@/hooks/useThemeMode';
 import { useEditorActions, useEditorMeta, usePanelActions, useSidePanel } from '@/hooks/useEditorStore';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
@@ -22,8 +21,6 @@ export default function Home() {
   const { canRedo, canUndo } = useEditorMeta();
   const { redo, undo } = useEditorActions();
   const isMobile = useIsMobile();
-  const { themeMode, toggleThemeMode } = useThemeMode();
-  const isDark = themeMode === 'dark';
   const [showEditor, setShowEditor] = useState(false);
 
   const handleInsert = useCallback(
@@ -49,16 +46,7 @@ export default function Home() {
   );
 
   return (
-    <main className={cn('relative flex h-dvh min-h-screen flex-col overflow-hidden font-serif transition-colors', isDark ? 'bg-[#0f0e0d] text-[#e8e2d9]' : 'bg-[#f6f1e8] text-[#221d16]')} data-theme={themeMode}>
-      <div
-        className="pointer-events-none fixed inset-0 z-0 bg-repeat opacity-50"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
-          backgroundSize: '180px',
-        }}
-      />
-
+    <main className="flex h-dvh min-h-screen flex-col overflow-hidden bg-[var(--bg-base)] text-[var(--text-primary)]" data-theme="dark">
       <EditorHeader
         sidePanel={sidePanel}
         canUndo={canUndo}
@@ -68,28 +56,29 @@ export default function Home() {
         onTogglePanel={handleTogglePanel}
       />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-        <section className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-5 px-4 pb-3 pt-4 md:px-8 md:pb-4 md:pt-10', sidePanel !== 'none' && isMobile && 'overflow-hidden', !(sidePanel !== 'none' && isMobile) && 'overflow-y-auto')}>
-          <div className="mx-auto flex w-full max-w-[960px] flex-col gap-5">
+      <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+        {!isMobile && (
+          <aside className="flex w-11 flex-shrink-0 flex-col items-center border-r border-[var(--border)] bg-[var(--bg-surface)] py-[18px]">
+            <div className="h-10 w-0.5 rounded bg-[linear-gradient(to_bottom,transparent,var(--accent-amber),transparent)]" />
+          </aside>
+        )}
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--bg-base)]">
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] px-3 py-2">
+            <span className="mono text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Editor principal</span>
+            <button
+              type="button"
+              onClick={() => setShowEditor((current) => !current)}
+              className="mono rounded-[5px] border border-[var(--border)] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)] transition hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)]"
+              title="Modo avançado"
+            >
+              {showEditor ? 'Ocultar edição' : 'Modo avançado'}
+            </button>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
             <EditorFileToolbar filename={filename} onFilenameChange={setFilename} />
-
-            <div className="-mt-3 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowEditor((current) => !current)}
-                className={cn(
-                  'rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors',
-                  isDark
-                    ? 'border-[#2e2924] text-[#5f574d] hover:border-[#4b4238] hover:text-[#a79a89]'
-                    : 'border-[#d8cbbb] text-[#9f8f7d] hover:border-[#bca991] hover:text-[#6e5d49]',
-                )}
-                title="Modo avançado"
-              >
-                {showEditor ? 'ocultar edição' : 'modo avançado'}
-              </button>
-            </div>
-
-            <div className={cn('grid gap-5', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
+            <div className={cn('grid min-h-0 flex-1 gap-3', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
               {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
               <DocumentPreview markdown={previewMarkdown} isMobile={isMobile} />
             </div>
@@ -97,7 +86,7 @@ export default function Home() {
         </section>
 
         {sidePanel !== 'none' && sidePanel !== 'chat' && (
-          <aside className={cn('z-20 flex min-w-0 flex-shrink-0 flex-col border-l border-[#2a2520] md:w-[380px]', isMobile ? 'absolute inset-0 animate-[slideUp_0.25s_ease] shadow-[0_-16px_40px_rgba(0,0,0,0.45)]' : 'relative animate-[slideIn_0.25s_ease]', sidePanel === 'tcc' ? 'bg-[#0b0d0b]' : 'bg-[#0a0d0a]')}>
+          <aside className={cn('z-20 flex min-w-0 flex-shrink-0 flex-col border-l border-[var(--border)] bg-[var(--bg-surface)]', isMobile ? 'absolute inset-0 animate-[slideUp_0.25s_ease] shadow-[0_-16px_40px_rgba(0,0,0,0.45)]' : 'relative w-[300px] animate-[slideIn_0.25s_ease]')}>
             {sidePanel === 'tcc' && <TccPanel onInsert={handleInsert} onTopicChange={setFilenameFromTopic} onClose={closePanel} isMobile={isMobile} />}
             {sidePanel === 'work' && <WorkPanel onInsert={handleInsert} onTopicChange={setFilenameFromTopic} onClose={closePanel} isMobile={isMobile} />}
           </aside>
@@ -105,12 +94,6 @@ export default function Home() {
       </div>
 
       <EditorStatusBar markdown={markdown} loading={loading} filename={filename} isMobile={isMobile} onExport={exportDocx} />
-
-      {!isMobile && (
-        <footer className={cn('relative z-10 flex flex-shrink-0 items-center justify-center border-t px-10 py-3', isDark ? 'border-[#1e1b18]' : 'border-[#dfd4c3]')}>
-          <span className={cn('font-mono text-[11px] tracking-[0.06em]', isDark ? 'text-[#3a3530]' : 'text-[#8c8275]')}>temml · mathml2omml · Muneri · Quelimane, Moçambique</span>
-        </footer>
-      )}
 
       <AiChatDrawer open={sidePanel === 'chat'} onClose={closePanel} onInsert={handleInsert} onReplace={handleReplace} isMobile={isMobile} />
 

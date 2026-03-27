@@ -92,7 +92,7 @@ export function AiChatDrawer({ open, onClose, onInsert, onReplace, isMobile = fa
         ref={panelRef}
         aria-label="Painel do chat IA"
         aria-modal="true"
-        className="fixed bottom-0 right-0 z-[61] flex h-[min(92dvh,820px)] w-full max-w-[420px] animate-[slideIn_0.25s_ease] flex-col border-l border-[#2a2520] bg-[#0d0c0b] shadow-[-12px_0_30px_rgba(0,0,0,0.35)] outline-none md:top-0 md:h-full"
+        className="fixed bottom-0 right-0 z-[61] flex h-[min(92dvh,820px)] w-full max-w-[420px] animate-[slideIn_0.25s_ease] flex-col border-l border-[var(--border)] bg-[var(--bg-surface)] shadow-[-12px_0_30px_rgba(0,0,0,0.35)] outline-none md:top-0 md:h-full"
         role="dialog"
         tabIndex={-1}
       >

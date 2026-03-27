@@ -13,71 +13,50 @@ interface Props {
 
 export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo }: Props) {
   return (
-    <header className="relative z-10 flex min-h-16 flex-shrink-0 flex-col items-start justify-between gap-3 border-b border-[#2a2520] bg-[rgba(15,14,13,0.85)] px-4 py-3 backdrop-blur md:flex-row md:items-center md:px-10 md:py-0">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-gradient-to-br from-[#c9a96e] to-[#8b6914] font-mono text-[13px] font-bold text-[#0f0e0d]">
-          ∂
-        </span>
-        <span className="font-serif text-[15px] italic tracking-[0.06em] text-[#c9a96e]">
-          Muneri
-          <span className="not-italic text-[#5a5248]"> · </span>
-          <span className="text-[13px] not-italic text-[#8a7d6e]">Markdown para Word com Equações Nativas</span>
-        </span>
+    <header className="relative z-20 flex h-[52px] flex-shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-surface)] px-3">
+      <div className="flex items-center gap-[9px]">
+        <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-[linear-gradient(135deg,#f59e0b,#f97316)] text-[15px] font-extrabold text-black">∂</span>
+        <div className="flex flex-col">
+          <span className="text-[13px] font-bold leading-none text-[var(--text-primary)]">Muneri</span>
+          <span className="mono max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-[9px] text-[var(--text-muted)]">Markdown para Word com equações nativas</span>
+        </div>
       </div>
 
-      <div className="flex w-full flex-wrap items-center justify-between gap-2 md:w-auto md:justify-end md:gap-3">
-        <PanelToggleButton active={sidePanel === 'work'} icon="📚" label="Trabalhos" closeLabel="Fechar Trabalhos" onClick={() => onTogglePanel('work')} />
-        <PanelToggleButton active={sidePanel === 'tcc'} icon="📝" label="TCC" closeLabel="Fechar TCC" onClick={() => onTogglePanel('tcc')} />
-        <PanelToggleButton active={sidePanel === 'chat'} icon="✦" label="IA" closeLabel="Fechar IA" onClick={() => onTogglePanel('chat')} variant="gold" />
+      <div className="ml-auto flex items-center gap-1.5">
+        <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => onTogglePanel('work')} />
+        <PanelToggleButton active={sidePanel === 'tcc'} label="TCC" onClick={() => onTogglePanel('tcc')} />
+        <PanelToggleButton active={sidePanel === 'chat'} label="IA" onClick={() => onTogglePanel('chat')} highlight />
 
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <button aria-label="Desfazer" className="press-feedback rounded border border-[#2a2520] bg-[#1a1714] px-2 py-1 font-mono text-[11px] text-[#8a7d6e] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>
-            ↶
-          </button>
-          <button aria-label="Refazer" className="press-feedback rounded border border-[#2a2520] bg-[#1a1714] px-2 py-1 font-mono text-[11px] text-[#8a7d6e] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>
-            ↷
-          </button>
+        <div className="ml-1.5 flex items-center gap-1 border-l border-[var(--border)] pl-2">
+          <button aria-label="Desfazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
+          <button aria-label="Refazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
         </div>
 
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#4a4440]">LaTeX → OMML</span>
-          <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#4a7c59] shadow-[0_0_6px_#4a7c59]" />
+        <div className="ml-1.5 flex items-center gap-1.5 border-l border-[var(--border)] pl-2">
+          <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">LaTeX → OMML</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-teal)] shadow-[0_0_6px_var(--accent-teal)]" />
         </div>
       </div>
     </header>
   );
 }
 
-function PanelToggleButton({
-  active,
-  icon,
-  label,
-  closeLabel,
-  onClick,
-  variant = 'default',
-}: {
-  active: boolean;
-  icon: string;
-  label: string;
-  closeLabel: string;
-  onClick: () => void;
-  variant?: 'default' | 'gold';
-}) {
+function PanelToggleButton({ active, label, onClick, highlight = false }: { active: boolean; label: string; onClick: () => void; highlight?: boolean }) {
   return (
     <button
       className={cn(
-        'press-feedback flex items-center gap-1 rounded border px-3 py-1.5 font-mono text-[12px] tracking-[0.05em] transition-colors',
-        active
-          ? 'border-[#c9a96e55] bg-[#c9a96e22] text-[#c9a96e]'
-          : variant === 'gold'
-            ? 'border-[#c9a96e33] bg-[#1a1714] text-[#c9a96e99] hover:border-[#c9a96e66] hover:text-[#c9a96e]'
-            : 'border-[#2a2520] bg-[#1a1714] text-[#8a7d6e]',
+        'press-feedback mono rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+        highlight
+          ? active
+            ? 'border-transparent bg-[var(--accent-amber)] text-black'
+            : 'border-transparent bg-[var(--accent-amber)] text-black hover:brightness-110'
+          : active
+            ? 'border-[var(--border)] bg-[var(--bg-active)] text-[var(--text-primary)]'
+            : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]',
       )}
       onClick={onClick}
-      aria-label={active ? closeLabel : label}
     >
-      <span>{icon}</span>
-      <span>{active ? closeLabel : label}</span>
+      {label}
     </button>
   );
 }
