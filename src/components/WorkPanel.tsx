@@ -138,12 +138,65 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
             {session.sections.map((sec) => {
               const { label, color } = statusLabel(sec.status);
               const isActive = activeSectionIdx === sec.index;
+              const isInserted = sec.status === 'inserted';
+              const isDeveloping = isActive && step === 'developing';
+              const isBusy = activeSectionIdx !== null;
               return (
-                <div key={sec.index} className={`flex items-center justify-between gap-2 rounded border px-3 py-2.5 transition-all ${isActive ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20' : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'}`}>
-                  <div className="min-w-0 flex-1"><div className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">{sec.title}</div><div className="mt-0.5 font-mono text-[10px]" style={{ color }}>{label}</div></div>
+                <div
+                  key={sec.index}
+                  className={`flex items-center justify-between gap-2 rounded border px-3 py-2.5 transition-all ${
+                    isActive
+                      ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20'
+                      : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">{sec.title}</div>
+                    <div className="mt-0.5 font-mono text-[10px]" style={{ color }}>{label}</div>
+                  </div>
                   <div className="flex shrink-0 gap-1.5">
-                    {sec.status !== 'pending' && <button onClick={() => insertSection(sec.index, onInsert)} className="flex h-7 w-7 items-center justify-center rounded border border-[color:var(--panel-gold)]/30 font-mono text-[13px] text-[var(--panel-gold)]" title="Inserir no editor" aria-label={`Inserir secção ${sec.title} no editor`}>↓</button>}
-                    <button onClick={() => developSection(sec.index)} className="flex h-7 w-7 items-center justify-center rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)]" title={sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'} aria-label={sec.status === 'pending' ? `Desenvolver secção ${sec.title}` : `Reescrever secção ${sec.title}`}>{sec.status === 'pending' ? '✦' : '↻'}</button>
+                    {sec.status !== 'pending' && (
+                      <button
+                        onClick={() => !isInserted && insertSection(sec.index, onInsert)}
+                        disabled={isInserted}
+                        className={`flex h-7 w-7 items-center justify-center rounded border font-mono text-[13px] transition-all ${
+                          isInserted
+                            ? 'cursor-default border-[color:var(--panel-gold)]/20 text-[color:var(--panel-gold)]/40'
+                            : 'border-[color:var(--panel-gold)]/30 text-[var(--panel-gold)] hover:bg-[color:var(--panel-gold)]/10'
+                        }`}
+                        title={isInserted ? 'Já inserido no editor' : 'Inserir no editor'}
+                        aria-label={
+                          isInserted
+                            ? `Secção ${sec.title} já inserida`
+                            : `Inserir secção ${sec.title} no editor`
+                        }
+                      >
+                        {isInserted ? '✓' : '↓'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => !isBusy && developSection(sec.index)}
+                      disabled={isBusy}
+                      className={`flex h-7 w-7 items-center justify-center rounded border font-mono text-[13px] transition-all ${
+                        isDeveloping
+                          ? 'animate-pulse border-[var(--panel-accent)] bg-[var(--panel-accent-dim)] text-[var(--panel-accent)]'
+                          : isBusy
+                            ? 'cursor-not-allowed border-[var(--panel-accent-dim)] text-[var(--panel-accent)] opacity-30'
+                            : 'border-[var(--panel-accent-dim)] text-[var(--panel-accent)] hover:bg-[var(--panel-accent-dim)]'
+                      }`}
+                      title={
+                        isDeveloping ? 'A desenvolver…' : sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'
+                      }
+                      aria-label={
+                        isDeveloping
+                          ? `A desenvolver ${sec.title}`
+                          : sec.status === 'pending'
+                            ? `Desenvolver secção ${sec.title}`
+                            : `Reescrever secção ${sec.title}`
+                      }
+                    >
+                      {isDeveloping ? '⋯' : sec.status === 'pending' ? '✦' : '↻'}
+                    </button>
                   </div>
                 </div>
               );

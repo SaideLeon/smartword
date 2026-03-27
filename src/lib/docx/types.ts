@@ -1,3 +1,18 @@
+export type ChartType = 'bar' | 'line' | 'pie' | 'area';
+
+export interface ChartSeries {
+  label: string;
+  data: number[];
+}
+
+export interface ChartNode {
+  type: 'chart';
+  chartType: ChartType;
+  title?: string;
+  labels: string[];
+  series: ChartSeries[];
+}
+
 export type DocumentNode =
   | { type: 'paragraph'; children: InlineNode[] }
   | { type: 'math_block'; latex: string }
@@ -6,7 +21,8 @@ export type DocumentNode =
   | { type: 'blockquote'; children: DocumentNode[] }
   | { type: 'table'; align: (TableAlign | null)[]; rows: TableRowNode[] }
   | { type: 'page_break' }
-  | { type: 'section_break' };
+  | { type: 'section_break' }
+  | ChartNode;
 
 export type TableAlign = 'left' | 'center' | 'right';
 
