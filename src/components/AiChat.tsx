@@ -275,7 +275,14 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           className={`flex-1 resize-none rounded-[5px] border border-[var(--chat-border)] bg-[var(--editor-surface)] px-[10px] text-xs leading-[1.5] tracking-[0.02em] text-[var(--chat-text)] outline-none [caret-color:var(--editor-caret)] [font-family:var(--font-label)] focus:border-[color:var(--chat-accent)/0.55] ${isMobile ? 'py-[10px]' : 'py-2'}`}
         />
         <button
-          className={`press-feedback flex shrink-0 items-center justify-center rounded-[5px] border-none text-base transition-all ${isMobile ? 'h-[42px] w-[42px]' : 'h-9 w-9'} ${streaming ? 'bg-[var(--send-stop-bg)] text-[var(--send-stop-fg)]' : input.trim() ? 'bg-[var(--send-ready-bg)] text-[var(--send-ready-fg)]' : 'bg-[var(--send-idle-bg)] text-[var(--send-idle-fg)]'}`}
+          className={`press-feedback flex shrink-0 items-center justify-center rounded-[5px] border-none text-base transition-all ${isMobile ? 'h-[42px] w-[42px]' : 'h-9 w-9'} ${streaming ? 'text-[var(--send-stop-fg)]' : input.trim() ? 'text-[var(--send-ready-fg)]' : 'bg-[var(--send-idle-bg)] text-[var(--send-idle-fg)]'}`}
+          style={
+            streaming
+              ? { background: 'var(--send-stop-bg)' }
+              : input.trim()
+                ? { background: 'var(--send-ready-bg)' }
+                : {}
+          }
           onClick={streaming ? () => abortRef.current?.abort() : send}
           title={streaming ? 'Parar' : 'Enviar'}
           aria-label={streaming ? 'Parar geração' : 'Enviar mensagem'}
