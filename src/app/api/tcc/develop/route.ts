@@ -62,6 +62,8 @@ Desenvolve APENAS a secção: "${currentSection.title}"
 REGRAS ABSOLUTAS:
 - Escreve APENAS o desenvolvimento da secção, sem qualquer introdução do tipo "Nesta secção..." ou "A seguir..."
 - Sem preâmbulos, sem meta-comentários, sem conclusões sobre o que vem a seguir
+- Inicia imediatamente pelo conteúdo académico da secção (não uses frases de enquadramento inicial)
+- Não adiciones bloco de conclusão final, encerramento, nem secção de referências/bibliografia quando não forem parte explícita desta secção
 - Texto académico puro, em português europeu, pronto para inserir directamente num TCC
 - Mantém coerência terminológica com o contexto fornecido acima
 - Usa a ficha técnica de pesquisa como base factual prioritária e aplica apenas os pontos relevantes para esta secção
