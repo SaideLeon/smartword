@@ -401,9 +401,10 @@ export function useWorkSession() {
         const refreshRes = await fetch(`/api/work/session?id=${session.id}`);
         if (!refreshRes.ok) throw new Error('Erro ao sincronizar sessão regenerada');
 
-        fetchedSession = await refreshRes.json();
+        const refreshedSession: WorkSessionRecord = await refreshRes.json();
+        fetchedSession = refreshedSession;
 
-        const organizedContent = [...fetchedSession.sections]
+        const organizedContent = [...refreshedSession.sections]
           .filter(section => section.content.trim())
           .sort((a, b) => a.index - b.index)
           .map(section => {
