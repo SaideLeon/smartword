@@ -6,18 +6,19 @@ interface Props {
   markdown: string;
   loading: boolean;
   filename: string;
+  includeCover: boolean;
   isMobile: boolean;
   onExport: () => void;
 }
 
-export function EditorStatusBar({ markdown, loading, filename, isMobile, onExport }: Props) {
+export function EditorStatusBar({ markdown, loading, filename, includeCover, isMobile, onExport }: Props) {
   return (
     <div className="relative z-20 flex flex-shrink-0 flex-col items-stretch gap-3 border-t border-[var(--border-subtle)] bg-[var(--bg-base)] px-3 py-2 md:flex-row md:items-center md:justify-between md:px-4">
       <div className="flex items-center gap-3">
         <span className="mono text-[9px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">{markdown.split('\n').length} linhas</span>
         <span className="mono text-[9px] font-semibold uppercase tracking-[0.04em] text-[var(--text-muted)]">{markdown.length} caracteres</span>
       </div>
-      <ExportButton onClick={onExport} loading={loading} filename={filename} fullWidth={isMobile} />
+      <ExportButton onClick={onExport} loading={loading} filename={filename} includeCover={includeCover} fullWidth={isMobile} />
     </div>
   );
 }
