@@ -1,7 +1,6 @@
 'use client';
 
 // src/components/WorkPanel.tsx
-// Integra o agente de capa (useCoverAgent) após a aprovação do esboço.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
@@ -18,8 +17,6 @@ interface Props {
   isMobile?: boolean;
   editorMarkdown?: string;
 }
-
-// ── Tipos locais de mensagem do agente ───────────────────────────────────────
 
 interface AgentMessage {
   role: 'user' | 'assistant';
@@ -78,6 +75,8 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
 
+  // ── Sincronizar estado do agente de capa com o editor ─────────────────────
+
   useEffect(() => {
     if (coverAgent.step === 'done_with_cover' && coverAgent.coverData) {
       setIncludeCover(true);
@@ -91,18 +90,32 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     }
   }, [coverAgent.step, coverAgent.coverData, setCoverData, setIncludeCover]);
 
-  // ── Iniciar agente quando esboço é aprovado ───────────────────────────────
+  // ── Iniciar agente quando esboço é aprovado (ou restaurar capa existente) ──
+  //
+  // Lógica:
+  //  - Sessão nova (sem cover_data): lança o agente normalmente.
+  //  - Sessão retomada (com cover_data): restaura directamente, sem perguntar.
 
   useEffect(() => {
     if (step === 'outline_approved' && coverAgent.step === 'idle' && session) {
-      setAgentMessages([]);
-      coverAgent.askAboutCover(
-        session.topic,
-        session.outline_approved ?? session.outline_draft ?? '',
-        (role, content) => {
-          setAgentMessages(prev => [...prev, { role, content }]);
-        },
-      );
+      const existingCover = session.cover_data ?? null;
+
+      if (existingCover) {
+        // Sessão retomada com capa já existente — restaurar silenciosamente
+        coverAgent.restoreCoverData(existingCover);
+        setIncludeCover(true);
+        setCoverData(existingCover);
+      } else {
+        // Primeira vez — lançar o agente para perguntar ao utilizador
+        setAgentMessages([]);
+        coverAgent.askAboutCover(
+          session.topic,
+          session.outline_approved ?? session.outline_draft ?? '',
+          (role, content) => {
+            setAgentMessages(prev => [...prev, { role, content }]);
+          },
+        );
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -126,22 +139,19 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
       (role, content) => {
         setAgentMessages(prev => [...prev, { role, content }]);
       },
-      () => {
-        // tool call → abrir modal
-        setShowCoverModal(true);
-      },
+      () => setShowCoverModal(true),
     );
 
     setAgentSending(false);
   };
 
-  // ── Submissão do formulário de capa ───────────────────────────────────────
+  // ── Submissão do formulário de capa — agora persiste no Supabase ──────────
 
   const handleCoverSubmit = async (coverData: CoverData) => {
     setShowCoverModal(false);
     if (!session) return;
 
-    await coverAgent.submitCoverData(
+    const finalData = await coverAgent.submitCoverData(
       coverData,
       session.topic,
       session.outline_approved ?? session.outline_draft ?? '',
@@ -149,6 +159,24 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
         setAgentMessages(prev => [...prev, { role, content }]);
       },
     );
+
+    // Persistir no Supabase para que a capa seja restaurada ao retomar
+    if (finalData) {
+      try {
+        await fetch('/api/work/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            _action: 'saveCoverData',
+            sessionId: session.id,
+            coverData: finalData,
+          }),
+        });
+      } catch {
+        // Não crítico — a capa está em memória e funciona nesta sessão
+        console.warn('Não foi possível persistir dados de capa no servidor.');
+      }
+    }
   };
 
   // ── Handlers existentes ───────────────────────────────────────────────────
@@ -176,16 +204,8 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     return { label: 'Pendente', color: C.muted };
   };
 
-  // ── Render: step do agente de capa (após aprovação) ──────────────────────
-
-  const showCoverAgent =
-    step === 'outline_approved' &&
-    coverAgent.step !== 'idle' &&
-    coverAgent.step !== 'done_without_cover';
-
   return (
     <>
-      {/* Modal de formulário de capa */}
       {showCoverModal && (
         <CoverFormModal
           onSubmit={handleCoverSubmit}
@@ -352,11 +372,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* ── AGENTE DE CAPA (após aprovação, antes das secções) ── */}
-          {step === 'outline_approved' && coverAgent.step !== 'idle' && (
+          {/* ── AGENTE DE CAPA (após aprovação, antes das secções — apenas sessões novas) ── */}
+          {step === 'outline_approved' &&
+           coverAgent.step !== 'idle' &&
+           coverAgent.step !== 'done_with_cover' &&
+           coverAgent.step !== 'done_without_cover' && (
             <div className="flex flex-col gap-3">
-
-              {/* Mensagens do agente */}
               {agentMessages.map((msg, i) => (
                 <div key={i} className={`rounded border px-3 py-2.5 ${msg.role === 'assistant' ? 'border-[var(--panel-border)] bg-[var(--panel-surface)]' : 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]'}`}>
                   <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] ${msg.role === 'assistant' ? 'text-[var(--panel-accent)]' : 'text-[var(--panel-muted)]'}`}>
@@ -366,7 +387,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 </div>
               ))}
 
-              {/* Abstract a ser gerado */}
               {coverAgent.step === 'generating_abstract' && coverAgent.streamingAbstract && (
                 <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2.5">
                   <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">A gerar resumo…</span>
@@ -374,22 +394,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 </div>
               )}
 
-              {/* Badge de capa gerada */}
-              {coverAgent.step === 'done_with_cover' && (
-                <div className="rounded border border-[color:var(--panel-gold)]/30 bg-[color:var(--panel-gold)]/10 px-3 py-2.5">
-                  <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">📄 Capa pronta</div>
-                  <p className="font-mono text-[11px] text-[var(--panel-text)]">
-                    {coverAgent.coverData?.theme && (
-                      <span className="block mb-1 text-[var(--panel-muted)]">Tema: {coverAgent.coverData.theme}</span>
-                    )}
-                    {coverAgent.coverData?.members?.length && (
-                      <span className="block text-[var(--panel-muted)]">{coverAgent.coverData.members.length} membro(s) · {coverAgent.coverData.teacher}</span>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {/* Input do agente */}
               {(coverAgent.step === 'asking' || coverAgent.step === 'awaiting_form') && (
                 <div className="flex items-end gap-2">
                   <input
@@ -411,7 +415,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 </div>
               )}
 
-              {/* Botão de saltar capa */}
               {coverAgent.step === 'asking' && agentMessages.length > 0 && (
                 <button
                   onClick={() => {
@@ -426,7 +429,22 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* ── SECÇÕES (após agente terminar) ── */}
+          {/* ── Badge de capa gerada (sessão nova ou retomada com capa) ── */}
+          {step === 'outline_approved' && coverAgent.step === 'done_with_cover' && coverAgent.coverData && (
+            <div className="rounded border border-[color:var(--panel-gold)]/30 bg-[color:var(--panel-gold)]/10 px-3 py-2.5">
+              <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">📄 Capa disponível</div>
+              <p className="font-mono text-[11px] text-[var(--panel-text)]">
+                {coverAgent.coverData.theme && (
+                  <span className="block mb-1 text-[var(--panel-muted)]">Tema: {coverAgent.coverData.theme}</span>
+                )}
+                {coverAgent.coverData.members?.length && (
+                  <span className="block text-[var(--panel-muted)]">{coverAgent.coverData.members.length} membro(s) · {coverAgent.coverData.teacher}</span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* ── SECÇÕES ── */}
           {(step === 'outline_approved' || step === 'developing' || step === 'section_ready') &&
            (coverAgent.step === 'done_with_cover' || coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') &&
            session && (
@@ -521,7 +539,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* Erros */}
           {(error || coverAgent.error) && (
             <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">
               ⚠ {error || coverAgent.error}

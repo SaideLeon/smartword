@@ -1,3 +1,5 @@
+import type { CoverData } from '@/lib/docx/cover-types';
+
 export type WorkSectionStatus = 'pending' | 'developed' | 'inserted';
 
 export interface WorkSection {
@@ -21,4 +23,6 @@ export interface WorkSessionRecord {
   research_keywords: string[] | null;
   research_brief: string | null;
   research_generated_at: string | null;
+  /** Dados de capa persistidos — restaurados automaticamente ao retomar a sessão. */
+  cover_data: CoverData | null;
 }

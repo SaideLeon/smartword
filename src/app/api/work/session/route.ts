@@ -5,6 +5,7 @@ import {
   getWorkSession,
   listWorkSessions,
   markWorkSectionInserted,
+  saveWorkCoverData,
 } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
@@ -36,16 +37,27 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    // Marcar secção como inserida no editor
     if (body._action === 'markInserted') {
       const { sessionId, sectionIndex, sections } = body;
       if (!sessionId || typeof sectionIndex !== 'number' || !Array.isArray(sections)) {
         return NextResponse.json({ error: 'Dados inválidos para actualizar secção' }, { status: 400 });
       }
-
       await markWorkSectionInserted(sessionId, sectionIndex, sections);
       return NextResponse.json({ ok: true });
     }
 
+    // Persistir dados de capa (incluindo abstract)
+    if (body._action === 'saveCoverData') {
+      const { sessionId, coverData } = body;
+      if (!sessionId) {
+        return NextResponse.json({ error: 'sessionId é obrigatório' }, { status: 400 });
+      }
+      await saveWorkCoverData(sessionId, coverData ?? null);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Criar nova sessão
     const topic = body.topic?.trim();
     if (!topic) return NextResponse.json({ error: 'Tópico obrigatório' }, { status: 400 });
 

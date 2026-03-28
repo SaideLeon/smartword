@@ -1,8 +1,6 @@
 'use client';
 
 // hooks/useCoverAgent.ts
-// Agente Groq com tool calling para decidir se gera capa/contracapa.
-// Integra-se com o WorkPanel logo após a aprovação do esboço.
 
 import { useState, useCallback } from 'react';
 import type { CoverData } from '@/lib/docx/cover-types';
@@ -10,12 +8,12 @@ import type { CoverData } from '@/lib/docx/cover-types';
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 export type CoverAgentStep =
-  | 'idle'               // ainda não iniciado
-  | 'asking'             // a aguardar resposta do utilizador (sim/não capa)
-  | 'awaiting_form'      // tool chamada — modal aberto à espera de dados
-  | 'generating_abstract'// a gerar resumo automático com base no theme
-  | 'done_with_cover'    // capa gerada com sucesso
-  | 'done_without_cover' // utilizador optou por não ter capa
+  | 'idle'
+  | 'asking'
+  | 'awaiting_form'
+  | 'generating_abstract'
+  | 'done_with_cover'
+  | 'done_without_cover'
   | 'error';
 
 export interface CoverAgentState {
@@ -26,7 +24,7 @@ export interface CoverAgentState {
   streamingAbstract: string;
 }
 
-// ── JSON Schema da tool para o Groq ─────────────────────────────────────────
+// ── JSON Schema da tool ───────────────────────────────────────────────────────
 
 const COVER_TOOL = {
   type: 'function' as const,
@@ -55,7 +53,7 @@ const COVER_TOOL = {
   },
 };
 
-// ── Prompt do agente ─────────────────────────────────────────────────────────
+// ── Prompt do agente ──────────────────────────────────────────────────────────
 
 function buildAgentSystemPrompt(topic: string, outline: string): string {
   return `És um assistente académico especializado em trabalhos escolares do ensino secundário/médio em Moçambique.
@@ -85,7 +83,6 @@ async function generateAbstract(
   outline: string,
   onDelta: (chunk: string) => void,
 ): Promise<string> {
-  // Chama via API Route para não expor a chave (ver nota abaixo)
   const res = await fetch('/api/cover/abstract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -134,7 +131,22 @@ export function useCoverAgent() {
     streamingAbstract: '',
   });
 
-  // ── Iniciar: enviar mensagem do agente a perguntar sobre capa ─────────────
+  // ── Restaurar dados de capa de uma sessão anterior ────────────────────────
+  //
+  // Chamado pelo WorkPanel quando se retoma uma sessão que já tinha capa gerada.
+  // Salta todo o fluxo do agente e restaura directamente o estado final.
+
+  const restoreCoverData = useCallback((coverData: CoverData) => {
+    setState({
+      step: 'done_with_cover',
+      coverData,
+      abstract: coverData.abstract ?? null,
+      error: null,
+      streamingAbstract: '',
+    });
+  }, []);
+
+  // ── Iniciar: perguntar sobre capa ─────────────────────────────────────────
 
   const askAboutCover = useCallback(async (
     topic: string,
@@ -147,11 +159,7 @@ export function useCoverAgent() {
       const res = await fetch('/api/cover/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          outline,
-          messages: [],
-        }),
+        body: JSON.stringify({ topic, outline, messages: [] }),
       });
 
       if (!res.ok) throw new Error('Erro no agente de capa');
@@ -172,7 +180,7 @@ export function useCoverAgent() {
     outline: string,
     conversationHistory: { role: 'user' | 'assistant'; content: string }[],
     appendMessage: (role: 'assistant', content: string) => void,
-    onToolCall: () => void,  // abre o modal
+    onToolCall: () => void,
   ) => {
     try {
       const res = await fetch('/api/cover/agent', {
@@ -194,7 +202,6 @@ export function useCoverAgent() {
       const choice = data.choices?.[0];
       const finishReason = choice?.finish_reason;
 
-      // ── Tool call → abrir modal ─────────────────────────────────────────
       if (finishReason === 'tool_calls') {
         const toolCall = choice?.message?.tool_calls?.[0];
         if (toolCall?.function?.name === 'criar_capa') {
@@ -204,7 +211,6 @@ export function useCoverAgent() {
         }
       }
 
-      // ── Resposta de texto → utilizador não quer capa ──────────────────
       const message = choice?.message?.content ?? '';
       if (message) {
         appendMessage('assistant', message);
@@ -215,14 +221,17 @@ export function useCoverAgent() {
     }
   }, []);
 
-  // ── Receber dados do formulário de capa e gerar abstract ─────────────────
+  // ── Receber dados do formulário de capa e gerar abstract ──────────────────
+  //
+  // Retorna o CoverData final (com abstract incluído) para que o chamador
+  // possa persistir os dados no Supabase.
 
   const submitCoverData = useCallback(async (
     coverData: CoverData,
     topic: string,
     outline: string,
     appendMessage: (role: 'assistant', content: string) => void,
-  ) => {
+  ): Promise<CoverData | null> => {
     setState(prev => ({
       ...prev,
       step: 'generating_abstract',
@@ -257,8 +266,11 @@ export function useCoverAgent() {
         'assistant',
         '✓ Capa e contracapa geradas com sucesso! Podes agora desenvolver as secções do trabalho.',
       );
+
+      return finalData;
     } catch (e: any) {
       setState(prev => ({ ...prev, step: 'error', error: e.message }));
+      return null;
     }
   }, []);
 
@@ -290,6 +302,7 @@ export function useCoverAgent() {
     askAboutCover,
     handleUserResponse,
     submitCoverData,
+    restoreCoverData,
     chooseWithoutCover,
     reset,
   };

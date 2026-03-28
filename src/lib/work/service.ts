@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { WorkSection, WorkSessionRecord } from './types';
+import type { CoverData } from '@/lib/docx/cover-types';
 
 export async function createWorkSession(topic: string): Promise<WorkSessionRecord> {
   const { data, error } = await supabase
@@ -118,6 +119,22 @@ export async function markWorkSectionInserted(
   const { error } = await supabase
     .from('work_sessions')
     .update({ sections })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Persiste os dados de capa (incluindo abstract gerado) na sessão.
+ * Chamado após a submissão do formulário de capa e geração do abstract.
+ */
+export async function saveWorkCoverData(
+  id: string,
+  coverData: CoverData | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('work_sessions')
+    .update({ cover_data: coverData })
     .eq('id', id);
 
   if (error) throw new Error(error.message);
