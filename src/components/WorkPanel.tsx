@@ -15,6 +15,7 @@ interface Props {
   onTopicChange: (topic: string) => void;
   onClose: () => void;
   isMobile?: boolean;
+  editorMarkdown?: string;
 }
 
 // ── Tipos locais de mensagem do agente ───────────────────────────────────────
@@ -24,7 +25,7 @@ interface AgentMessage {
   content: string;
 }
 
-export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
+export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
@@ -139,10 +140,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
   const handleExportWithCover = async () => {
     if (!coverAgent.coverData || !session) return;
 
-    const markdown = session.sections
-      .filter(s => s.content)
-      .map(s => `## ${s.title}\n\n${s.content}`)
-      .join('\n\n');
+    // Prioriza o conteúdo do editor (inclui edições manuais e {pagebreak}).
+    // Fallback: reconstrói a partir das secções da sessão se o editor estiver vazio.
+    const hasEditorContent = editorMarkdown && editorMarkdown.trim().length > 0;
+    const contentMarkdown = hasEditorContent
+      ? editorMarkdown
+      : session.sections
+          .filter(s => s.content)
+          .map(s => `## ${s.title}\n\n${s.content}`)
+          .join('\n\n');
 
     try {
       const res = await fetch('/api/cover/export', {
@@ -150,7 +156,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coverData: coverAgent.coverData,
-          markdown,
+          markdown: contentMarkdown,
           filename: session.topic.slice(0, 40).replace(/\s+/g, '-').toLowerCase() || 'trabalho',
         }),
       });
