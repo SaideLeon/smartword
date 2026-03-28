@@ -491,14 +491,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 <div className="mt-2 rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent)]/20 p-3 text-center">
                   <div className="mb-1 text-2xl">🎓</div>
                   <div className="font-mono text-xs text-[var(--panel-accent)]">Trabalho concluído!</div>
-                  {coverAgent.coverData && (
-                    <button
-                      onClick={handleExportWithCover}
-                      className="mt-2 rounded border border-[color:var(--panel-gold)]/40 px-3 py-1 font-mono text-[10px] text-[var(--panel-gold)] hover:bg-[color:var(--panel-gold)]/10 transition-colors"
-                    >
-                      ↓ Exportar com capa completa
-                    </button>
-                  )}
                 </div>
               )}
             </div>
