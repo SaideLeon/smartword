@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
+import type { CoverData } from '@/lib/docx/cover-types';
 
 export type SidePanel = 'none' | 'chat' | 'tcc' | 'work';
 
@@ -31,6 +32,8 @@ interface EditorState {
   sidePanel: SidePanel;
   content: string;
   filename: string;
+  includeCover: boolean;
+  coverData: CoverData | null;
   currentStructure: string[];
   undoStack: string[];
   redoStack: string[];
@@ -43,6 +46,9 @@ interface EditorState {
   redo: () => void;
   setFilename: (filename: string) => void;
   setFilenameFromTopic: (topic: string) => void;
+  setIncludeCover: (value: boolean) => void;
+  setCoverData: (data: CoverData | null) => void;
+  resetExportPreferences: () => void;
   setCurrentStructure: (structure: string[]) => void;
 }
 
@@ -50,6 +56,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   sidePanel: 'none',
   content: DEFAULT_MARKDOWN,
   filename: 'matematica-teste',
+  includeCover: false,
+  coverData: null,
   currentStructure: [],
   undoStack: [],
   redoStack: [],
@@ -103,6 +111,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setFilename: (filename) => set({ filename }),
   setFilenameFromTopic: (topic) => set({ filename: buildFilenameFromTopic(topic) }),
+  setIncludeCover: (includeCover) => set({ includeCover }),
+  setCoverData: (coverData) => set({ coverData }),
+  resetExportPreferences: () => set({ includeCover: false, coverData: null }),
   setCurrentStructure: (currentStructure) => set({ currentStructure }),
 }));
 
@@ -123,9 +134,18 @@ export const useEditorMeta = () =>
   useEditorStore(
     useShallow((s) => ({
       filename: s.filename,
+      includeCover: s.includeCover,
       currentStructure: s.currentStructure,
       canUndo: s.undoStack.length > 0,
       canRedo: s.redoStack.length > 0,
+    })),
+  );
+
+export const useExportPreferences = () =>
+  useEditorStore(
+    useShallow((s) => ({
+      includeCover: s.includeCover,
+      coverData: s.coverData,
     })),
   );
 
@@ -138,6 +158,9 @@ export const useEditorActions = () =>
       redo: s.redo,
       setFilename: s.setFilename,
       setFilenameFromTopic: s.setFilenameFromTopic,
+      setIncludeCover: s.setIncludeCover,
+      setCoverData: s.setCoverData,
+      resetExportPreferences: s.resetExportPreferences,
       setCurrentStructure: s.setCurrentStructure,
     })),
   );
