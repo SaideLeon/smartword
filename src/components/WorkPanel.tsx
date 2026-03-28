@@ -61,7 +61,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
-    developSection, insertSection, backToOutline, loadSessions, resumeSession,
+    developSection, insertSection, backToOutline, loadSessions, resumeSession, isSectionRegenerated,
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
@@ -244,6 +244,16 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
       setIsApprovingOutline(false);
     }
   };
+
+  const handleInsertSection = useCallback((sectionIndex: number) => {
+    const hasPreloadedEditorData = Boolean(editorMarkdown?.trim());
+    const shouldResetEditor = hasPreloadedEditorData && isSectionRegenerated(sectionIndex);
+
+    insertSection(sectionIndex, onInsert, {
+      shouldResetEditor,
+      onReplace: shouldResetEditor ? setContent : undefined,
+    });
+  }, [editorMarkdown, insertSection, isSectionRegenerated, onInsert, setContent]);
 
   const statusLabel = (status: string) => {
     if (status === 'inserted') return { label: 'Inserido ✓', color: C.gold };
@@ -525,7 +535,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                     <div className="flex shrink-0 gap-1.5">
                       {sec.status !== 'pending' && (
                         <button
-                          onClick={() => !isInserted && insertSection(sec.index, onInsert)}
+                          onClick={() => !isInserted && handleInsertSection(sec.index)}
                           disabled={isInserted}
                           className={`flex h-7 w-7 items-center justify-center rounded border font-mono text-[13px] transition-all ${
                             isInserted
@@ -585,7 +595,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 {streamingText}
               </div>
               <div className="flex gap-2">
-                <Btn onClick={() => insertSection(activeSectionIdx, onInsert)} color={C.accent} flex>↓ Inserir no editor</Btn>
+                <Btn onClick={() => handleInsertSection(activeSectionIdx)} color={C.accent} flex>↓ Inserir no editor</Btn>
                 <Btn onClick={backToOutline} color={C.muted} outline flex>← Voltar</Btn>
               </div>
             </div>

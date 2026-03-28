@@ -144,6 +144,7 @@ export function useWorkSession() {
   const [recentSessions, setRecentSessions] = useState<
     Pick<WorkSessionRecord, 'id' | 'topic' | 'status' | 'created_at' | 'updated_at'>[]
   >([]);
+  const [regeneratedSections, setRegeneratedSections] = useState<Set<number>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
@@ -153,6 +154,7 @@ export function useWorkSession() {
     setStreamingText('');
     setActiveSectionIdx(null);
     setError(null);
+    setRegeneratedSections(new Set());
   }, []);
 
   const startNew = useCallback(() => {
@@ -284,6 +286,9 @@ export function useWorkSession() {
 
   const developSection = useCallback(async (index: number) => {
     if (!session) return;
+    const previousStatus = session.sections.find(section => section.index === index)?.status;
+    const isRegeneration = previousStatus === 'developed' || previousStatus === 'inserted';
+
     setError(null);
     setActiveSectionIdx(index);
     setStreamingText('');
@@ -343,6 +348,14 @@ export function useWorkSession() {
       // Actualizar também o streamingText com o conteúdo normalizado
       // para que o preview "Secção pronta" mostre o resultado final correcto
       setStreamingText(normalizedContent);
+
+      setRegeneratedSections(prev => {
+        const next = new Set(prev);
+        if (isRegeneration) next.add(index);
+        else next.delete(index);
+        return next;
+      });
+
       setStep('section_ready');
     } catch (e: any) {
       if (e.name !== 'AbortError') { setError(e.message); setStep('outline_approved'); }
@@ -352,6 +365,10 @@ export function useWorkSession() {
   const insertSection = useCallback(async (
     index: number,
     onInsert: (text: string) => void,
+    options?: {
+      shouldResetEditor?: boolean;
+      onReplace?: (text: string) => void;
+    },
   ) => {
     if (!session) return;
     const sec = session.sections[index];
@@ -366,7 +383,7 @@ export function useWorkSession() {
       ? sec.content
       : `${heading} ${sec.title}\n\n${sec.content}`;
 
-    onInsert(textToInsert);
+    let fetchedSession: WorkSessionRecord | null = null;
 
     try {
       await fetch('/api/work/session', {
@@ -379,22 +396,65 @@ export function useWorkSession() {
           sections: session.sections,
         }),
       });
-    } catch { /* não crítico */ }
 
-    setSession(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        sections: prev.sections.map(section =>
-          section.index === index
-            ? { ...section, status: 'inserted' as const }
-            : section,
-        ),
-      };
+      if (options?.shouldResetEditor && options.onReplace) {
+        const refreshRes = await fetch(`/api/work/session?id=${session.id}`);
+        if (!refreshRes.ok) throw new Error('Erro ao sincronizar sessão regenerada');
+
+        fetchedSession = await refreshRes.json();
+
+        const organizedContent = [...fetchedSession.sections]
+          .filter(section => section.content.trim())
+          .sort((a, b) => a.index - b.index)
+          .map(section => {
+            const sectionHasHeading = contentStartsWithTitle(section.content, section.title);
+            if (sectionHasHeading) return section.content;
+
+            const sectionIsSubsection = /^\d+\.\d+/.test(section.title);
+            const sectionHeading = sectionIsSubsection ? '###' : '##';
+            return `${sectionHeading} ${section.title}\n\n${section.content}`;
+          })
+          .join('\n\n');
+
+        options.onReplace(organizedContent);
+      } else {
+        onInsert(textToInsert);
+      }
+    } catch {
+      if (options?.shouldResetEditor && options.onReplace) {
+        options.onReplace(textToInsert);
+      } else {
+        onInsert(textToInsert);
+      }
+    }
+
+    if (fetchedSession) {
+      setSession(fetchedSession);
+    } else {
+      setSession(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          sections: prev.sections.map(section =>
+            section.index === index
+              ? { ...section, status: 'inserted' as const }
+              : section,
+          ),
+        };
+      });
+    }
+
+    setRegeneratedSections(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
     });
+
     setStep('outline_approved');
     setActiveSectionIdx(null);
   }, [session]);
+
+  const isSectionRegenerated = useCallback((index: number) => regeneratedSections.has(index), [regeneratedSections]);
 
   const backToOutline = useCallback(() => {
     setStep('outline_approved');
@@ -412,5 +472,6 @@ export function useWorkSession() {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession,
+    isSectionRegenerated,
   };
 }
