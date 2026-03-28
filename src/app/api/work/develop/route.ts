@@ -1,3 +1,5 @@
+// app/api/work/develop/route.ts  (versão corrigida — filtro anti-conclusão + prompt reforçado)
+
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkSectionContent } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
@@ -5,21 +7,52 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 const PAGEBREAK_MARKER = '{pagebreak}';
 
-// Secções pré-textuais: {pagebreak} é inserido DEPOIS do conteúdo
-const PRE_TEXTUAL_SECTIONS = new Set(['Introdução', 'Objectivos e Metodologia']);
-
-// Secções pós-textuais: {pagebreak} é inserido ANTES do conteúdo
+const PRE_TEXTUAL_SECTIONS  = new Set(['Introdução', 'Objectivos e Metodologia']);
 const POST_TEXTUAL_SECTIONS = new Set(['Conclusão', 'Referências Bibliográficas']);
 
-/**
- * Normaliza o conteúdo gerado pela IA:
- *  - Remove qualquer {pagebreak} que a IA tenha incluído (não deve estar no desenvolvimento)
- *  - Pré-textuais (Introdução, Obj. e Metodologia): adiciona {pagebreak} no fim
- *  - Pós-textuais (Conclusão, Referências): adiciona {pagebreak} no início
- *  - Restantes: devolve o conteúdo limpo sem qualquer marcador
- */
+// ── Secções que permitem conteúdo de fecho ────────────────────────────────────
+
+const SECTIONS_THAT_ALLOW_CLOSING = new Set([
+  'conclusão',
+  'conclusion',
+  'referências',
+  'referencias',
+  'referências bibliográficas',
+  'referencias bibliograficas',
+  'bibliography',
+]);
+
+function sectionAllowsClosing(title: string): boolean {
+  return SECTIONS_THAT_ALLOW_CLOSING.has(title.toLowerCase().trim());
+}
+
+// ── Filtro pós-processamento ──────────────────────────────────────────────────
+
+const SPURIOUS_HEADING_PATTERN = /^#{1,3}\s*(conclus[aã]o|consider[aã]es\s+finais|refere?ncias?(\s+bibliogr[aá]ficas?)?|bibliography|notas?\s+finais?|síntese)\s*$/im;
+
+const SPURIOUS_CLOSING_PHRASES = /\n+(em\s+(suma|conclus[aã]o|síntese)|portanto,\s+conclui-se|por\s+fim,\s+(pode|é\s+poss[ií]vel)|conclui-se\s+(assim|que|portanto)|desta\s+(forma|maneira|feita),\s+(conclui|verifica|observa)-se)[^]*/i;
+
+const SPURIOUS_REFERENCE_BLOCK = /\n+(#{1,3}\s*refere?ncias?[^\n]*\n+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][^.\n]{2,60}\.\s*\(\d{4}\)[^\n]*\n){2,}[^]*/;
+
+function stripSpuriousBlocks(content: string, sectionTitle: string): string {
+  if (sectionAllowsClosing(sectionTitle)) return content;
+
+  let cleaned = content;
+
+  const headingMatch = SPURIOUS_HEADING_PATTERN.exec(cleaned);
+  if (headingMatch && headingMatch.index !== undefined) {
+    cleaned = cleaned.slice(0, headingMatch.index).trimEnd();
+  }
+
+  cleaned = cleaned.replace(SPURIOUS_CLOSING_PHRASES, '').trimEnd();
+  cleaned = cleaned.replace(SPURIOUS_REFERENCE_BLOCK, '').trimEnd();
+
+  return cleaned;
+}
+
+// ── Normalização de pagebreaks ────────────────────────────────────────────────
+
 function normalizeSectionContent(content: string, sectionTitle: string): string {
-  // Limpa qualquer {pagebreak} que a IA tenha incluído acidentalmente
   const cleaned = content
     .trim()
     .replace(/\s*\{pagebreak\}\s*/g, ' ')
@@ -35,6 +68,8 @@ function normalizeSectionContent(content: string, sectionTitle: string): string 
 
   return cleaned;
 }
+
+// ── Handler principal ────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   const limited = enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
@@ -66,6 +101,7 @@ export async function POST(req: Request) {
           ).join('\n\n')
         }\n`
       : '';
+
     const researchContext = session.research_brief
       ? `\nFICHA TÉCNICA DE PESQUISA (gerada após aprovação do esboço e reutilizada em todas as secções):\n${session.research_brief}\n`
       : '';
@@ -73,21 +109,29 @@ export async function POST(req: Request) {
     const isSubsection = /^\d+\.\d+/.test(section.title);
 
     const sectionInstructions: Record<string, string> = {
-      'Introdução': 'Apresenta o tema, contextualiza a sua importância, indica brevemente a estrutura do trabalho. Entre 200-350 palavras.',
-      'Objectivos e Metodologia': 'Define 3-5 objectivos claros (geral e específicos) e descreve a metodologia usada (pesquisa bibliográfica, qualitativa, etc.). Entre 200-300 palavras.',
-      'Desenvolvimento Teórico': 'Desenvolve o conteúdo principal com profundidade, usando subtítulos (###) para organizar os temas. Entre 400-700 palavras. Inclui conceitos, factos, exemplos e referências a autores quando relevante.',
+      'Introdução': 'Apresenta o tema, contextualiza a sua importância, indica brevemente a estrutura do trabalho. Entre 200-350 palavras. NÃO incluas conclusão nem referências no final.',
+      'Objectivos e Metodologia': 'Define 3-5 objectivos claros (geral e específicos) e descreve a metodologia usada. Entre 200-300 palavras. NÃO incluas conclusão nem referências no final.',
+      'Desenvolvimento Teórico': 'Desenvolve o conteúdo principal com profundidade, usando sub-títulos (###). Entre 400-700 palavras. NÃO incluas conclusão nem referências no final.',
       'Conclusão': 'Resume os pontos principais abordados, responde aos objectivos e apresenta uma reflexão final. Entre 150-250 palavras.',
       'Referências Bibliográficas': 'Lista no mínimo 5 referências no formato APA (7.ª edição). Inclui livros, sites académicos e artigos relacionados com o tema.',
     };
 
-    const subsectionInstruction = `Desenvolve este subtópico de forma aprofundada e académica. \
-Apresenta definições claras, factos relevantes, exemplos práticos (preferencialmente do contexto moçambicano) \
-e, quando adequado, menciona autores ou fontes que suportem as ideias. \
-Entre 250-450 palavras. Usa Markdown para listas e destaques quando melhorar a clareza.`;
+    const subsectionInstruction = `Desenvolve este subtópico de forma aprofundada e académica. Apresenta definições claras, factos relevantes, exemplos práticos e, quando adequado, menciona autores ou fontes. Entre 250-450 palavras. NÃO incluas conclusão nem referências bibliográficas no final.`;
 
     const specificInstruction = isSubsection
       ? subsectionInstruction
-      : (sectionInstructions[section.title] ?? 'Desenvolve o conteúdo de forma académica e adequada ao ensino secundário/médio.');
+      : (sectionInstructions[section.title] ?? 'Desenvolve o conteúdo de forma académica. NÃO incluas conclusão nem referências no final.');
+
+    // Instrução anti-fecho para secções que não são Conclusão/Referências
+    const antiClosingInstruction = !sectionAllowsClosing(section.title)
+      ? `
+PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
+❌ NÃO escrevas "Em conclusão", "Em suma", "Conclui-se que", "Por fim, conclui-se" ou equivalentes
+❌ NÃO adiciones lista de referências bibliográficas no final
+❌ NÃO escrevas cabeçalhos como "## Conclusão", "## Referências", "### Considerações Finais"
+❌ NÃO fechas com parágrafo de encerramento — termina no último ponto de conteúdo
+O trabalho tem secções próprias para isso — NÃO as antecipes aqui.`
+      : '';
 
     const systemPrompt = `És um especialista académico a desenvolver um trabalho escolar do ensino secundário/médio em Moçambique sobre: "${session.topic}".
 
@@ -100,6 +144,7 @@ Desenvolve APENAS a secção: "${section.title}"
 
 INSTRUÇÃO ESPECÍFICA PARA ESTA SECÇÃO:
 ${specificInstruction}
+${antiClosingInstruction}
 
 REGRAS ABSOLUTAS:
 - Escreve APENAS o conteúdo da secção, sem introduções do tipo "Nesta secção…" ou "Vou desenvolver…"
@@ -107,11 +152,11 @@ REGRAS ABSOLUTAS:
 - Português europeu/moçambicano correcto
 - Usa Markdown: negrito, listas, sub-títulos ### quando adequado
 - Mantém coerência terminológica com as secções anteriores
-- Usa a ficha técnica de pesquisa como base factual prioritária e aplica apenas os pontos relevantes para esta secção
+- Usa a ficha técnica de pesquisa como base factual prioritária
 - Tom académico mas acessível ao nível do ensino secundário/médio
-- Norma de redacção e referenciação obrigatória: APA (7.ª edição)
-- NÃO incluas a palavra {pagebreak} no conteúdo — as quebras de página são geridas automaticamente pelo sistema
-- NÃO faças nova pesquisa web: utiliza exclusivamente o esboço, contexto anterior e ficha técnica já fornecida`.trim();
+- Norma de referenciação obrigatória: APA (7.ª edição) — citações no texto apenas
+- NÃO incluas a palavra {pagebreak} no conteúdo
+- NÃO faças nova pesquisa web`.trim();
 
     const response = await fetch(GROQ_BASE, {
       method: 'POST',
@@ -123,7 +168,10 @@ REGRAS ABSOLUTAS:
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Desenvolve a secção "${section.title}".` },
+          {
+            role: 'user',
+            content: `Desenvolve a secção "${section.title}". Escreve APENAS o conteúdo desta secção — sem conclusão, sem lista de referências no final, sem frases de encerramento.`,
+          },
         ],
         stream: true,
         max_tokens: 1500,
@@ -160,7 +208,10 @@ REGRAS ABSOLUTAS:
       async flush() {
         if (sessionId && accumulated) {
           try {
-            const normalizedContent = normalizeSectionContent(accumulated, section.title);
+            // 1. Remove blocos espúrios (conclusão/referências gerados indevidamente)
+            const stripped = stripSpuriousBlocks(accumulated, section.title);
+            // 2. Normaliza pagebreaks
+            const normalizedContent = normalizeSectionContent(stripped, section.title);
             await saveWorkSectionContent(sessionId, sectionIndex, normalizedContent, session.sections);
           } catch (e) {
             console.error('Erro ao guardar secção do trabalho:', e);
