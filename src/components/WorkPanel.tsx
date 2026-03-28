@@ -2,7 +2,7 @@
 
 // src/components/WorkPanel.tsx
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
 import { useCoverAgent } from '@/hooks/useCoverAgent';
 import { useEditorActions } from '@/hooks/useEditorStore';
