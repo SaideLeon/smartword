@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
 import { useCoverAgent } from '@/hooks/useCoverAgent';
+import { useEditorActions } from '@/hooks/useEditorStore';
 import { CoverFormModal } from '@/components/CoverFormModal';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
@@ -32,6 +33,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
+  const { setIncludeCover, setCoverData, resetExportPreferences } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
@@ -74,6 +76,19 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    if (coverAgent.step === 'done_with_cover' && coverAgent.coverData) {
+      setIncludeCover(true);
+      setCoverData(coverAgent.coverData);
+      return;
+    }
+
+    if (coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') {
+      setIncludeCover(false);
+      setCoverData(null);
+    }
+  }, [coverAgent.step, coverAgent.coverData, setCoverData, setIncludeCover]);
 
   // ── Iniciar agente quando esboço é aprovado ───────────────────────────────
 
@@ -134,42 +149,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
     );
   };
 
-  // ── Exportar com capa ─────────────────────────────────────────────────────
-
-  const handleExportWithCover = async () => {
-    if (!coverAgent.coverData || !session) return;
-
-    const markdown = session.sections
-      .filter(s => s.content)
-      .map(s => `## ${s.title}\n\n${s.content}`)
-      .join('\n\n');
-
-    try {
-      const res = await fetch('/api/cover/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          coverData: coverAgent.coverData,
-          markdown,
-          filename: session.topic.slice(0, 40).replace(/\s+/g, '-').toLowerCase() || 'trabalho',
-        }),
-      });
-
-      if (!res.ok) throw new Error('Erro ao exportar');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${session.topic.slice(0, 30)}.docx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   // ── Handlers existentes ───────────────────────────────────────────────────
 
   const handleTopicSubmit = () => {
@@ -202,8 +181,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
     coverAgent.step !== 'idle' &&
     coverAgent.step !== 'done_without_cover';
 
-  const coverAgentDone = coverAgent.step === 'done_with_cover';
-
   return (
     <>
       {/* Modal de formulário de capa */}
@@ -231,7 +208,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
           <div className="flex gap-2">
             {session && (
               <button
-                onClick={() => { coverAgent.reset(); reset(); }}
+                onClick={() => { coverAgent.reset(); reset(); resetExportPreferences(); }}
                 className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)]"
                 title="Novo trabalho"
                 aria-label="Iniciar novo trabalho"
@@ -407,12 +384,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
                       <span className="block text-[var(--panel-muted)]">{coverAgent.coverData.members.length} membro(s) · {coverAgent.coverData.teacher}</span>
                     )}
                   </p>
-                  <button
-                    onClick={handleExportWithCover}
-                    className="mt-2 rounded border border-[color:var(--panel-gold)]/40 px-3 py-1 font-mono text-[10px] text-[var(--panel-gold)] hover:bg-[color:var(--panel-gold)]/10 transition-colors"
-                  >
-                    ↓ Exportar com capa
-                  </button>
                 </div>
               )}
 
@@ -443,10 +414,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }
                 <button
                   onClick={() => {
                     setAgentMessages(prev => [...prev, { role: 'assistant', content: 'Entendido. Podes desenvolver as secções directamente.' }]);
-                    coverAgent.reset();
-                    // Forçar step sem_capa via done_without_cover
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (coverAgent as any).setState?.({ step: 'done_without_cover' });
+                    coverAgent.chooseWithoutCover();
                   }}
                   className="font-mono text-[10px] text-[var(--panel-faint)] hover:text-[var(--panel-muted)] transition-colors underline"
                 >

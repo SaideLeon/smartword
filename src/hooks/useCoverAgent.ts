@@ -273,11 +273,23 @@ export function useCoverAgent() {
     });
   }, []);
 
+  const chooseWithoutCover = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      step: 'done_without_cover',
+      coverData: null,
+      abstract: null,
+      streamingAbstract: '',
+      error: null,
+    }));
+  }, []);
+
   return {
     ...state,
     askAboutCover,
     handleUserResponse,
     submitCoverData,
+    chooseWithoutCover,
     reset,
   };
 }

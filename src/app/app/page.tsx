@@ -15,7 +15,7 @@ import { DocumentPreview } from '@/components/DocumentPreview';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
-  const { markdown, previewMarkdown, setMarkdown, filename, setFilename, loading, exportDocx, clearDefaultMarkdown, setFilenameFromTopic } = useDocumentEditor();
+  const { markdown, previewMarkdown, setMarkdown, filename, includeCover, setFilename, loading, exportDocx, clearDefaultMarkdown, setFilenameFromTopic } = useDocumentEditor();
   const sidePanel = useSidePanel();
   const { togglePanel, closePanel } = usePanelActions();
   const { canRedo, canUndo } = useEditorMeta();
@@ -93,7 +93,7 @@ export default function Home() {
         )}
       </div>
 
-      <EditorStatusBar markdown={markdown} loading={loading} filename={filename} isMobile={isMobile} onExport={exportDocx} />
+      <EditorStatusBar markdown={markdown} loading={loading} filename={filename} includeCover={includeCover} isMobile={isMobile} onExport={exportDocx} />
 
       <AiChatDrawer open={sidePanel === 'chat'} onClose={closePanel} onInsert={handleInsert} onReplace={handleReplace} isMobile={isMobile} />
 
