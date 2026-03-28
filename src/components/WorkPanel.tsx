@@ -16,6 +16,7 @@ interface Props {
   onTopicChange: (topic: string) => void;
   onClose: () => void;
   isMobile?: boolean;
+  editorMarkdown?: string;
 }
 
 // ── Tipos locais de mensagem do agente ───────────────────────────────────────
@@ -25,7 +26,7 @@ interface AgentMessage {
   content: string;
 }
 
-export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
+export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
