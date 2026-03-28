@@ -273,12 +273,6 @@ function buildBackCoverSection(data: CoverData): object {
       page: {
         size: PAGE_SIZE,
         margin: PAGE_MARGIN,
-        borders: {
-          pageBorderTop:    { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
-          pageBorderBottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
-          pageBorderLeft:   { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
-          pageBorderRight:  { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
-        },
       },
     },
     children,
