@@ -1,6 +1,6 @@
 import {
   Paragraph, TextRun, AlignmentType, ImageRun,
-  TabStopType, SectionType, convertMillimetersToTwip,
+  TabStopType, SectionType, BorderStyle, convertMillimetersToTwip,
 } from 'docx';
 import type { CoverData } from './cover-types';
 import { calculateCoverLayout, calculateBackCoverLayout } from './cover-layout';
@@ -212,7 +212,16 @@ function buildCoverSection(data: CoverData): object {
 
   return {
     properties: {
-      page: { size: PAGE_SIZE, margin: PAGE_MARGIN },
+      page: {
+        size: PAGE_SIZE,
+        margin: PAGE_MARGIN,
+        borders: {
+          pageBorderTop:    { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+          pageBorderBottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+          pageBorderLeft:   { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+          pageBorderRight:  { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+        },
+      },
       // Sem rodapé de paginação nas capas
     },
     children,
@@ -261,7 +270,16 @@ function buildBackCoverSection(data: CoverData): object {
   return {
     properties: {
       type: SectionType.NEXT_PAGE,
-      page: { size: PAGE_SIZE, margin: PAGE_MARGIN },
+      page: {
+        size: PAGE_SIZE,
+        margin: PAGE_MARGIN,
+        borders: {
+          pageBorderTop:    { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+          pageBorderBottom: { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+          pageBorderLeft:   { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+          pageBorderRight:  { style: BorderStyle.SINGLE, size: 12, color: '000000', space: 20 },
+        },
+      },
     },
     children,
   };
