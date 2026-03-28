@@ -82,15 +82,14 @@ REGRAS ABSOLUTAS:
 async function generateAbstract(
   theme: string,
   topic: string,
+  outline: string,
   onDelta: (chunk: string) => void,
 ): Promise<string> {
-  const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
-
   // Chama via API Route para não expor a chave (ver nota abaixo)
   const res = await fetch('/api/cover/abstract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ theme, topic }),
+    body: JSON.stringify({ theme, topic, outline }),
   });
 
   if (!res.ok || !res.body) {
@@ -221,6 +220,7 @@ export function useCoverAgent() {
   const submitCoverData = useCallback(async (
     coverData: CoverData,
     topic: string,
+    outline: string,
     appendMessage: (role: 'assistant', content: string) => void,
   ) => {
     setState(prev => ({
@@ -236,6 +236,7 @@ export function useCoverAgent() {
       const abstract = await generateAbstract(
         coverData.theme,
         topic,
+        outline,
         chunk => {
           accumulated += chunk;
           setState(prev => ({ ...prev, streamingAbstract: accumulated }));

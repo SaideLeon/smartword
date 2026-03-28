@@ -144,6 +144,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     await coverAgent.submitCoverData(
       coverData,
       session.topic,
+      session.outline_approved ?? session.outline_draft ?? '',
       (role, content) => {
         setAgentMessages(prev => [...prev, { role, content }]);
       },
