@@ -23,6 +23,40 @@ interface AgentMessage {
   content: string;
 }
 
+function normalizeForComparison(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
+  const contentWithoutMarker = content.replace(/^\s*\{pagebreak\}\s*/i, '').trimStart();
+  const firstLine = contentWithoutMarker.split('\n')[0].trim();
+
+  if (!firstLine.startsWith('#')) return false;
+
+  const headingText = firstLine.replace(/^#+\s*/, '');
+  const normalizedHeading = normalizeForComparison(headingText);
+  const normalizedTitle = normalizeForComparison(sectionTitle);
+
+  return (
+    normalizedHeading === normalizedTitle ||
+    normalizedHeading.includes(normalizedTitle) ||
+    normalizedTitle.includes(normalizedHeading)
+  );
+}
+
+function buildSectionMarkdown(title: string, content: string): string {
+  const isSubsection = /^\d+\.\d+/.test(title);
+  const heading = isSubsection ? '###' : '##';
+  const titleAlreadyPresent = contentStartsWithTitle(content, title);
+  return titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
+}
+
 export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
@@ -31,7 +65,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
-  const { setIncludeCover, setCoverData, resetExportPreferences } = useEditorActions();
+  const { setIncludeCover, setCoverData, resetExportPreferences, setContent } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
@@ -42,6 +76,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   const [agentInput, setAgentInput] = useState('');
   const [agentSending, setAgentSending] = useState(false);
+  const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'work-recent-sessions';
 
@@ -74,6 +109,18 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    if (!resumeRestoreSessionId || !session || session.id !== resumeRestoreSessionId) return;
+
+    const completedSections = [...session.sections]
+      .filter((section) => section.status !== 'pending' && section.content.trim())
+      .sort((a, b) => a.index - b.index)
+      .map((section) => buildSectionMarkdown(section.title, section.content));
+
+    setContent(completedSections.join('\n\n'));
+    setResumeRestoreSessionId(null);
+  }, [resumeRestoreSessionId, session, setContent]);
 
   // ── Sincronizar estado do agente de capa com o editor ─────────────────────
 
@@ -297,7 +344,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                   {recentSessions.map(s => (
                     <button
                       key={s.id}
-                      onClick={() => { onTopicChange(s.topic); resumeSession(s.id); }}
+                      onClick={() => {
+                        onTopicChange(s.topic);
+                        setContent('');
+                        setResumeRestoreSessionId(s.id);
+                        resumeSession(s.id);
+                      }}
                       className="flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)]"
                     >
                       <div>
