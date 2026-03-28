@@ -10,6 +10,19 @@ const MARGIN_BOTTOM_MM = 20;
 /** Altura útil do conteúdo em twips (1 twip = 1/1440 polegada = 1/20 pt) */
 const CONTENT_HEIGHT = convertMillimetersToTwip(PAGE_HEIGHT_MM - MARGIN_TOP_MM - MARGIN_BOTTOM_MM);
 
+/**
+ * Buffer de segurança em twips — absorve micro-espaçamentos internos do Word
+ * que as constantes LINE_*PT não conseguem prever com exactidão.
+ * 300 twips ≈ 5mm ≈ uma linha a 12pt. Aumenta em 100 se ainda houver overflow.
+ */
+const LAYOUT_SAFETY_BUFFER = 300;
+
+/**
+ * Altura efectiva usada nos cálculos de gap — ligeiramente menor que
+ * CONTENT_HEIGHT para garantir que o conteúdo não transborda na renderização real.
+ */
+const EFFECTIVE_CONTENT_HEIGHT = CONTENT_HEIGHT - LAYOUT_SAFETY_BUFFER;
+
 // ── Alturas estimadas dos elementos (twips) ───────────────────────────────────
 //
 //  Cada valor inclui a altura visual da linha E o espaçamento "after" definido
@@ -118,7 +131,7 @@ function computeGaps(
   const fixed12 = fixedContentHeight(data, {
     hasLogo, institutionLines, memberLineHeight: memberLineHeight12, withAbstract,
   });
-  const remaining12 = CONTENT_HEIGHT - fixed12;
+  const remaining12 = EFFECTIVE_CONTENT_HEIGHT - fixed12;
   const gap12 = Math.floor(remaining12 / N_GAPS);
 
   if (gap12 >= MIN_GAP) {
@@ -142,7 +155,7 @@ function computeGaps(
   const fixed10 = fixedContentHeight(data, {
     hasLogo, institutionLines, memberLineHeight: memberLineHeight10, withAbstract,
   });
-  const remaining10 = CONTENT_HEIGHT - fixed10;
+  const remaining10 = EFFECTIVE_CONTENT_HEIGHT - fixed10;
   const gap10 = Math.floor(remaining10 / N_GAPS);
 
   const effectiveGap = Math.max(gap10, convertMillimetersToTwip(8)); // mínimo absoluto
