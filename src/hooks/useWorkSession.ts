@@ -1,5 +1,13 @@
 'use client';
 
+// hooks/useWorkSession.ts (versão corrigida)
+// 
+// REGRA DE PAGEBREAK:
+// O conteúdo guardado no Supabase é SEMPRE puro — sem {pagebreak} nem {section}.
+// Os {pagebreak} são adicionados APENAS quando o conteúdo é inserido no editor,
+// pela função buildSectionMarkdown em WorkPanel.tsx.
+// Esta separação evita duplicação e conflitos.
+
 import { useState, useCallback, useRef } from 'react';
 import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
 
@@ -12,28 +20,22 @@ export type WorkStep =
   | 'developing'
   | 'section_ready';
 
-// ── Constantes de pagebreak (devem espelhar as do route.ts) ──────────────────
-const PAGEBREAK_MARKER = '{pagebreak}';
-const PRE_TEXTUAL_SECTIONS  = new Set(['Introdução', 'Objectivos e Metodologia']);
-const POST_TEXTUAL_SECTIONS = new Set(['Conclusão', 'Referências Bibliográficas']);
+// ── Secções fixas de fallback ────────────────────────────────────────────────
+const FIXED_SECTIONS = [
+  'Introdução',
+  'Objectivos e Metodologia',
+  'Desenvolvimento Teórico',
+  'Conclusão',
+  'Referências Bibliográficas',
+];
 
-/**
- * Replica no cliente a mesma normalização que o servidor faz antes de guardar.
- * Garante que o estado local fica idêntico ao que está no Supabase.
- */
-function normalizeSectionContent(content: string, sectionTitle: string): string {
-  const cleaned = content
-    .trim()
-    .replace(/\s*\{pagebreak\}\s*/g, ' ')
-    .trim();
-
-  if (PRE_TEXTUAL_SECTIONS.has(sectionTitle)) {
-    return `${cleaned}\n\n${PAGEBREAK_MARKER}`;
-  }
-  if (POST_TEXTUAL_SECTIONS.has(sectionTitle)) {
-    return `${PAGEBREAK_MARKER}\n\n${cleaned}`;
-  }
-  return cleaned;
+function buildInitialSections(): WorkSection[] {
+  return FIXED_SECTIONS.map((title, index) => ({
+    index,
+    title,
+    content: '',
+    status: 'pending' as const,
+  }));
 }
 
 /**
@@ -53,46 +55,20 @@ function normalizeForComparison(text: string): string {
 /**
  * Verifica se o conteúdo gerado pela IA já começa com um cabeçalho
  * Markdown semelhante ao título da secção.
- * Usa comparação normalizada para tolerar variações de pontuação/acentuação.
  */
 function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
-  // Ignora o marcador {pagebreak} que possa ter sido inserido no início (pós-textuais)
-  const contentWithoutMarker = content.replace(/^\s*\{pagebreak\}\s*/i, '').trimStart();
-  const firstLine = contentWithoutMarker.split('\n')[0].trim();
-
-  // Só nos interessa se a primeira linha for um cabeçalho Markdown
+  const firstLine = content.trimStart().split('\n')[0].trim();
   if (!firstLine.startsWith('#')) return false;
 
-  // Remove os # e espaços iniciais para obter apenas o texto do título
   const headingText = firstLine.replace(/^#+\s*/, '');
-
   const normalizedHeading = normalizeForComparison(headingText);
-  const normalizedTitle   = normalizeForComparison(sectionTitle);
+  const normalizedTitle = normalizeForComparison(sectionTitle);
 
-  // Considera duplicado se o título da secção está contido no cabeçalho ou vice-versa
   return (
     normalizedHeading === normalizedTitle ||
     normalizedHeading.includes(normalizedTitle) ||
     normalizedTitle.includes(normalizedHeading)
   );
-}
-
-// ── Secções fixas de fallback ────────────────────────────────────────────────
-const FIXED_SECTIONS = [
-  'Introdução',
-  'Objectivos e Metodologia',
-  'Desenvolvimento Teórico',
-  'Conclusão',
-  'Referências Bibliográficas',
-];
-
-function buildInitialSections(): WorkSection[] {
-  return FIXED_SECTIONS.map((title, index) => ({
-    index,
-    title,
-    content: '',
-    status: 'pending' as const,
-  }));
 }
 
 function parseOutlineSections(outline: string): WorkSection[] {
@@ -327,15 +303,12 @@ export function useWorkSession() {
         }
       }
 
-      // ── FIX 1: normalizar localmente para que o estado fique igual ao Supabase
-      const sectionTitle = session.sections.find(s => s.index === index)?.title ?? '';
-      const normalizedContent = normalizeSectionContent(accumulated, sectionTitle);
-
+      // Guardar conteúdo puro no estado local (sem pagebreaks)
       setSession(prev => {
         if (!prev) return prev;
         const sections = prev.sections.map(section =>
           section.index === index
-            ? { ...section, content: normalizedContent, status: 'developed' as const }
+            ? { ...section, content: accumulated, status: 'developed' as const }
             : section,
         );
         return {
@@ -345,9 +318,7 @@ export function useWorkSession() {
         };
       });
 
-      // Actualizar também o streamingText com o conteúdo normalizado
-      // para que o preview "Secção pronta" mostre o resultado final correcto
-      setStreamingText(normalizedContent);
+      setStreamingText(accumulated);
 
       setRegeneratedSections(prev => {
         const next = new Set(prev);
@@ -374,12 +345,12 @@ export function useWorkSession() {
     const sec = session.sections[index];
     if (!sec?.content) return;
 
+    // NOTA: buildSectionMarkdown é chamado em WorkPanel.tsx com a lógica de pagebreak correcta.
+    // Aqui apenas preparamos o conteúdo base sem pagebreak para o caso de fallback.
     const isSubsection = /^\d+\.\d+/.test(sec.title);
     const heading = isSubsection ? '###' : '##';
-
-    // ── FIX 2: só adiciona o prefixo de título se o conteúdo não o tiver já
     const titleAlreadyPresent = contentStartsWithTitle(sec.content, sec.title);
-    const textToInsert = titleAlreadyPresent
+    const baseText = titleAlreadyPresent
       ? sec.content
       : `${heading} ${sec.title}\n\n${sec.content}`;
 
@@ -404,28 +375,30 @@ export function useWorkSession() {
         const refreshedSession: WorkSessionRecord = await refreshRes.json();
         fetchedSession = refreshedSession;
 
+        // Para o caso de substituição completa do editor, WorkPanel.tsx
+        // usa buildSectionMarkdown que já trata dos pagebreaks correctamente.
         const organizedContent = [...refreshedSession.sections]
           .filter(section => section.content.trim())
           .sort((a, b) => a.index - b.index)
-          .map(section => {
+          .map((section, i) => {
             const sectionHasHeading = contentStartsWithTitle(section.content, section.title);
-            if (sectionHasHeading) return section.content;
-
             const sectionIsSubsection = /^\d+\.\d+/.test(section.title);
             const sectionHeading = sectionIsSubsection ? '###' : '##';
-            return `${sectionHeading} ${section.title}\n\n${section.content}`;
+            const text = sectionHasHeading ? section.content : `${sectionHeading} ${section.title}\n\n${section.content}`;
+            // Primeira secção sem pagebreak, as restantes com pagebreak
+            return i === 0 ? text : `{pagebreak}\n\n${text}`;
           })
           .join('\n\n');
 
         options.onReplace(organizedContent);
       } else {
-        onInsert(textToInsert);
+        onInsert(baseText);
       }
     } catch {
       if (options?.shouldResetEditor && options.onReplace) {
-        options.onReplace(textToInsert);
+        options.onReplace(baseText);
       } else {
-        onInsert(textToInsert);
+        onInsert(baseText);
       }
     }
 

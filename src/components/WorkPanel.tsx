@@ -1,6 +1,31 @@
 'use client';
 
 // src/components/WorkPanel.tsx
+//
+// ── REGRA DE PAGEBREAK (LEIA ANTES DE MODIFICAR) ───────────────────────────
+//
+// Cada secção principal deve começar OBRIGATORIAMENTE numa nova página.
+// A regra é simples e universal:
+//
+//   • Primeira secção inserida no editor → SEM pagebreak antes
+//   • Todas as outras secções → COM {pagebreak} antes do título
+//
+// Esta lógica está EXCLUSIVAMENTE em buildSectionMarkdown().
+// O servidor (develop/route.ts) guarda conteúdo PURO — sem pagebreaks.
+// O hook (useWorkSession.ts) também não adiciona pagebreaks.
+// APENAS esta função decide o pagebreak.
+//
+// Por que funciona:
+//   - Introdução: 1.ª secção → sem pagebreak
+//   - Objectivos: 2.ª secção → {pagebreak} antes do título
+//   - 3.1, 3.2, 3.3 (subsecções do Desenvolvimento): cada uma tem pagebreak
+//     EXCEPTO a 3.1 se for a primeira subsecção a seguir à Introdução/Obj.
+//     Na prática, como o utilizador insere uma a uma, a lógica de "é a primeira?"
+//     é determinada pela posição no editor (hasContentInEditor).
+//   - Conclusão: sempre {pagebreak}
+//   - Referências: sempre {pagebreak}
+//
+// ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
@@ -34,15 +59,11 @@ function normalizeForComparison(text: string): string {
 }
 
 function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
-  const contentWithoutMarker = content.replace(/^\s*\{pagebreak\}\s*/i, '').trimStart();
-  const firstLine = contentWithoutMarker.split('\n')[0].trim();
-
+  const firstLine = content.trimStart().split('\n')[0].trim();
   if (!firstLine.startsWith('#')) return false;
-
   const headingText = firstLine.replace(/^#+\s*/, '');
   const normalizedHeading = normalizeForComparison(headingText);
   const normalizedTitle = normalizeForComparison(sectionTitle);
-
   return (
     normalizedHeading === normalizedTitle ||
     normalizedHeading.includes(normalizedTitle) ||
@@ -50,11 +71,33 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
   );
 }
 
-function buildSectionMarkdown(title: string, content: string): string {
+/**
+ * buildSectionMarkdown — A ÚNICA função que decide se há {pagebreak}.
+ *
+ * @param title          Título da secção (ex: "Introdução", "3.1 Conceito X")
+ * @param content        Conteúdo puro da secção (sem pagebreaks, sem título)
+ * @param isFirstInEditor true se o editor estiver vazio ou se for a primeira
+ *                        secção a ser inserida nesta sessão de edição
+ */
+function buildSectionMarkdown(
+  title: string,
+  content: string,
+  isFirstInEditor: boolean,
+): string {
   const isSubsection = /^\d+\.\d+/.test(title);
   const heading = isSubsection ? '###' : '##';
+
+  // Verificar se o conteúdo já inclui o título como cabeçalho
   const titleAlreadyPresent = contentStartsWithTitle(content, title);
-  return titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
+  const body = titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
+
+  // Primeira secção no editor: sem pagebreak
+  // Todas as outras: {pagebreak} obrigatório antes do conteúdo
+  if (isFirstInEditor) {
+    return body;
+  }
+
+  return `{pagebreak}\n\n${body}`;
 }
 
 export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
@@ -110,15 +153,21 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
 
+  // ── Restaurar sessão retomada ─────────────────────────────────────────────
+
   useEffect(() => {
     if (!resumeRestoreSessionId || !session || session.id !== resumeRestoreSessionId) return;
 
     const completedSections = [...session.sections]
       .filter((section) => section.status !== 'pending' && section.content.trim())
-      .sort((a, b) => a.index - b.index)
-      .map((section) => buildSectionMarkdown(section.title, section.content));
+      .sort((a, b) => a.index - b.index);
 
-    setContent(completedSections.join('\n\n'));
+    // Reconstruir o editor com pagebreaks correctos entre secções
+    const editorContent = completedSections
+      .map((section, i) => buildSectionMarkdown(section.title, section.content, i === 0))
+      .join('\n\n');
+
+    setContent(editorContent);
     setResumeRestoreSessionId(null);
   }, [resumeRestoreSessionId, session, setContent]);
 
@@ -137,23 +186,17 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     }
   }, [coverAgent.step, coverAgent.coverData, setCoverData, setIncludeCover]);
 
-  // ── Iniciar agente quando esboço é aprovado (ou restaurar capa existente) ──
-  //
-  // Lógica:
-  //  - Sessão nova (sem cover_data): lança o agente normalmente.
-  //  - Sessão retomada (com cover_data): restaura directamente, sem perguntar.
+  // ── Iniciar agente quando esboço é aprovado ───────────────────────────────
 
   useEffect(() => {
     if (step === 'outline_approved' && coverAgent.step === 'idle' && session) {
       const existingCover = session.cover_data ?? null;
 
       if (existingCover) {
-        // Sessão retomada com capa já existente — restaurar silenciosamente
         coverAgent.restoreCoverData(existingCover);
         setIncludeCover(true);
         setCoverData(existingCover);
       } else {
-        // Primeira vez — lançar o agente para perguntar ao utilizador
         setAgentMessages([]);
         coverAgent.askAboutCover(
           session.topic,
@@ -192,7 +235,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     setAgentSending(false);
   };
 
-  // ── Submissão do formulário de capa — agora persiste no Supabase ──────────
+  // ── Submissão do formulário de capa ───────────────────────────────────────
 
   const handleCoverSubmit = async (coverData: CoverData) => {
     setShowCoverModal(false);
@@ -207,7 +250,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
       },
     );
 
-    // Persistir no Supabase para que a capa seja restaurada ao retomar
     if (finalData) {
       try {
         await fetch('/api/work/session', {
@@ -220,13 +262,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           }),
         });
       } catch {
-        // Não crítico — a capa está em memória e funciona nesta sessão
         console.warn('Não foi possível persistir dados de capa no servidor.');
       }
     }
   };
 
-  // ── Handlers existentes ───────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleTopicSubmit = () => {
     const topic = topicInput.trim();
@@ -245,15 +286,36 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     }
   };
 
+  /**
+   * handleInsertSection — insere uma secção no editor com pagebreak correcto.
+   *
+   * Determina se o editor está vazio (primeira secção) ou já tem conteúdo
+   * (secções seguintes precisam de {pagebreak}).
+   */
   const handleInsertSection = useCallback((sectionIndex: number) => {
-    const hasPreloadedEditorData = Boolean(editorMarkdown?.trim());
+    if (!session) return;
+    const sec = session.sections[sectionIndex];
+    if (!sec?.content) return;
+
+    const hasContentInEditor = Boolean(editorMarkdown?.trim());
+    const hasPreloadedEditorData = hasContentInEditor;
     const shouldResetEditor = hasPreloadedEditorData && isSectionRegenerated(sectionIndex);
 
-    insertSection(sectionIndex, onInsert, {
-      shouldResetEditor,
-      onReplace: shouldResetEditor ? setContent : undefined,
-    });
-  }, [editorMarkdown, insertSection, isSectionRegenerated, onInsert, setContent]);
+    if (shouldResetEditor) {
+      // Substituição completa: reconstruir todo o editor com pagebreaks correctos
+      insertSection(sectionIndex, onInsert, {
+        shouldResetEditor: true,
+        onReplace: setContent,
+      });
+    } else {
+      // Inserção normal: adicionar esta secção ao fim do editor
+      const isFirstInEditor = !hasContentInEditor;
+      const textToInsert = buildSectionMarkdown(sec.title, sec.content, isFirstInEditor);
+
+      // Marcar como inserida e inserir no editor
+      insertSection(sectionIndex, () => onInsert(textToInsert));
+    }
+  }, [session, editorMarkdown, isSectionRegenerated, insertSection, onInsert, setContent]);
 
   const statusLabel = (status: string) => {
     if (status === 'inserted') return { label: 'Inserido ✓', color: C.gold };
@@ -434,7 +496,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* ── AGENTE DE CAPA (após aprovação, antes das secções — apenas sessões novas) ── */}
+          {/* ── AGENTE DE CAPA ── */}
           {step === 'outline_approved' &&
            coverAgent.step !== 'idle' &&
            coverAgent.step !== 'done_with_cover' &&
@@ -491,7 +553,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* ── Badge de capa gerada (sessão nova ou retomada com capa) ── */}
+          {/* ── Badge de capa gerada ── */}
           {step === 'outline_approved' && coverAgent.step === 'done_with_cover' && coverAgent.coverData && (
             <div className="rounded border border-[color:var(--panel-gold)]/30 bg-[color:var(--panel-gold)]/10 px-3 py-2.5">
               <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">📄 Capa disponível</div>
@@ -511,7 +573,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
            (coverAgent.step === 'done_with_cover' || coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') &&
            session && (
             <div className="flex flex-col gap-2">
-              <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
+              <Label>
+                Esboço aprovado. Selecciona uma secção para desenvolver.
+              </Label>
+
+              {/* Nota informativa sobre a paginação */}
+              <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
+                ↕ Cada secção começa automaticamente numa nova página ao ser inserida.
+              </div>
+
               {session.sections.map(sec => {
                 const { label, color } = statusLabel(sec.status);
                 const isActive = activeSectionIdx === sec.index;

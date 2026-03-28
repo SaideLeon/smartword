@@ -1,14 +1,12 @@
-// app/api/work/develop/route.ts  (versão corrigida — filtro anti-conclusão + prompt reforçado)
+// app/api/work/develop/route.ts  (versão corrigida — sem normalização de pagebreak no servidor)
+// A responsabilidade de inserir {pagebreak} pertence EXCLUSIVAMENTE ao cliente (WorkPanel.tsx).
+// O servidor devolve conteúdo puro, sem marcadores estruturais.
 
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkSectionContent } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
-const PAGEBREAK_MARKER = '{pagebreak}';
-
-const PRE_TEXTUAL_SECTIONS  = new Set(['Introdução', 'Objectivos e Metodologia']);
-const POST_TEXTUAL_SECTIONS = new Set(['Conclusão', 'Referências Bibliográficas']);
 
 // ── Secções que permitem conteúdo de fecho ────────────────────────────────────
 
@@ -46,25 +44,6 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
 
   cleaned = cleaned.replace(SPURIOUS_CLOSING_PHRASES, '').trimEnd();
   cleaned = cleaned.replace(SPURIOUS_REFERENCE_BLOCK, '').trimEnd();
-
-  return cleaned;
-}
-
-// ── Normalização de pagebreaks ────────────────────────────────────────────────
-
-function normalizeSectionContent(content: string, sectionTitle: string): string {
-  const cleaned = content
-    .trim()
-    .replace(/\s*\{pagebreak\}\s*/g, ' ')
-    .trim();
-
-  if (PRE_TEXTUAL_SECTIONS.has(sectionTitle)) {
-    return `${cleaned}\n\n${PAGEBREAK_MARKER}`;
-  }
-
-  if (POST_TEXTUAL_SECTIONS.has(sectionTitle)) {
-    return `${PAGEBREAK_MARKER}\n\n${cleaned}`;
-  }
 
   return cleaned;
 }
@@ -122,7 +101,6 @@ export async function POST(req: Request) {
       ? subsectionInstruction
       : (sectionInstructions[section.title] ?? 'Desenvolve o conteúdo de forma académica. NÃO incluas conclusão nem referências no final.');
 
-    // Instrução anti-fecho para secções que não são Conclusão/Referências
     const antiClosingInstruction = !sectionAllowsClosing(section.title)
       ? `
 PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
@@ -148,14 +126,14 @@ ${antiClosingInstruction}
 
 REGRAS ABSOLUTAS:
 - Escreve APENAS o conteúdo da secção, sem introduções do tipo "Nesta secção…" ou "Vou desenvolver…"
-- NÃO incluas o título da secção no início do conteúdo — ele já é adicionado automaticamente
+- NÃO incluas o título da secção no início do conteúdo — ele é adicionado automaticamente
+- NÃO incluas marcadores {pagebreak} ou {section} no conteúdo — são adicionados automaticamente
 - Português europeu/moçambicano correcto
 - Usa Markdown: negrito, listas, sub-títulos ### quando adequado
 - Mantém coerência terminológica com as secções anteriores
 - Usa a ficha técnica de pesquisa como base factual prioritária
 - Tom académico mas acessível ao nível do ensino secundário/médio
 - Norma de referenciação obrigatória: APA (7.ª edição) — citações no texto apenas
-- NÃO incluas a palavra {pagebreak} no conteúdo
 - NÃO faças nova pesquisa web`.trim();
 
     const response = await fetch(GROQ_BASE, {
@@ -170,7 +148,7 @@ REGRAS ABSOLUTAS:
           { role: 'system', content: systemPrompt },
           {
             role: 'user',
-            content: `Desenvolve a secção "${section.title}". Escreve APENAS o conteúdo desta secção — sem conclusão, sem lista de referências no final, sem frases de encerramento.`,
+            content: `Desenvolve a secção "${section.title}". Escreve APENAS o conteúdo desta secção — sem conclusão, sem lista de referências no final, sem frases de encerramento, sem marcadores de pagebreak.`,
           },
         ],
         stream: true,
@@ -208,11 +186,10 @@ REGRAS ABSOLUTAS:
       async flush() {
         if (sessionId && accumulated) {
           try {
-            // 1. Remove blocos espúrios (conclusão/referências gerados indevidamente)
-            const stripped = stripSpuriousBlocks(accumulated, section.title);
-            // 2. Normaliza pagebreaks
-            const normalizedContent = normalizeSectionContent(stripped, section.title);
-            await saveWorkSectionContent(sessionId, sectionIndex, normalizedContent, session.sections);
+            // Guardar conteúdo limpo — SEM pagebreaks, SEM marcadores estruturais
+            // O cliente é responsável por adicionar {pagebreak} ao inserir no editor
+            const cleaned = stripSpuriousBlocks(accumulated, section.title);
+            await saveWorkSectionContent(sessionId, sectionIndex, cleaned, session.sections);
           } catch (e) {
             console.error('Erro ao guardar secção do trabalho:', e);
           }
