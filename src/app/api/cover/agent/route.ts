@@ -126,14 +126,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
     }
 
-    if (!topic || !outline) {
+    if (!topic) {
       return NextResponse.json(
-        { error: 'topic e outline são obrigatórios' },
+        { error: 'topic é obrigatório' },
         { status: 400 },
       );
     }
 
-    const systemPrompt = buildSystemPrompt(topic, outline);
+    const normalizedOutline = typeof outline === 'string' && outline.trim()
+      ? outline.trim()
+      : 'Esboço aprovado não fornecido.';
+
+    const systemPrompt = buildSystemPrompt(topic, normalizedOutline);
 
     const response = await fetch(GROQ_BASE, {
       method: 'POST',
