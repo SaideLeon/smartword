@@ -4,8 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 const SYSTEM = `És um especialista em redacção académica do ensino secundário/médio em Moçambique.
 Gera um resumo (abstract) conciso e académico para a contracapa de um trabalho escolar.
@@ -31,11 +30,6 @@ export async function POST(req: Request) {
   try {
     const { theme, topic, outline } = await req.json();
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-    }
-
     if (!theme) {
       return NextResponse.json({ error: 'theme é obrigatório' }, { status: 400 });
     }
@@ -50,13 +44,7 @@ export async function POST(req: Request) {
         ? `Gera um resumo para a contracapa de um trabalho escolar.\n\nTópico geral: "${topic}"\nTema específico: "${theme}"`
         : `Gera um resumo para a contracapa de um trabalho escolar sobre: "${theme}"`;
 
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: SYSTEM },
@@ -65,13 +53,7 @@ export async function POST(req: Request) {
         stream: true,
         max_tokens: 200,
         temperature: 0.4,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+      }));
 
     return new NextResponse(response.body, {
       headers: {

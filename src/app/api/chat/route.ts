@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 const SYSTEM_PROMPT = `És um assistente especialista em matemática e ciências.
 Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
@@ -19,18 +18,7 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-    }
-
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -39,13 +27,7 @@ export async function POST(req: Request) {
         stream: true,
         max_tokens: 4096,
         temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+      }));
 
     // Passa o stream SSE directamente ao cliente
     return new NextResponse(response.body, {

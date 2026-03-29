@@ -5,8 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkSectionContent } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 // ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
 
@@ -168,9 +167,6 @@ export async function POST(req: Request) {
   try {
     const { sessionId, sectionIndex } = await req.json();
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-
     const session = await getWorkSession(sessionId);
     if (!session) return NextResponse.json({ error: 'Sessão não encontrada' }, { status: 404 });
 
@@ -235,13 +231,7 @@ REGRAS ABSOLUTAS:
 - Norma de referenciação obrigatória: APA (7.ª edição) — citações no texto apenas
 - NÃO faças nova pesquisa web`.trim();
 
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -253,13 +243,7 @@ REGRAS ABSOLUTAS:
         stream: true,
         max_tokens: 1500,
         temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+      }));
 
     let accumulated = '';
 

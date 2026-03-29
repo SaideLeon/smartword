@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { saveWorkOutlineDraft } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 const SYSTEM = `És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
@@ -50,16 +49,7 @@ export async function POST(req: Request) {
       ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${cleanedSuggestions}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura com I., II., III. e Objectivos separados de Metodologia.`
       : '';
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: SYSTEM },
@@ -68,13 +58,7 @@ export async function POST(req: Request) {
         stream: true,
         max_tokens: 1024,
         temperature: 0.4,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+      }));
 
     let accumulated = '';
 

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { saveOutlineDraft } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 const OUTLINE_SYSTEM = `És um especialista em metodologia académica e orientação de TCC (Trabalho de Conclusão de Curso).
 Geras esboços estruturados, completos e academicamente sólidos em português europeu.
@@ -40,16 +39,7 @@ export async function POST(req: Request) {
       ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${cleanedSuggestions}\n\nAplica estas sugestões com prioridade e regenera o esboço completo.`
       : '';
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: OUTLINE_SYSTEM },
@@ -58,13 +48,7 @@ export async function POST(req: Request) {
         stream: true,
         max_tokens: 2048,
         temperature: 0.4,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+      }));
 
     // Acumula o texto completo para guardar no Supabase após o stream
     let accumulated = '';
