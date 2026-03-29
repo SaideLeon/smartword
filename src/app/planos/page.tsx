@@ -6,6 +6,7 @@ const plans = [
     label: 'Gratuito',
     usd: 0,
     mzn: 0,
+    duration: 'Mensal',
     badge: 'Entrada',
     description: 'Para experimentar o editor com recursos essenciais.',
     features: ['20 trabalhos por mês', 'Sem IA Chat', 'Sem modo TCC', 'Exportação parcial'],
@@ -15,7 +16,8 @@ const plans = [
     label: 'Avulso',
     usd: 0,
     mzn: 50,
-    badge: 'Por obra',
+    duration: 'Por obra',
+    badge: 'Pagamento único',
     description: 'Pagamento pontual para uma entrega específica.',
     features: ['1 trabalho', '2 edições', 'Capa automática', 'Exportação completa'],
   },
@@ -24,6 +26,7 @@ const plans = [
     label: 'Básico',
     usd: 4.99,
     mzn: 320,
+    duration: 'Mensal',
     badge: 'Básico',
     description: 'Plano mensal para uso contínuo com IA.',
     features: ['Trabalhos ilimitados', 'IA Chat', 'Sem modo TCC', 'Exportação completa'],
@@ -33,6 +36,7 @@ const plans = [
     label: 'Standard',
     usd: 7.99,
     mzn: 512,
+    duration: 'Mensal',
     badge: 'Intermédio',
     description: 'Equilíbrio entre recursos e preço mensal.',
     features: ['Trabalhos ilimitados', 'IA Chat', 'Capa automática', 'Exportação completa'],
@@ -42,6 +46,7 @@ const plans = [
     label: 'Pro',
     usd: 9.99,
     mzn: 640,
+    duration: 'Mensal',
     badge: 'Ideal',
     description: 'Plano recomendado para TCC e documentos avançados.',
     features: ['Trabalhos ilimitados', 'IA Chat', 'Modo TCC ativo', 'Capa automática + exportação completa'],
@@ -51,6 +56,7 @@ const plans = [
     label: 'Premium',
     usd: 14.99,
     mzn: 960,
+    duration: 'Mensal',
     badge: 'Premium',
     description: 'Plano com maior margem para operação e evolução do produto.',
     features: ['Trabalhos ilimitados', 'IA Chat', 'Modo TCC ativo', 'Todos os recursos desbloqueados'],
@@ -67,20 +73,47 @@ export default function PlanosPage() {
       <section className="mx-auto w-full max-w-6xl">
         <header className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6">
           <p className="mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Muneri · Precificação SaaS</p>
-          <h1 className="mt-2 text-3xl font-semibold">Tabela completa de preços dos planos</h1>
+          <h1 className="mt-2 text-3xl font-semibold">Preçário completo dos planos</h1>
           <p className="mt-3 max-w-3xl text-sm text-[var(--text-muted)]">
-            Esta página foi criada com base no arquivo <strong>precificacao_saas_meticais (3).html</strong>,
-            considerando os cenários de referência em USD e os valores finais em meticais usados no produto.
+            Aqui estão todos os planos com preço em meticais, referência em USD e tipo de cobrança.
           </p>
         </header>
+
+        <section className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6">
+          <h2 className="text-lg font-semibold">Tabela de preços (preçário)</h2>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
+                  <th className="px-3 py-2 font-medium">Plano</th>
+                  <th className="px-3 py-2 font-medium">Preço (MZN)</th>
+                  <th className="px-3 py-2 font-medium">USD referência</th>
+                  <th className="px-3 py-2 font-medium">Cobrança</th>
+                  <th className="px-3 py-2 font-medium">Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plans.map((plan) => (
+                  <tr key={plan.key} className="border-b border-[var(--border)]/70">
+                    <td className="px-3 py-3 font-medium">{plan.label}</td>
+                    <td className="px-3 py-3">{plan.mzn.toLocaleString('pt-BR')} MZN</td>
+                    <td className="px-3 py-3">{formatUsd(plan.usd)}</td>
+                    <td className="px-3 py-3">{plan.duration}</td>
+                    <td className="px-3 py-3 text-[var(--text-muted)]">{plan.badge}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6">
           <h2 className="text-lg font-semibold">Pressupostos usados na precificação</h2>
           <ul className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
             <li>• Taxa de câmbio de referência: <strong>1 USD = {EXCHANGE_RATE} MZN</strong>.</li>
             <li>• Cenários-base do HTML: <strong>$4.99</strong>, <strong>$7.99</strong>, <strong>$9.99</strong> e <strong>$14.99</strong>.</li>
-            <li>• Valor em meticais por plano mensal arredondado para facilitar pagamento local.</li>
-            <li>• Plano avulso mantido como pagamento por obra (sem assinatura mensal).</li>
+            <li>• Valores em meticais foram arredondados para facilitar cobrança local.</li>
+            <li>• O plano Avulso permanece como cobrança por obra.</li>
           </ul>
         </section>
 
