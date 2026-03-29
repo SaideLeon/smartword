@@ -72,7 +72,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
               </div>
 
               <Link
-                href="/app/plans"
+                href="/planos"
                 className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
               >
                 Ver todos os planos

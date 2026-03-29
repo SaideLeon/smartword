@@ -5,7 +5,7 @@ import { useThemeMode } from '@/hooks/useThemeMode';
 function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light'; onToggleTheme: () => void }) {
   return (
     <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-6 py-4 backdrop-blur md:px-12">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
         <div className="flex items-center gap-3">
           <div className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-mono text-sm font-bold text-black">∂</div>
           <span className="font-serif text-xl italic text-[var(--gold2)]">Muneri</span>
@@ -31,6 +31,13 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
             ↓ Abrir app
           </a>
         </div>
+
+        <ul className="flex w-full items-center gap-4 overflow-x-auto pb-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:hidden">
+          <li><a href="#features" className="whitespace-nowrap hover:text-[var(--gold2)]">Funcionalidades</a></li>
+          <li><a href="#modos" className="whitespace-nowrap hover:text-[var(--gold2)]">Modos</a></li>
+          <li><a href="#equacoes" className="whitespace-nowrap hover:text-[var(--gold2)]">Equações</a></li>
+          <li><a href="/planos" className="whitespace-nowrap hover:text-[var(--gold2)]">Planos</a></li>
+        </ul>
       </div>
     </nav>
   );
