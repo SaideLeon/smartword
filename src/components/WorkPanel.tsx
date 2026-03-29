@@ -138,8 +138,10 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [agentInput, setAgentInput] = useState('');
   const [agentSending, setAgentSending] = useState(false);
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
+  const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'work-recent-sessions';
+  const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
 
   const vars = useMemo(() => ({
     '--panel-bg':         C.bg,
@@ -289,12 +291,14 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const handleTopicSubmit = () => {
     const topic = topicInput.trim();
     if (!topic) return;
+    setProcessingButtonId('submit-topic');
     onTopicChange(topic);
     submitTopic(topic);
   };
 
   const handleApproveOutline = async () => {
     if (isApprovingOutline) return;
+    setProcessingButtonId('approve-outline');
     setIsApprovingOutline(true);
     try {
       await approveOutline(outlineEdit);
@@ -311,6 +315,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
    */
   const handleInsertSection = useCallback((sectionIndex: number) => {
     if (!session) return;
+    setProcessingButtonId(`insert-section-${sectionIndex}`);
     const sec = session.sections[sectionIndex];
     if (!sec?.content) return;
 
@@ -328,6 +333,24 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
       insertSection(sectionIndex, () => onInsert(textToInsert));
     }
   }, [session, editorMarkdown, isSectionRegenerated, insertSection, onInsert, setContent]);
+
+  useEffect(() => {
+    if (!processingButtonId) return;
+
+    const shouldClear =
+      (processingButtonId === 'start-new' && step === 'topic_input') ||
+      (processingButtonId === 'toggle-sessions') ||
+      (processingButtonId.startsWith('resume-session-') && !!session) ||
+      (processingButtonId === 'submit-topic' && step === 'generating_outline') ||
+      (processingButtonId === 'approve-outline' && step !== 'review_outline') ||
+      (processingButtonId === 'regenerate-outline' && step === 'generating_outline') ||
+      (processingButtonId.startsWith('develop-section-') && step === 'developing') ||
+      (processingButtonId.startsWith('insert-section-') && step === 'outline_approved') ||
+      (processingButtonId === 'back-to-outline' && step === 'outline_approved') ||
+      (processingButtonId === 'reset-work' && step === 'idle');
+
+    if (shouldClear) setProcessingButtonId(null);
+  }, [processingButtonId, step, session]);
 
   const statusLabel = (status: string) => {
     if (status === 'inserted') return { label: 'Inserido ✓', color: C.gold };
@@ -361,8 +384,8 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           <div className="flex gap-2">
             {session && (
               <button
-                onClick={() => { coverAgent.reset(); reset(); resetExportPreferences(); }}
-                className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)]"
+                onClick={() => { setProcessingButtonId('reset-work'); coverAgent.reset(); reset(); resetExportPreferences(); }}
+                className={`rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)] ${isProcessing('reset-work') ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                 title="Novo trabalho"
                 aria-label="Iniciar novo trabalho"
               >
@@ -414,11 +437,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 ))}
               </div>
               <div className="flex flex-col gap-2.5">
-                <Btn onClick={() => { startNew(); setShowSessions(false); }} color={C.accent}>✦ Iniciar trabalho</Btn>
+                <Btn onClick={() => { setProcessingButtonId('start-new'); startNew(); setShowSessions(false); }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar trabalho</Btn>
                 <Btn
-                  onClick={() => setShowSessions(v => !v)}
+                  onClick={() => { setProcessingButtonId('toggle-sessions'); setShowSessions(v => !v); }}
                   color={C.muted}
                   outline
+                  processing={isProcessing('toggle-sessions')}
                   ariaLabel={showSessions ? 'Ocultar trabalhos' : 'Mostrar trabalhos'}
                   ariaExpanded={showSessions}
                   ariaControls={sessionsRegionId}
@@ -436,12 +460,13 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                     <button
                       key={s.id}
                       onClick={() => {
+                        setProcessingButtonId(`resume-session-${s.id}`);
                         onTopicChange(s.topic);
                         setContent('');
                         setResumeRestoreSessionId(s.id);
                         resumeSession(s.id);
                       }}
-                      className="flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)]"
+                      className={`flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                     >
                       <div>
                         <div className="font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
@@ -470,7 +495,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 autoFocus
                 className="resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
               />
-              <Btn onClick={handleTopicSubmit} color={C.accent} disabled={!topicInput.trim()}>✦ Gerar esboço orientador</Btn>
+              <Btn onClick={handleTopicSubmit} color={C.accent} disabled={!topicInput.trim()} processing={isProcessing('submit-topic')}>✦ Gerar esboço orientador</Btn>
             </div>
           )}
 
@@ -502,7 +527,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 />
               </div>
               <div className="flex gap-2">
-                <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline}>
+                <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline} processing={isProcessing('approve-outline')}>
                   {isApprovingOutline ? (
                     <span className="inline-flex items-center gap-2">
                       <span className="h-3.5 w-3.5 animate-spin rounded-full border border-black/35 border-t-black" />
@@ -510,7 +535,16 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                     </span>
                   ) : '✓ Aprovar esboço'}
                 </Btn>
-                <Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex disabled={isApprovingOutline}>↻ Regenerar</Btn>
+                <Btn
+                  onClick={() => { setProcessingButtonId('regenerate-outline'); requestNewOutline(outlineSuggestions); }}
+                  color={C.muted}
+                  outline
+                  flex
+                  disabled={isApprovingOutline}
+                  processing={isProcessing('regenerate-outline')}
+                >
+                  ↻ Regenerar
+                </Btn>
               </div>
             </div>
           )}
@@ -633,7 +667,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                             isInserted
                               ? 'cursor-default border-[color:var(--panel-gold)]/20 text-[color:var(--panel-gold)]/40'
                               : 'border-[color:var(--panel-gold)]/30 text-[var(--panel-gold)] hover:bg-[color:var(--panel-gold)]/10'
-                          }`}
+                          } ${isProcessing(`insert-section-${sec.index}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                           title={isInserted ? 'Já inserido' : 'Inserir no editor'}
                           aria-label={isInserted ? `${sec.title} já inserida` : `Inserir ${sec.title}`}
                         >
@@ -641,7 +675,11 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                         </button>
                       )}
                       <button
-                        onClick={() => !isBusy && developSection(sec.index)}
+                        onClick={() => {
+                          if (isBusy) return;
+                          setProcessingButtonId(`develop-section-${sec.index}`);
+                          developSection(sec.index);
+                        }}
                         disabled={isBusy}
                         className={`flex h-7 w-7 items-center justify-center rounded border font-mono text-[13px] transition-all ${
                           isDeveloping
@@ -649,7 +687,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                             : isBusy
                               ? 'cursor-not-allowed border-[var(--panel-accent-dim)] text-[var(--panel-accent)] opacity-30'
                               : 'border-[var(--panel-accent-dim)] text-[var(--panel-accent)] hover:bg-[var(--panel-accent-dim)]'
-                        }`}
+                        } ${isProcessing(`develop-section-${sec.index}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                         title={isDeveloping ? 'A desenvolver…' : sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'}
                         aria-label={sec.status === 'pending' ? `Desenvolver ${sec.title}` : `Reescrever ${sec.title}`}
                       >
@@ -687,8 +725,16 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 {streamingText}
               </div>
               <div className="flex gap-2">
-                <Btn onClick={() => handleInsertSection(activeSectionIdx)} color={C.accent} flex>↓ Inserir no editor</Btn>
-                <Btn onClick={backToOutline} color={C.muted} outline flex>← Voltar</Btn>
+                <Btn onClick={() => handleInsertSection(activeSectionIdx)} color={C.accent} flex processing={isProcessing(`insert-section-${activeSectionIdx}`)}>↓ Inserir no editor</Btn>
+                <Btn
+                  onClick={() => { setProcessingButtonId('back-to-outline'); backToOutline(); }}
+                  color={C.muted}
+                  outline
+                  flex
+                  processing={isProcessing('back-to-outline')}
+                >
+                  ← Voltar
+                </Btn>
               </div>
             </div>
           )}
@@ -725,7 +771,7 @@ function Label({ children }: { children: ReactNode }) {
 }
 
 function Btn({
-  onClick, color, children, outline, flex, disabled, ariaLabel, ariaExpanded, ariaControls,
+  onClick, color, children, outline, flex, disabled, ariaLabel, ariaExpanded, ariaControls, processing,
 }: {
   onClick: () => void;
   color: string;
@@ -736,11 +782,12 @@ function Btn({
   ariaLabel?: string;
   ariaExpanded?: boolean;
   ariaControls?: string;
+  processing?: boolean;
 }) {
   const [hov, setHov] = useState(false);
   return (
     <button
-      className={`press-feedback rounded border px-[14px] py-2 font-mono text-xs tracking-[0.04em] transition-all ${flex ? 'flex-1' : ''}`}
+      className={`press-feedback rounded border px-[14px] py-2 font-mono text-xs tracking-[0.04em] transition-all ${flex ? 'flex-1' : ''} ${processing ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
