@@ -111,7 +111,6 @@ export default function PlanosPage() {
           <h2 className="text-lg font-semibold">Pressupostos usados na precificação</h2>
           <ul className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
             <li>• Taxa de câmbio de referência: <strong>1 USD = {EXCHANGE_RATE} MZN</strong>.</li>
-            <li>• Cenários-base do HTML: <strong>$4.99</strong>, <strong>$7.99</strong>, <strong>$9.99</strong> e <strong>$14.99</strong>.</li>
             <li>• Valores em meticais foram arredondados para facilitar cobrança local.</li>
             <li>• O plano Avulso permanece como cobrança por obra.</li>
           </ul>
