@@ -1,20 +1,21 @@
-// src/app/admin/page.tsx
-// Painel de administração: pagamentos pendentes, despesas, relatório mensal.
-
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabaseClient } from '@/hooks/useAuth';
+
+type AdminTab = 'payments' | 'expenses' | 'report';
+
+type PaymentStatus = 'pending' | 'confirmed' | 'rejected';
 
 interface Payment {
   id: string;
-  created_at: string;
   user_id: string;
+  created_at: string;
   plan_key: string;
   transaction_id: string;
   amount_mzn: number;
   payment_method: string;
-  status: 'pending' | 'confirmed' | 'rejected';
+  status: PaymentStatus;
   profiles: { email: string; full_name: string } | null;
   plans: { label: string; price_mzn: number } | null;
 }
@@ -40,274 +41,380 @@ interface Report {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  groq_api:  'API Groq',
-  supabase:  'Supabase',
-  hosting:   'Hosting / Vercel',
-  domain:    'Domínio',
-  other:     'Outro',
+  groq_api: 'API Groq',
+  supabase: 'Supabase',
+  hosting: 'Hosting / Vercel',
+  domain: 'Domínio',
+  other: 'Outros',
 };
 
+const MONTH_FORMATTER = new Intl.DateTimeFormat('pt-PT', { month: 'long' });
+
+const toCurrency = (value: number) =>
+  `${Math.round(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} MT`;
+
 export default function AdminPage() {
-  const [tab, setTab] = useState<'payments' | 'expenses' | 'report'>('payments');
+  const today = new Date();
+  const [tab, setTab] = useState<AdminTab>('payments');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [expForm, setExpForm] = useState({
+    category: 'groq_api',
+    description: '',
+    amount_mzn: '',
+    period_month: today.getMonth() + 1,
+    period_year: today.getFullYear(),
+  });
 
-  // Formulário de despesa
-  const [expForm, setExpForm] = useState({ category: 'groq_api', description: '', amount_mzn: '', period_month: new Date().getMonth() + 1, period_year: new Date().getFullYear() });
+  const totalExpenses = useMemo(() => expenses.reduce((total, item) => total + item.amount_mzn, 0), [expenses]);
 
-  const flash = (text: string) => { setMsg(text); setTimeout(() => setMsg(''), 3500); };
-
-  // ── Carregar pagamentos ─────────────────────────────────────────────────────
-  const loadPayments = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch('/api/payment');
-    const data = await res.json();
-    setPayments(data ?? []);
-    setLoading(false);
+  const flash = useCallback((text: string) => {
+    setMessage(text);
+    setTimeout(() => setMessage(''), 3200);
   }, []);
 
-  // ── Carregar despesas ───────────────────────────────────────────────────────
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/payment');
+      const data = await response.json();
+      setPayments(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const loadExpenses = useCallback(async () => {
     const { data } = await supabaseClient.from('expense_items').select('*').order('created_at', { ascending: false });
     setExpenses((data as ExpenseItem[]) ?? []);
   }, []);
 
-  // ── Carregar relatório ──────────────────────────────────────────────────────
-  const loadReport = useCallback(async () => {
-    const month = new Date().getMonth() + 1;
-    const year  = new Date().getFullYear();
+  const loadReport = useCallback(async (month: number, year: number) => {
     const { data } = await supabaseClient
       .from('monthly_reports')
       .select('*')
       .eq('period_month', month)
       .eq('period_year', year)
       .single();
-    setReport(data as Report ?? null);
+
+    setReport((data as Report) ?? null);
   }, []);
 
   useEffect(() => {
-    if (tab === 'payments') loadPayments();
-    if (tab === 'expenses') loadExpenses();
-    if (tab === 'report')   { loadExpenses(); loadReport(); }
-  }, [tab, loadPayments, loadExpenses, loadReport]);
+    if (tab === 'payments') {
+      void loadPayments();
+      return;
+    }
 
-  // ── Confirmar / Rejeitar pagamento ─────────────────────────────────────────
-  const handlePaymentAction = async (payment_id: string, action: 'confirm' | 'reject') => {
-    const res = await fetch('/api/payment', {
+    if (tab === 'expenses') {
+      void loadExpenses();
+      return;
+    }
+
+    void loadExpenses();
+    void loadReport(expForm.period_month, expForm.period_year);
+  }, [expForm.period_month, expForm.period_year, loadExpenses, loadPayments, loadReport, tab]);
+
+  const handlePaymentAction = async (paymentId: string, action: 'confirm' | 'reject') => {
+    const response = await fetch('/api/payment', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payment_id, action }),
+      body: JSON.stringify({ payment_id: paymentId, action }),
     });
-    if (res.ok) {
-      flash(action === 'confirm' ? '✓ Pagamento confirmado — plano activado' : '✗ Pagamento rejeitado');
-      loadPayments();
-    } else {
-      flash('Erro ao processar o pagamento');
+
+    if (!response.ok) {
+      flash('Erro ao processar pagamento.');
+      return;
     }
+
+    flash(action === 'confirm' ? 'Pagamento confirmado com sucesso.' : 'Pagamento rejeitado.');
+    void loadPayments();
   };
 
-  // ── Adicionar despesa ───────────────────────────────────────────────────────
   const handleAddExpense = async () => {
-    if (!expForm.description || !expForm.amount_mzn) return;
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
+    if (!expForm.description || !expForm.amount_mzn) {
+      flash('Preenche descrição e valor da despesa.');
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
+
+    if (!user) {
+      flash('Sessão inválida. Faça login novamente.');
+      return;
+    }
 
     const { error } = await supabaseClient.from('expense_items').insert({
-      created_by:   user.id,
-      category:     expForm.category,
-      description:  expForm.description,
-      amount_mzn:   parseFloat(expForm.amount_mzn),
+      created_by: user.id,
+      category: expForm.category,
+      description: expForm.description,
+      amount_mzn: Number(expForm.amount_mzn),
       period_month: expForm.period_month,
-      period_year:  expForm.period_year,
+      period_year: expForm.period_year,
     });
 
-    if (!error) {
-      flash('✓ Despesa adicionada');
-      setExpForm(f => ({ ...f, description: '', amount_mzn: '' }));
-      loadExpenses();
+    if (error) {
+      flash('Não foi possível registar a despesa.');
+      return;
     }
+
+    flash('Despesa adicionada.');
+    setExpForm((previous) => ({ ...previous, description: '', amount_mzn: '' }));
+    void loadExpenses();
   };
 
-  // ── Gerar relatório ─────────────────────────────────────────────────────────
   const handleGenerateReport = async () => {
-    const month = expForm.period_month;
-    const year  = expForm.period_year;
     const { error } = await supabaseClient.rpc('generate_monthly_report', {
-      p_month: month,
-      p_year:  year,
-      p_rate:  64.05,
+      p_month: expForm.period_month,
+      p_year: expForm.period_year,
+      p_rate: 64.05,
     });
-    if (!error) {
-      flash('✓ Relatório gerado com sucesso');
-      loadReport();
-    }
-  };
 
-  const fmt = (v: number) => Math.round(v).toLocaleString('pt-BR') + ' MT';
+    if (error) {
+      flash('Falha ao gerar relatório.');
+      return;
+    }
+
+    flash('Relatório mensal gerado.');
+    void loadReport(expForm.period_month, expForm.period_year);
+  };
 
   return (
-    <main style={{ maxWidth: 860, margin: '0 auto', padding: '32px 20px', fontFamily: 'var(--font-sans)', color: 'var(--color-text-primary)' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 500, marginBottom: 8 }}>Painel de Administração</h1>
-      <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 24 }}>Muneri · Gestão de utilizadores, pagamentos e custos</p>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-8 text-[var(--text-primary)] sm:px-6">
+      <header className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
+        <h1 className="text-xl font-semibold">Painel administrativo</h1>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">Acompanhe pagamentos, custos operacionais e margem mensal da plataforma.</p>
+      </header>
 
-      {msg && (
-        <div style={{ padding: '10px 16px', borderRadius: 8, background: 'var(--color-background-success)', color: 'var(--color-text-success)', fontSize: 13, marginBottom: 16 }}>
-          {msg}
-        </div>
+      {message && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">{message}</div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
-        {(['payments', 'expenses', 'report'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '8px 16px', borderRadius: 8, border: '1px solid',
-            borderColor: tab === t ? 'transparent' : 'var(--color-border-tertiary)',
-            background: tab === t ? 'var(--color-text-primary)' : 'transparent',
-            color: tab === t ? 'var(--color-background-primary)' : 'var(--color-text-secondary)',
-            fontSize: 13, cursor: 'pointer', fontWeight: tab === t ? 500 : 400,
-          }}>
-            {t === 'payments' ? 'Pagamentos' : t === 'expenses' ? 'Despesas' : 'Relatório'}
+      <nav className="flex flex-wrap gap-2">
+        {([
+          { key: 'payments', label: 'Pagamentos' },
+          { key: 'expenses', label: 'Despesas' },
+          { key: 'report', label: 'Relatório' },
+        ] as const).map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setTab(item.key)}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              tab === item.key
+                ? 'border-transparent bg-[var(--text-primary)] text-[var(--bg-base)]'
+                : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {item.label}
           </button>
         ))}
-      </div>
+      </nav>
 
-      {/* ── TAB: PAGAMENTOS ───────────────────────────────────────────────────── */}
       {tab === 'payments' && (
-        <div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-            Pagamentos pendentes de confirmação. Após confirmar, o plano é activado automaticamente.
-          </p>
-          {loading && <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>A carregar…</p>}
-          {payments.map(p => (
-            <div key={p.id} style={{
-              border: '1px solid var(--color-border-tertiary)', borderRadius: 10,
-              padding: '14px 16px', marginBottom: 10,
-              borderLeft: p.status === 'pending' ? '3px solid var(--color-text-warning)' : p.status === 'confirmed' ? '3px solid var(--color-text-success)' : '3px solid var(--color-text-danger)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{p.profiles?.full_name ?? '—'} · {p.profiles?.email}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>
-                    Plano: <strong>{p.plans?.label}</strong> · {fmt(p.amount_mzn)} · {p.payment_method?.toUpperCase()}
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">Pagamentos pendentes aguardando validação manual da equipe.</p>
+
+          {loading && <p className="text-sm text-[var(--text-tertiary)]">A carregar pagamentos...</p>}
+
+          <div className="space-y-3">
+            {payments.map((payment) => (
+              <article key={payment.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-semibold">{payment.profiles?.full_name ?? 'Utilizador'}</h2>
+                    <p className="text-xs text-[var(--text-secondary)]">{payment.profiles?.email ?? 'Sem e-mail'}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Plano <strong>{payment.plans?.label ?? payment.plan_key}</strong> · {toCurrency(payment.amount_mzn)} ·{' '}
+                      {payment.payment_method.toUpperCase()}
+                    </p>
+                    <p className="mono text-[11px] text-[var(--text-tertiary)]">Transação: {payment.transaction_id}</p>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 3, fontFamily: 'var(--font-mono)' }}>
-                    ID: {p.transaction_id}
-                  </div>
+
+                  {payment.status === 'pending' ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePaymentAction(payment.id, 'confirm')}
+                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePaymentAction(payment.id, 'reject')}
+                        className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
+                      >
+                        Rejeitar
+                      </button>
+                    </div>
+                  ) : (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        payment.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'
+                      }`}
+                    >
+                      {payment.status === 'confirmed' ? 'Confirmado' : 'Rejeitado'}
+                    </span>
+                  )}
                 </div>
-                {p.status === 'pending' && (
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <button onClick={() => handlePaymentAction(p.id, 'confirm')} style={{
-                      padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                      background: 'var(--color-background-success)', color: 'var(--color-text-success)', fontSize: 12,
-                    }}>✓ Confirmar</button>
-                    <button onClick={() => handlePaymentAction(p.id, 'reject')} style={{
-                      padding: '6px 12px', borderRadius: 6, border: '1px solid var(--color-border-tertiary)', cursor: 'pointer',
-                      background: 'transparent', color: 'var(--color-text-danger)', fontSize: 12,
-                    }}>✗ Rejeitar</button>
-                  </div>
-                )}
-                {p.status !== 'pending' && (
-                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 20, background: p.status === 'confirmed' ? 'var(--color-background-success)' : 'var(--color-background-danger)', color: p.status === 'confirmed' ? 'var(--color-text-success)' : 'var(--color-text-danger)' }}>
-                    {p.status === 'confirmed' ? 'Confirmado' : 'Rejeitado'}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+              </article>
+            ))}
+          </div>
+
           {!loading && payments.length === 0 && (
-            <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>Nenhum pagamento encontrado.</p>
+            <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">Nenhum pagamento registado.</p>
           )}
-        </div>
+        </section>
       )}
 
-      {/* ── TAB: DESPESAS ─────────────────────────────────────────────────────── */}
       {tab === 'expenses' && (
-        <div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-            Define os custos operacionais mensais. Usado para calcular a margem líquida no relatório.
-          </p>
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">Registre custos mensais para acompanhar o resultado financeiro da operação.</p>
 
-          {/* Formulário */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 8, marginBottom: 20, alignItems: 'end' }}>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Categoria</label>
-              <select value={expForm.category} onChange={e => setExpForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', fontSize: 13 }}>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
+            <label className="space-y-1 text-xs text-[var(--text-secondary)]">
+              <span>Categoria</span>
+              <select
+                value={expForm.category}
+                onChange={(event) => setExpForm((previous) => ({ ...previous, category: event.target.value }))}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]"
+              >
+                {Object.entries(CATEGORY_LABELS).map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value}
+                  </option>
+                ))}
               </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Descrição</label>
-              <input value={expForm.description} onChange={e => setExpForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: API Groq — Março 2026" style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', fontSize: 13 }} />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Valor (MT)</label>
-              <input type="number" value={expForm.amount_mzn} onChange={e => setExpForm(f => ({ ...f, amount_mzn: e.target.value }))} placeholder="0" min="0" style={{ width: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', fontSize: 13, fontFamily: 'var(--font-mono)' }} />
-            </div>
-            <button onClick={handleAddExpense} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--color-text-primary)', color: 'var(--color-background-primary)', fontSize: 13, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              + Adicionar
+            </label>
+
+            <label className="space-y-1 text-xs text-[var(--text-secondary)]">
+              <span>Descrição</span>
+              <input
+                type="text"
+                value={expForm.description}
+                onChange={(event) => setExpForm((previous) => ({ ...previous, description: event.target.value }))}
+                placeholder="Ex: API Groq — Março"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]"
+              />
+            </label>
+
+            <label className="space-y-1 text-xs text-[var(--text-secondary)]">
+              <span>Valor (MT)</span>
+              <input
+                type="number"
+                min="0"
+                value={expForm.amount_mzn}
+                onChange={(event) => setExpForm((previous) => ({ ...previous, amount_mzn: event.target.value }))}
+                className="mono w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm text-[var(--text-primary)]"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={handleAddExpense}
+              className="self-end rounded-lg bg-[var(--text-primary)] px-4 py-2 text-sm font-semibold text-[var(--bg-base)]"
+            >
+              Adicionar
             </button>
           </div>
 
-          {/* Lista de despesas */}
-          {expenses.map(e => (
-            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: '1px solid var(--color-border-tertiary)', borderRadius: 8, marginBottom: 6 }}>
-              <div>
-                <span style={{ fontSize: 12, padding: '2px 7px', borderRadius: 20, background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', marginRight: 8 }}>{CATEGORY_LABELS[e.category] ?? e.category}</span>
-                <span style={{ fontSize: 13 }}>{e.description}</span>
-              </div>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-text-danger)' }}>−{fmt(e.amount_mzn)}</span>
-            </div>
-          ))}
+          <div className="mt-5 space-y-2">
+            {expenses.map((expense) => (
+              <article key={expense.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
+                    {CATEGORY_LABELS[expense.category] ?? expense.category}
+                  </span>
+                  <span className="text-sm">{expense.description}</span>
+                </div>
+                <span className="mono text-sm text-rose-300">-{toCurrency(expense.amount_mzn)}</span>
+              </article>
+            ))}
+          </div>
 
           {expenses.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', borderTop: '1px solid var(--color-border-tertiary)', marginTop: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Total despesas</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 500, color: 'var(--color-text-danger)' }}>
-                −{fmt(expenses.reduce((s, e) => s + e.amount_mzn, 0))}
-              </span>
+            <div className="mt-4 flex items-center justify-between border-t border-[var(--border)] pt-4">
+              <strong className="text-sm">Total de despesas</strong>
+              <strong className="mono text-base text-rose-300">-{toCurrency(totalExpenses)}</strong>
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      {/* ── TAB: RELATÓRIO ────────────────────────────────────────────────────── */}
       {tab === 'report' && (
-        <div>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20, alignItems: 'center' }}>
-            <select value={expForm.period_month} onChange={e => setExpForm(f => ({ ...f, period_month: +e.target.value }))} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', fontSize: 13 }}>
-              {Array.from({ length: 12 }, (_, i) => <option key={i+1} value={i+1}>{new Date(2026, i).toLocaleString('pt-PT', { month: 'long' })}</option>)}
-            </select>
-            <input type="number" value={expForm.period_year} onChange={e => setExpForm(f => ({ ...f, period_year: +e.target.value }))} style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', fontSize: 13, fontFamily: 'var(--font-mono)' }} />
-            <button onClick={handleGenerateReport} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--color-text-primary)', color: 'var(--color-background-primary)', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-              ↻ Gerar relatório
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <label className="space-y-1 text-xs text-[var(--text-secondary)]">
+              <span>Mês</span>
+              <select
+                value={expForm.period_month}
+                onChange={(event) => setExpForm((previous) => ({ ...previous, period_month: Number(event.target.value) }))}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm"
+              >
+                {Array.from({ length: 12 }, (_, index) => {
+                  const monthNumber = index + 1;
+                  return (
+                    <option key={monthNumber} value={monthNumber}>
+                      {MONTH_FORMATTER.format(new Date(expForm.period_year, index))}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
+            <label className="space-y-1 text-xs text-[var(--text-secondary)]">
+              <span>Ano</span>
+              <input
+                type="number"
+                value={expForm.period_year}
+                onChange={(event) => setExpForm((previous) => ({ ...previous, period_year: Number(event.target.value) }))}
+                className="mono w-28 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-2 text-sm"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={handleGenerateReport}
+              className="rounded-lg bg-[var(--text-primary)] px-4 py-2 text-sm font-semibold text-[var(--bg-base)]"
+            >
+              Gerar relatório
             </button>
           </div>
 
           {report ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {[
-                { label: 'Utilizadores totais',  value: report.total_subscribers,  color: 'var(--color-text-info)' },
-                { label: 'Assinantes activos',   value: report.active_subscribers, color: 'var(--color-text-success)' },
-                { label: 'Receita bruta',         value: fmt(report.revenue_mzn),  color: 'var(--color-text-success)' },
-                { label: 'Total despesas',        value: fmt(report.total_expenses_mzn), color: 'var(--color-text-danger)' },
-                { label: 'Lucro líquido',         value: fmt(report.net_margin_mzn), color: report.net_margin_mzn >= 0 ? 'var(--color-text-success)' : 'var(--color-text-danger)' },
-                { label: 'Margem',                value: report.margin_pct.toFixed(1) + '%', color: report.margin_pct > 50 ? 'var(--color-text-success)' : 'var(--color-text-warning)' },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ padding: '16px', border: '1px solid var(--color-border-tertiary)', borderRadius: 10 }}>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 500, fontFamily: 'var(--font-mono)', color }}>{value}</div>
-                </div>
+                { label: 'Utilizadores totais', value: report.total_subscribers.toString(), tone: 'text-sky-300' },
+                { label: 'Assinantes ativos', value: report.active_subscribers.toString(), tone: 'text-emerald-300' },
+                { label: 'Receita bruta', value: toCurrency(report.revenue_mzn), tone: 'text-emerald-300' },
+                { label: 'Despesas totais', value: toCurrency(report.total_expenses_mzn), tone: 'text-rose-300' },
+                {
+                  label: 'Lucro líquido',
+                  value: toCurrency(report.net_margin_mzn),
+                  tone: report.net_margin_mzn >= 0 ? 'text-emerald-300' : 'text-rose-300',
+                },
+                {
+                  label: 'Margem',
+                  value: `${report.margin_pct.toFixed(1)}%`,
+                  tone: report.margin_pct >= 50 ? 'text-emerald-300' : 'text-amber-300',
+                },
+              ].map((item) => (
+                <article key={item.label} className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
+                  <p className="text-xs uppercase tracking-wide text-[var(--text-tertiary)]">{item.label}</p>
+                  <p className={`mono mt-2 text-xl font-semibold ${item.tone}`}>{item.value}</p>
+                </article>
               ))}
             </div>
           ) : (
-            <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center', padding: '24px 0' }}>
-              Clique em "Gerar relatório" para calcular o resultado do mês seleccionado.
-            </p>
+            <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">Selecione o período e clique em “Gerar relatório”.</p>
           )}
-        </div>
+        </section>
       )}
     </main>
   );

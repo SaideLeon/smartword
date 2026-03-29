@@ -1,7 +1,7 @@
 // src/middleware.ts
 // Protege rotas que exigem autenticação.
 // /app, /admin → requer login
-// /admin       → requer role 'admin'
+// /admin e /app/admin → requer role 'admin'
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
@@ -42,8 +42,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Rota /admin → exige login + role admin
-  if (pathname.startsWith('/admin')) {
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/app/admin');
+
+  // Rotas de administração → exigem login + role admin
+  if (isAdminRoute) {
     if (!user) {
       const loginUrl = new URL('/auth/login', request.url);
       loginUrl.searchParams.set('next', pathname);
