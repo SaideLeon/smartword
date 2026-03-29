@@ -1,5 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { Settings } from 'lucide-react';
+import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -12,6 +16,11 @@ interface Props {
 }
 
 export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo }: Props) {
+  const { user, profile, plan, signOut } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const userName = profile?.full_name || user?.email || 'Utilizador';
+
   return (
     <header className="relative z-20 flex h-[52px] flex-shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-surface)] px-3">
       <div className="flex items-center gap-[9px]">
@@ -35,6 +44,49 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         <div className="ml-1.5 flex items-center gap-1.5 border-l border-[var(--border)] pl-2">
           <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">LaTeX → OMML</span>
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-teal)] shadow-[0_0_6px_var(--accent-teal)]" />
+        </div>
+
+        <div className="relative ml-1.5 border-l border-[var(--border)] pl-2">
+          <button
+            type="button"
+            aria-label="Abrir informações da conta"
+            onClick={() => setShowUserMenu((current) => !current)}
+            className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+
+          {showUserMenu && (
+            <div className="absolute right-0 top-[38px] z-50 w-72 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-2xl">
+              <p className="mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Conta</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{userName}</p>
+              <p className="text-xs text-[var(--text-muted)]">{profile?.email || user?.email || 'Sem email'}</p>
+
+              <div className="mt-3 space-y-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2 text-xs">
+                <p className="text-[var(--text-muted)]">
+                  Plano actual: <span className="font-semibold text-[var(--text-primary)]">{plan?.label || profile?.plan_key || 'Grátis'}</span>
+                </p>
+                <p className="text-[var(--text-muted)]">
+                  Trabalhos usados: <span className="font-semibold text-[var(--text-primary)]">{profile?.works_used ?? 0}</span>
+                </p>
+              </div>
+
+              <Link
+                href="/app/plans"
+                className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+              >
+                Ver todos os planos
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="mt-2 w-full rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+              >
+                Terminar sessão
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

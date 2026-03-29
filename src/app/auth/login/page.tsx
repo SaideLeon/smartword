@@ -17,6 +17,7 @@ function LoginContent() {
 
   useEffect(() => {
     if (isLoggedIn) {
+      router.refresh();
       router.replace(redirectTo);
     }
   }, [isLoggedIn, redirectTo, router]);
@@ -27,6 +28,7 @@ function LoginContent() {
     const ok = await signInEmail(email, password);
     setSubmitting(false);
     if (ok) {
+      router.refresh();
       router.replace(redirectTo);
     }
   }
