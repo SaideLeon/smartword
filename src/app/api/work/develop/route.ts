@@ -83,20 +83,21 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
   if (isSubsection) {
     return `Desenvolve este subtópico de forma clara e didáctica para alunos do ensino secundário. Deve:
 - Apresentar o conceito com uma definição simples e acessível
-- Incluir pelo menos 1 exemplo prático ligado ao quotidiano moçambicano
+- Incluir pelo menos 1 exemplo prático ligado ao quotidiano moçambicano se for necessário( nem todos trabalhos vão precisar de menção de quotidiano moçambicano)
 - Ter entre 200 e 350 palavras
 - Usar Markdown (negrito para termos importantes, listas quando adequado)
 - NÃO repetir conteúdo já presente nas secções anteriores
 - NÃO incluir conclusão nem lista de referências no final`;
   }
 
-  if (normalizedName === 'introducao' || normalizedName === 'introducão') {
-    return `Escreve uma introdução simples e directa para um trabalho do ensino secundário/médio. Deve:
-- Apresentar o tema de forma acessível (o que é e porquê é importante)
-- Referir brevemente a estrutura do trabalho (as secções que existem)
-- Ter entre 150 e 250 palavras no máximo — NÃO ultrapasses este limite
-- Usar linguagem clara e simples, adequada a um aluno do ensino secundário
-- NÃO incluir questão de investigação formal, hipóteses, ou linguagem universitária
+  if (normalizedName === 'introducao' || normalizedName === 'introducao') {
+    return `Escreve uma introdução académica simples para um trabalho do ensino secundário/médio. Deve:
+- Contextualizar o tema de forma acessível (o que é e porquê é importante)
+- Apresentar o problema de pesquisa em 1-2 frases
+- Referir os objectivos gerais do trabalho
+- Descrever brevemente a estrutura do trabalho (as secções que existem)
+- Ter entre 280 e 480 palavras — NÃO ultrapasses este limite
+- NÃO desenvolver conceitos teóricos — isso é para o Desenvolvimento
 - NÃO incluir conclusão nem referências no final`;
   }
 
@@ -104,46 +105,58 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
     return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para o ensino secundário/médio.
 
 Estrutura OBRIGATÓRIA:
-1. **Objectivo Geral** — 1 frase que resume o propósito do trabalho (começa com infinitivo: "Compreender...", "Analisar...", "Explicar...")
-2. **Objectivos Específicos** — lista de 3 a 4 bullets curtos (cada um com 1 frase simples, começa com infinitivo)
+**Objectivo Geral**
+1 frase que resume o propósito do trabalho (começa com infinitivo: "Analisar...", "Compreender...", "Identificar...") não incluir citação de autor 
 
+**Objectivos Específicos**
+Lista de 3 a 4 bullets curtos, cada um com 1 frase simples no infinitivo. 
+Não incluir citação de autor 
 PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO escrevas nada sobre metodologia aqui
+❌ NÃO uses referências nem citações — objectivos não as requerem
 ❌ NÃO cries sub-secções desnecessárias
-❌ NÃO ultrapasses 120 palavras no total
-❌ NÃO incluas conclusão nem referências no final`;
-  }
-
-  if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho, de forma SIMPLES e CONCISA para o ensino secundário/médio.
-
-Estrutura OBRIGATÓRIA:
-- 1 parágrafo de 3 a 4 linhas descrevendo como o trabalho foi desenvolvido (ex: pesquisa em livros e sites, análise de exemplos práticos, etc.)
-
-PROIBIÇÕES ABSOLUTAS:
-❌ NÃO escrevas objectivos aqui
-❌ NÃO cries sub-secções como "Abordagem de Investigação", "Critérios de Avaliação", "Procedimentos Operacionais"
-❌ NÃO uses termos universitários: "revisão bibliográfica", "coerência metodológica", "abordagem de investigação"
 ❌ NÃO ultrapasses 100 palavras no total
 ❌ NÃO incluas conclusão nem referências no final`;
   }
 
+  if (normalizedName === 'metodologia') {
+    return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ensino secundário/médio.
+
+Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
+1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
+2. **Método de análise** — descreve o método usado (histórico, comparativo, descritivo, qualitativo, etc.)
+3. **Fontes e critérios de selecção** — que tipo de fontes foram consultadas e por que razão
+4. **Organização dos dados** — como a informação foi tratada e apresentada (ex: tematicamente, segundo APA 7.ª edição)
+
+PROIBIÇÕES ABSOLUTAS:
+❌ NÃO escrevas objectivos aqui
+❌ NÃO uses termos excessivamente universitários sem explicação
+❌ NÃO ultrapasses 150 palavras no total
+❌ NÃO incluas conclusão nem referências no final`;
+  }
+
   if (normalizedName === 'conclusao' || normalizedName === 'conclusão') {
-    return `Escreve uma conclusão simples e directa. Deve:
-- Resumir os pontos mais importantes abordados no trabalho (2-3 frases)
-- Apresentar a opinião do aluno sobre o tema e a sua importância
-- Referir o que o aluno aprendeu com este trabalho
-- Ter entre 100 e 180 palavras — NÃO ultrapasses este limite
-- Usar linguagem simples e pessoal ("Concluímos que...", "Este trabalho permitiu...")
+    return `Escreve uma conclusão consistente e académica. Deve:
+- Retomar os pontos mais importantes desenvolvidos no trabalho (1 parágrafo)
+- Responder ao problema de pesquisa apresentado na introdução
+- Apresentar a relevância do tema e o que o trabalho contribuiu
+- Incluir reflexão crítica ou opinião fundamentada do aluno
+- Ter entre 220 e 320 palavras — NÃO ultrapasses este limite
+- Usar linguagem clara: "Conclui-se que...", "O presente trabalho demonstrou..."
 - NÃO introduzir informação nova`;
   }
 
   if (normalizedName.includes('referencia') || normalizedName.includes('bibliografia')) {
-    return `Lista as referências bibliográficas no formato APA (7.ª edição). Inclui no mínimo 4 referências relevantes para o tema (livros didácticos, sites académicos ou educativos, artigos). Apresenta cada referência numa linha separada, ordenadas alfabeticamente pelo apelido do autor.`;
+    return `Lista as referências bibliográficas em formato APA (7.ª edição). Deve:
+- Incluir no mínimo 4 referências relevantes e credíveis para o tema
+- Ordenar alfabeticamente pelo apelido do primeiro autor
+- Apresentar cada referência numa linha separada
+- Incluir: livros didácticos, artigos académicos, sites educativos ou institucionais
+- NÃO usar referências inventadas — usa apenas formatos APA correctos com dados plausíveis`;
   }
 
   // Fallback genérico
-  return `Desenvolve o conteúdo de forma académica adequada ao ensino secundário, entre 200 e 350 palavras. NÃO incluas conclusão nem referências no final.`;
+  return `Desenvolve o conteúdo de forma académica adequada ao ensino secundário, entre 220 e 350 palavras. NÃO incluas conclusão nem referências no final.`;
 }
 
 // ── Handler principal ────────────────────────────────────────────────────────
