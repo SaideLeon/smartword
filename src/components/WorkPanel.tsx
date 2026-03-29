@@ -8,19 +8,23 @@
 // A regra é simples e universal:
 //
 //   • Primeira secção inserida no editor → SEM pagebreak antes
-//   • Todas as outras secções → COM {pagebreak} antes do título
+//   • Todas as outras secções principais → COM {pagebreak} antes do título
+//   • Subsecções (1.1, 1.2, …)          → NUNCA pagebreak — fluem na mesma página
 //
 // Esta lógica está EXCLUSIVAMENTE em buildSectionMarkdown().
 // O servidor (develop/route.ts) guarda conteúdo PURO — sem pagebreaks.
 // O hook (useWorkSession.ts) também não adiciona pagebreaks.
 // APENAS esta função decide o pagebreak.
 //
-// Por que funciona:
-//   - Introdução: 1.ª secção → sem pagebreak (editor vazio)
-//   - Objectivos: secção principal → {pagebreak} antes do título
-//   - 3.1, 3.2, 3.3 (subsecções): SEM pagebreak — fluem na mesma página
-//   - Conclusão: secção principal → sempre {pagebreak}
-//   - Referências: secção principal → sempre {pagebreak}
+// ── REGRA DE NUMERAÇÃO ───────────────────────────────────────────────────────
+//
+//   I.   Introdução                → ## I. Introdução
+//   II.  Objectivos                → ## II. Objectivos
+//   III. Metodologia               → ## III. Metodologia
+//   1.1  Subsecção do Desenv.      → ### 1.1 Título  (sem pagebreak)
+//   1.2  Subsecção do Desenv.      → ### 1.2 Título  (sem pagebreak)
+//   Conclusão                      → ## Conclusão    (sem número)
+//   Referências Bibliográficas     → ## Referências  (sem número)
 //
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -45,66 +49,7 @@ interface AgentMessage {
   content: string;
 }
 
-function normalizeForComparison(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
-  const firstLine = content.trimStart().split('\n')[0].trim();
-  if (!firstLine.startsWith('#')) return false;
-  const headingText = firstLine.replace(/^#+\s*/, '');
-  const normalizedHeading = normalizeForComparison(headingText);
-  const normalizedTitle = normalizeForComparison(sectionTitle);
-  return (
-    normalizedHeading === normalizedTitle ||
-    normalizedHeading.includes(normalizedTitle) ||
-    normalizedTitle.includes(normalizedHeading)
-  );
-}
-
-/**
- * buildSectionMarkdown — A ÚNICA função que decide se há {pagebreak}.
- *
- * Regras de pagebreak:
- *   - Subsecções (ex: "3.1 Conceito X", "1.1 Contexto") → NUNCA quebram página.
- *     Fluem naturalmente após o conteúdo anterior na mesma página.
- *   - Secções principais (ex: "Introdução", "Conclusão") →
- *     quebram página SEMPRE, excepto se for a primeira a ser inserida no editor.
- *
- * @param title           Título da secção (ex: "Introdução", "3.1 Conceito X")
- * @param content         Conteúdo puro da secção (sem pagebreaks, sem título)
- * @param isFirstInEditor true se o editor estiver vazio quando esta secção é inserida
- */
-// ── REGRA DE NUMERAÇÃO ────────────────────────────────────────────────────────
-//
-//  I.   Introdução          → ## I. Introdução        (sem pagebreak se for 1ª)
-//  II.  Objectivos          → ## II. Objectivos        (pagebreak antes)
-//  III. Metodologia         → ## III. Metodologia      (pagebreak antes)
-//  ─── QUEBRA APÓS METODOLOGIA ───────────────────────────────────────────────
-//  1.1  Subsecção           → ### 1.1 Título           (SEM pagebreak — flui)
-//  1.2  Subsecção           → ### 1.2 Título           (SEM pagebreak — flui)
-//  ...
-//  Conclusão                → ## Conclusão             (pagebreak antes)
-//  Referências Bibliográficas → ## Referências Bibliográficas (pagebreak antes)
-//
-// ── LÓGICA DE PAGEBREAK ───────────────────────────────────────────────────────
-//
-//  • Subsecções (ex: "1.1 Conceito X") → NUNCA pagebreak — fluem na mesma página
-//  • Secções principais:
-//      - 1ª a ser inserida no editor → SEM pagebreak
-//      - Todas as outras            → COM pagebreak
-//  • Secções com prefixo romano (I., II., III.) → secções principais
-//  • "Conclusão" e "Referências Bibliográficas" → secções principais (sem número)
-//
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── Normalização de título (remove prefixos) ──────────────────────────────────
+// ── Normalização de título para comparação ────────────────────────────────────
 
 function normalizeTitleForMatch(title: string): string {
   return title
@@ -117,16 +62,6 @@ function normalizeTitleForMatch(title: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
-
-// ── Determina o nível de heading e se é subsecção ────────────────────────────
-
-function getSectionHeading(title: string): { heading: '##' | '###'; isSubsection: boolean } {
-  // Subsecção: começa com dígito ponto dígito (ex: "1.1 Conceito X")
-  const isSubsection = /^\d+\.\d+/.test(title);
-  return { heading: isSubsection ? '###' : '##', isSubsection };
-}
-
-// ── Verifica se o conteúdo já começa com o título como cabeçalho ─────────────
 
 function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
   const firstLine = content.trimStart().split('\n')[0].trim();
@@ -144,28 +79,38 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
 /**
  * buildSectionMarkdown — A ÚNICA função que decide heading, pagebreak e numeração.
  *
+ * Regras de heading:
+ *   - Subsecções (ex: "1.1 Conceito X") → ### (três cerquilhas)
+ *   - Todas as outras                   → ## (duas cerquilhas)
+ *
+ * Regras de pagebreak:
+ *   - Subsecções                        → NUNCA pagebreak (fluem na mesma página)
+ *   - Secções principais, 1ª no editor  → SEM pagebreak
+ *   - Secções principais, restantes     → COM {pagebreak} antes
+ *
  * @param title           Título da secção (ex: "I. Introdução", "1.1 Conceito X", "Conclusão")
  * @param content         Conteúdo puro da secção (sem pagebreaks, sem título)
  * @param isFirstInEditor true se o editor estiver vazio quando esta secção é inserida
  */
-export function buildSectionMarkdown(
+function buildSectionMarkdown(
   title: string,
   content: string,
   isFirstInEditor: boolean,
 ): string {
-  const { heading, isSubsection } = getSectionHeading(title);
+  // Subsecção: começa com dígito ponto dígito (ex: "1.1 Conceito X")
+  const isSubsection = /^\d+\.\d+/.test(title);
+  const heading = isSubsection ? '###' : '##';
 
   // Verificar se o conteúdo já inclui o título como cabeçalho
   const titleAlreadyPresent = contentStartsWithTitle(content, title);
   const body = titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
 
-  // Subsecções (1.1, 1.2, etc.) — NUNCA quebram página.
-  // Fluem naturalmente na mesma página que o conteúdo anterior.
+  // Subsecções — NUNCA quebram página
   if (isSubsection) {
     return body;
   }
 
-  // Secções principais — quebram página sempre, excepto a primeira no editor.
+  // Secções principais — quebram página sempre, excepto a primeira no editor
   if (isFirstInEditor) {
     return body;
   }
@@ -173,8 +118,6 @@ export function buildSectionMarkdown(
   return `{pagebreak}\n\n${body}`;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// FIM DA Substituição
 export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
@@ -237,7 +180,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
       .filter((section) => section.status !== 'pending' && section.content.trim())
       .sort((a, b) => a.index - b.index);
 
-    // Reconstruir o editor com pagebreaks correctos entre secções
     const editorContent = completedSections
       .map((section, i) => buildSectionMarkdown(section.title, section.content, i === 0))
       .join('\n\n');
@@ -362,7 +304,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   };
 
   /**
-   * handleInsertSection — insere uma secção no editor com pagebreak correcto.
+   * handleInsertSection — insere uma secção no editor com pagebreak e numeração correctos.
    *
    * Determina se o editor está vazio (primeira secção) ou já tem conteúdo
    * (secções seguintes precisam de {pagebreak}).
@@ -373,21 +315,16 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (!sec?.content) return;
 
     const hasContentInEditor = Boolean(editorMarkdown?.trim());
-    const hasPreloadedEditorData = hasContentInEditor;
-    const shouldResetEditor = hasPreloadedEditorData && isSectionRegenerated(sectionIndex);
+    const shouldResetEditor = hasContentInEditor && isSectionRegenerated(sectionIndex);
 
     if (shouldResetEditor) {
-      // Substituição completa: reconstruir todo o editor com pagebreaks correctos
       insertSection(sectionIndex, onInsert, {
         shouldResetEditor: true,
         onReplace: setContent,
       });
     } else {
-      // Inserção normal: adicionar esta secção ao fim do editor
       const isFirstInEditor = !hasContentInEditor;
       const textToInsert = buildSectionMarkdown(sec.title, sec.content, isFirstInEditor);
-
-      // Marcar como inserida e inserir no editor
       insertSection(sectionIndex, () => onInsert(textToInsert));
     }
   }, [session, editorMarkdown, isSectionRegenerated, insertSection, onInsert, setContent]);
@@ -465,8 +402,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               </p>
               <div className="mb-5 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 text-left">
                 <div className="mb-2 font-mono text-[10px] tracking-[0.08em] text-[var(--panel-text-dim)]">ESTRUTURA DO TRABALHO</div>
-                {['Introdução', 'Objectivos e Metodologia', 'Desenvolvimento Teórico', 'Conclusão', 'Referências Bibliográficas'].map((s, i) => (
-                  <div key={s} className="py-0.5 font-mono text-[11px] text-[var(--panel-text-dim)]">{i + 1}. {s}</div>
+                {[
+                  'I. Introdução',
+                  'II. Objectivos',
+                  'III. Metodologia',
+                  '1.1, 1.2, 1.3… Desenvolvimento',
+                  'Conclusão',
+                  'Referências Bibliográficas',
+                ].map((s, i) => (
+                  <div key={s} className="py-0.5 font-mono text-[11px] text-[var(--panel-text-dim)]">{s}</div>
                 ))}
               </div>
               <div className="flex flex-col gap-2.5">
@@ -652,7 +596,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 Esboço aprovado. Selecciona uma secção para desenvolver.
               </Label>
 
-              {/* Nota informativa sobre a paginação */}
               <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
                 ↕ Cada secção começa automaticamente numa nova página ao ser inserida.
               </div>
@@ -663,6 +606,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 const isInserted = sec.status === 'inserted';
                 const isDeveloping = isActive && step === 'developing';
                 const isBusy = activeSectionIdx !== null;
+                const isSubsection = /^\d+\.\d+/.test(sec.title);
 
                 return (
                   <div
@@ -671,10 +615,13 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                       isActive
                         ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20'
                         : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'
-                    }`}
+                    } ${isSubsection ? 'ml-3' : ''}`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">{sec.title}</div>
+                      <div className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">
+                        {isSubsection && <span className="mr-1 text-[var(--panel-text-faint)]">↳</span>}
+                        {sec.title}
+                      </div>
                       <div className="mt-0.5 font-mono text-[10px]" style={{ color }}>{label}</div>
                     </div>
                     <div className="flex shrink-0 gap-1.5">
