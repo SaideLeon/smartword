@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings } from 'lucide-react';
+import { Menu, Settings, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ interface Props {
 export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo }: Props) {
   const { user, profile, plan, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const userName = profile?.full_name || user?.email || 'Utilizador';
 
@@ -31,7 +32,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto hidden items-center gap-1.5 md:flex">
         <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => onTogglePanel('work')} />
         <PanelToggleButton active={sidePanel === 'tcc'} label="TCC" onClick={() => onTogglePanel('tcc')} />
         <PanelToggleButton active={sidePanel === 'chat'} label="IA" onClick={() => onTogglePanel('chat')} highlight />
@@ -89,6 +90,62 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           )}
         </div>
       </div>
+
+      <div className="ml-auto md:hidden">
+        <button
+          type="button"
+          aria-label={showMobileMenu ? 'Fechar menu principal' : 'Abrir menu principal'}
+          onClick={() => setShowMobileMenu((current) => !current)}
+          className="press-feedback grid h-[34px] w-[34px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+        >
+          {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {showMobileMenu && (
+        <div className="absolute left-2 right-2 top-[58px] z-50 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-2xl md:hidden">
+          <p className="mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Menu principal</p>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => { onTogglePanel('work'); setShowMobileMenu(false); }} />
+            <PanelToggleButton active={sidePanel === 'tcc'} label="TCC" onClick={() => { onTogglePanel('tcc'); setShowMobileMenu(false); }} />
+            <PanelToggleButton active={sidePanel === 'chat'} label="IA" onClick={() => { onTogglePanel('chat'); setShowMobileMenu(false); }} highlight />
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button aria-label="Desfazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
+            <button aria-label="Refazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
+          </div>
+
+          <div className="mt-3 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2 text-xs">
+            <p className="mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Conta</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{userName}</p>
+            <p className="text-[var(--text-muted)]">{profile?.email || user?.email || 'Sem email'}</p>
+            <p className="mt-2 text-[var(--text-muted)]">
+              Plano actual: <span className="font-semibold text-[var(--text-primary)]">{plan?.label || profile?.plan_key || 'Grátis'}</span>
+            </p>
+            <p className="text-[var(--text-muted)]">
+              Trabalhos usados: <span className="font-semibold text-[var(--text-primary)]">{profile?.works_used ?? 0}</span>
+            </p>
+          </div>
+
+          <Link
+            href="/planos"
+            onClick={() => setShowMobileMenu(false)}
+            className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+          >
+            Ver todos os planos
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="mt-2 w-full rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+          >
+            Terminar sessão
+          </button>
+        </div>
+      )}
     </header>
   );
 }
