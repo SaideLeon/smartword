@@ -139,6 +139,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [agentSending, setAgentSending] = useState(false);
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
+  const sessionsTopRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'work-recent-sessions';
   const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
@@ -172,6 +173,11 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    if (!showSessions) return;
+    sessionsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [showSessions, recentSessions.length]);
 
   // ── Restaurar sessão retomada ─────────────────────────────────────────────
 
@@ -418,6 +424,35 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {/* ── IDLE ── */}
           {step === 'idle' && (
             <div className="mt-8 text-center">
+              {showSessions && (
+                <div ref={sessionsTopRef} id={sessionsRegionId} className="mb-4 flex flex-col gap-1.5 text-left">
+                  {recentSessions.length === 0 && (
+                    <p className="font-mono text-[11px] text-[var(--panel-text-faint)]">Nenhum trabalho anterior encontrado.</p>
+                  )}
+                  {recentSessions.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setProcessingButtonId(`resume-session-${s.id}`);
+                        onTopicChange(s.topic);
+                        setContent('');
+                        setResumeRestoreSessionId(s.id);
+                        resumeSession(s.id);
+                      }}
+                      className={`flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
+                    >
+                      <div>
+                        <div className="font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
+                        <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
+                      </div>
+                      <span className="rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
+                        {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="mb-3 text-[2.5rem]">📚</div>
               <p className="mb-6 font-mono text-[13px] leading-[1.65] text-[var(--panel-text-dim)]">
                 Copiloto para trabalhos do ensino secundário e médio.<br />
@@ -451,34 +486,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 </Btn>
               </div>
 
-              {showSessions && (
-                <div id={sessionsRegionId} className="mt-4 flex flex-col gap-1.5">
-                  {recentSessions.length === 0 && (
-                    <p className="font-mono text-[11px] text-[var(--panel-text-faint)]">Nenhum trabalho anterior encontrado.</p>
-                  )}
-                  {recentSessions.map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setProcessingButtonId(`resume-session-${s.id}`);
-                        onTopicChange(s.topic);
-                        setContent('');
-                        setResumeRestoreSessionId(s.id);
-                        resumeSession(s.id);
-                      }}
-                      className={`flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
-                    >
-                      <div>
-                        <div className="font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
-                        <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
-                      </div>
-                      <span className="rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
-                        {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
