@@ -4,14 +4,14 @@
 // Autenticação Supabase: Google OAuth + Email/Senha
 // Expõe: user, profile, plan, loading, signInGoogle, signInEmail, signUp, signOut
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 import { useCallback, useEffect, useState } from 'react';
 
 // ── Cliente Supabase (singleton no browser) ────────────────────────────────
 const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabaseClient = createClient(supabaseUrl, supabaseAnon);
+export const supabaseClient = createBrowserClient(supabaseUrl, supabaseAnon);
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 export interface UserProfile {
