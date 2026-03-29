@@ -15,7 +15,7 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
           <li><a href="#features" className="hover:text-[var(--gold2)]">Funcionalidades</a></li>
           <li><a href="#modos" className="hover:text-[var(--gold2)]">Modos</a></li>
           <li><a href="#equacoes" className="hover:text-[var(--gold2)]">Equações</a></li>
-          <li><a href="/planos" className="hover:text-[var(--gold2)]">Planos</a></li>
+          <li><a href="/app/plans" className="hover:text-[var(--gold2)]">Planos</a></li>
         </ul>
 
         <div className="flex items-center gap-2">
