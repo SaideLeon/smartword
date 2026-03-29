@@ -5,8 +5,7 @@ import { getSession, saveSectionContent } from '@/lib/tcc/service';
 import { compressContextIfNeeded, buildOptimisedContext } from '@/lib/tcc/context-compressor';
 import type { TccSection } from '@/lib/tcc/types';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 // ── Secções que NUNCA devem ter conclusão/referências geradas pela IA ─────────
 // (basicamente todas excepto as próprias secções de Conclusão e Referências)
@@ -142,11 +141,6 @@ export async function POST(req: Request) {
   try {
     const { sessionId, sectionIndex } = await req.json();
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-    }
-
     // 1. Carregar sessão
     let session = await getSession(sessionId);
     if (!session) {
@@ -179,13 +173,7 @@ export async function POST(req: Request) {
     );
 
     // 5. Chamar a IA em streaming
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -197,13 +185,7 @@ export async function POST(req: Request) {
         stream: true,
         max_tokens: 2048,
         temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+      }));
 
     // 6. Stream com acumulação + filtro pós-processamento antes de guardar
     let accumulated = '';

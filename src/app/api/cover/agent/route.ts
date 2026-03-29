@@ -3,8 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqJSON } from '@/lib/groq-resilient';
 
 // ── JSON Schema da tool ───────────────────────────────────────────────────────
 
@@ -121,11 +120,6 @@ export async function POST(req: Request) {
   try {
     const { topic, outline, messages } = await req.json();
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'GROQ_API_KEY não configurada' }, { status: 500 });
-    }
-
     if (!topic) {
       return NextResponse.json(
         { error: 'topic é obrigatório' },
@@ -139,13 +133,7 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(topic, normalizedOutline);
 
-    const response = await fetch(GROQ_BASE, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const data = await groqJSON((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -156,15 +144,8 @@ export async function POST(req: Request) {
         stream: false,
         max_tokens: 512,
         temperature: 0.3,
-      }),
-    });
+      }));
 
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
-
-    const data = await response.json();
     return NextResponse.json(data);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
