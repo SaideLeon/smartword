@@ -114,10 +114,12 @@ export function useAuth() {
   // ── Registo com Email/Senha ──────────────────────────────────────────────
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     setError(null);
+    const normalizedFullName = fullName?.trim() || email.split('@')[0];
+
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: normalizedFullName } },
     });
     if (error) setError(error.message);
     return !error;
