@@ -1,12 +1,11 @@
 'use client';
 
-// hooks/useWorkSession.ts (versão corrigida)
-// 
+// hooks/useWorkSession.ts (versão actualizada — nova estrutura de numeração)
+//
 // REGRA DE PAGEBREAK:
 // O conteúdo guardado no Supabase é SEMPRE puro — sem {pagebreak} nem {section}.
 // Os {pagebreak} são adicionados APENAS quando o conteúdo é inserido no editor,
 // pela função buildSectionMarkdown em WorkPanel.tsx.
-// Esta separação evita duplicação e conflitos.
 
 import { useState, useCallback, useRef } from 'react';
 import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
@@ -20,17 +19,36 @@ export type WorkStep =
   | 'developing'
   | 'section_ready';
 
-// ── Secções fixas de fallback ────────────────────────────────────────────────
-const FIXED_SECTIONS = [
-  'Introdução',
-  'Objectivos e Metodologia',
-  'Desenvolvimento Teórico',
+// ── Normalização de título ────────────────────────────────────────────────────
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^[ivxlcdm]+\.\s*/i, '')
+    .replace(/^\d+(\.\d+)?\.\s*/, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isAutomaticIndex(title: string): boolean {
+  return normalizeTitle(title) === 'indice';
+}
+
+// ── Secções fixas de fallback (nova estrutura com numeração) ─────────────────
+
+const FALLBACK_SECTIONS = [
+  'I. Introdução',
+  'II. Objectivos',
+  'III. Metodologia',
   'Conclusão',
   'Referências Bibliográficas',
 ];
 
-function buildInitialSections(): WorkSection[] {
-  return FIXED_SECTIONS.map((title, index) => ({
+function buildFallbackSections(): WorkSection[] {
+  return FALLBACK_SECTIONS.map((title, index) => ({
     index,
     title,
     content: '',
@@ -38,32 +56,14 @@ function buildInitialSections(): WorkSection[] {
   }));
 }
 
-/**
- * Normaliza uma string para comparação: minúsculas, sem acentos,
- * sem pontuação, sem espaços extra.
- */
-function normalizeForComparison(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+// ── Verifica se o conteúdo começa com o título ────────────────────────────────
 
-/**
- * Verifica se o conteúdo gerado pela IA já começa com um cabeçalho
- * Markdown semelhante ao título da secção.
- */
 function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
   const firstLine = content.trimStart().split('\n')[0].trim();
   if (!firstLine.startsWith('#')) return false;
-
   const headingText = firstLine.replace(/^#+\s*/, '');
-  const normalizedHeading = normalizeForComparison(headingText);
-  const normalizedTitle = normalizeForComparison(sectionTitle);
-
+  const normalizedHeading = normalizeTitle(headingText);
+  const normalizedTitle = normalizeTitle(sectionTitle);
   return (
     normalizedHeading === normalizedTitle ||
     normalizedHeading.includes(normalizedTitle) ||
@@ -71,14 +71,21 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
   );
 }
 
+// ── Parse do esboço em secções accionáveis ────────────────────────────────────
+//
+// Regras:
+//  - ## com ### filhos → o ## pai não é accionável, apenas as ### filhas
+//  - ## sem ### filhos → accionável directamente
+//  - Prefixos romanos (I., II., III.) e numéricos (1.1) são mantidos no título
+
 function parseOutlineSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
   const raw: { title: string; level: 2 | 3 }[] = [];
-  const isAutomaticIndex = (title: string) => normalizeForComparison(title) === 'indice';
 
   for (const line of lines) {
     const h2 = line.match(/^##\s+(.+)/);
     const h3 = line.match(/^###\s+(.+)/);
+
     if (h2) {
       const title = h2[1].trim();
       if (!isAutomaticIndex(title)) raw.push({ title, level: 2 });
@@ -88,7 +95,7 @@ function parseOutlineSections(outline: string): WorkSection[] {
     }
   }
 
-  if (raw.length === 0) return buildInitialSections();
+  if (raw.length === 0) return buildFallbackSections();
 
   const sections: WorkSection[] = [];
   let index = 0;
@@ -100,13 +107,14 @@ function parseOutlineSections(outline: string): WorkSection[] {
         sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
         index++;
       }
+      // Se tem subsecções, o ## pai não é accionável
     } else {
       sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
       index++;
     }
   }
 
-  return sections.length > 0 ? sections : buildInitialSections();
+  return sections.length > 0 ? sections : buildFallbackSections();
 }
 
 // ── Hook principal ───────────────────────────────────────────────────────────
@@ -303,7 +311,6 @@ export function useWorkSession() {
         }
       }
 
-      // Guardar conteúdo puro no estado local (sem pagebreaks)
       setSession(prev => {
         if (!prev) return prev;
         const sections = prev.sections.map(section =>
@@ -345,8 +352,6 @@ export function useWorkSession() {
     const sec = session.sections[index];
     if (!sec?.content) return;
 
-    // NOTA: buildSectionMarkdown é chamado em WorkPanel.tsx com a lógica de pagebreak correcta.
-    // Aqui apenas preparamos o conteúdo base sem pagebreak para o caso de fallback.
     const isSubsection = /^\d+\.\d+/.test(sec.title);
     const heading = isSubsection ? '###' : '##';
     const titleAlreadyPresent = contentStartsWithTitle(sec.content, sec.title);
@@ -375,8 +380,6 @@ export function useWorkSession() {
         const refreshedSession: WorkSessionRecord = await refreshRes.json();
         fetchedSession = refreshedSession;
 
-        // Para o caso de substituição completa do editor, WorkPanel.tsx
-        // usa buildSectionMarkdown que já trata dos pagebreaks correctamente.
         const organizedContent = [...refreshedSession.sections]
           .filter(section => section.content.trim())
           .sort((a, b) => a.index - b.index)
@@ -385,7 +388,6 @@ export function useWorkSession() {
             const sectionIsSubsection = /^\d+\.\d+/.test(section.title);
             const sectionHeading = sectionIsSubsection ? '###' : '##';
             const text = sectionHasHeading ? section.content : `${sectionHeading} ${section.title}\n\n${section.content}`;
-            // Primeira secção sem pagebreak, as restantes com pagebreak
             return i === 0 ? text : `{pagebreak}\n\n${text}`;
           })
           .join('\n\n');

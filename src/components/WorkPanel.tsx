@@ -81,19 +81,85 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
  * @param content         Conteúdo puro da secção (sem pagebreaks, sem título)
  * @param isFirstInEditor true se o editor estiver vazio quando esta secção é inserida
  */
-function buildSectionMarkdown(
+// ── REGRA DE NUMERAÇÃO ────────────────────────────────────────────────────────
+//
+//  I.   Introdução          → ## I. Introdução        (sem pagebreak se for 1ª)
+//  II.  Objectivos          → ## II. Objectivos        (pagebreak antes)
+//  III. Metodologia         → ## III. Metodologia      (pagebreak antes)
+//  ─── QUEBRA APÓS METODOLOGIA ───────────────────────────────────────────────
+//  1.1  Subsecção           → ### 1.1 Título           (SEM pagebreak — flui)
+//  1.2  Subsecção           → ### 1.2 Título           (SEM pagebreak — flui)
+//  ...
+//  Conclusão                → ## Conclusão             (pagebreak antes)
+//  Referências Bibliográficas → ## Referências Bibliográficas (pagebreak antes)
+//
+// ── LÓGICA DE PAGEBREAK ───────────────────────────────────────────────────────
+//
+//  • Subsecções (ex: "1.1 Conceito X") → NUNCA pagebreak — fluem na mesma página
+//  • Secções principais:
+//      - 1ª a ser inserida no editor → SEM pagebreak
+//      - Todas as outras            → COM pagebreak
+//  • Secções com prefixo romano (I., II., III.) → secções principais
+//  • "Conclusão" e "Referências Bibliográficas" → secções principais (sem número)
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Normalização de título (remove prefixos) ──────────────────────────────────
+
+function normalizeTitleForMatch(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^[ivxlcdm]+\.\s*/i, '')   // remove I., II., III.
+    .replace(/^\d+(\.\d+)?\.\s*/, '')    // remove 1., 1.1.
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ── Determina o nível de heading e se é subsecção ────────────────────────────
+
+function getSectionHeading(title: string): { heading: '##' | '###'; isSubsection: boolean } {
+  // Subsecção: começa com dígito ponto dígito (ex: "1.1 Conceito X")
+  const isSubsection = /^\d+\.\d+/.test(title);
+  return { heading: isSubsection ? '###' : '##', isSubsection };
+}
+
+// ── Verifica se o conteúdo já começa com o título como cabeçalho ─────────────
+
+function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
+  const firstLine = content.trimStart().split('\n')[0].trim();
+  if (!firstLine.startsWith('#')) return false;
+  const headingText = firstLine.replace(/^#+\s*/, '');
+  const normalizedHeading = normalizeTitleForMatch(headingText);
+  const normalizedTitle = normalizeTitleForMatch(sectionTitle);
+  return (
+    normalizedHeading === normalizedTitle ||
+    normalizedHeading.includes(normalizedTitle) ||
+    normalizedTitle.includes(normalizedHeading)
+  );
+}
+
+/**
+ * buildSectionMarkdown — A ÚNICA função que decide heading, pagebreak e numeração.
+ *
+ * @param title           Título da secção (ex: "I. Introdução", "1.1 Conceito X", "Conclusão")
+ * @param content         Conteúdo puro da secção (sem pagebreaks, sem título)
+ * @param isFirstInEditor true se o editor estiver vazio quando esta secção é inserida
+ */
+export function buildSectionMarkdown(
   title: string,
   content: string,
   isFirstInEditor: boolean,
 ): string {
-  const isSubsection = /^\d+\.\d+/.test(title);
-  const heading = isSubsection ? '###' : '##';
+  const { heading, isSubsection } = getSectionHeading(title);
 
   // Verificar se o conteúdo já inclui o título como cabeçalho
   const titleAlreadyPresent = contentStartsWithTitle(content, title);
   const body = titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
 
-  // Subsecções (1.1, 2.1, 3.1, etc.) — nunca quebram página.
+  // Subsecções (1.1, 1.2, etc.) — NUNCA quebram página.
   // Fluem naturalmente na mesma página que o conteúdo anterior.
   if (isSubsection) {
     return body;
@@ -107,6 +173,8 @@ function buildSectionMarkdown(
   return `{pagebreak}\n\n${body}`;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// FIM DA Substituição
 export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,

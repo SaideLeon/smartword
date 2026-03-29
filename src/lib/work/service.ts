@@ -124,10 +124,6 @@ export async function markWorkSectionInserted(
   if (error) throw new Error(error.message);
 }
 
-/**
- * Persiste os dados de capa (incluindo abstract gerado) na sessão.
- * Chamado após a submissão do formulário de capa e geração do abstract.
- */
 export async function saveWorkCoverData(
   id: string,
   coverData: CoverData | null,
@@ -149,18 +145,56 @@ export async function deleteWorkSession(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// ── Normalização de título para comparação ────────────────────────────────────
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^[ivxlcdm]+\.\s*/i, '')  // remove prefixo romano (I., II., III.)
+    .replace(/^\d+(\.\d+)?\.\s*/,'')   // remove prefixo árabe (1., 1.1.)
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isAutomaticIndex(title: string): boolean {
+  return normalizeTitle(title) === 'indice';
+}
+
+// ── Secções fixas de fallback (nova estrutura) ────────────────────────────────
+
+const FALLBACK_SECTIONS = [
+  'I. Introdução',
+  'II. Objectivos',
+  'III. Metodologia',
+  'Conclusão',
+  'Referências Bibliográficas',
+];
+
+function buildFallbackSections(): WorkSection[] {
+  return FALLBACK_SECTIONS.map((title, index) => ({
+    index,
+    title,
+    content: '',
+    status: 'pending' as const,
+  }));
+}
+
+// ── Extracção de secções do esboço Markdown ───────────────────────────────────
+//
+// Regras:
+//  - ## → secção principal
+//  - ### → subsecção (sempre incluída como secção accionável)
+//  - Se um ## tem ### filhos → o ## pai não é inserido como secção separada
+//    (apenas as ### filhas são accionáveis, excepto "Desenvolvimento Teórico")
+//  - Remove "Índice" automaticamente
+//  - Mantém prefixos romanos e numéricos tal como estão no esboço
+
 function extractSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
   const raw: { title: string; level: 2 | 3 }[] = [];
-  const isAutomaticIndex = (title: string) => (
-    title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim() === 'indice'
-  );
 
   for (const line of lines) {
     const h2 = line.match(/^##\s+(.+)/);
@@ -175,15 +209,7 @@ function extractSections(outline: string): WorkSection[] {
     }
   }
 
-  if (raw.length === 0) {
-    return [
-      'Introdução',
-      'Objectivos e Metodologia',
-      'Desenvolvimento Teórico',
-      'Conclusão',
-      'Referências Bibliográficas',
-    ].map((title, index) => ({ index, title, content: '', status: 'pending' as const }));
-  }
+  if (raw.length === 0) return buildFallbackSections();
 
   const sections: WorkSection[] = [];
   let index = 0;
@@ -192,15 +218,17 @@ function extractSections(outline: string): WorkSection[] {
     if (raw[i].level === 2) {
       const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
       if (!nextIsH3) {
+        // Secção principal sem subsecções → accionável directamente
         sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
         index++;
       }
-      continue;
+      // Se tem subsecções, o ## pai não é accionável (apenas as ### filhas)
+    } else {
+      // Subsecção → sempre accionável
+      sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
+      index++;
     }
-
-    sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
-    index++;
   }
 
-  return sections;
+  return sections.length > 0 ? sections : buildFallbackSections();
 }
