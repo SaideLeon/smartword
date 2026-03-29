@@ -385,11 +385,11 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             {session && (
               <button
                 onClick={() => { setProcessingButtonId('reset-work'); coverAgent.reset(); reset(); resetExportPreferences(); }}
-                className={`rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)] ${isProcessing('reset-work') ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
+                className={`rounded px-1.5 py-0.5 font-mono text-lg leading-none text-[var(--panel-muted)] ${isProcessing('reset-work') ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                 title="Novo trabalho"
                 aria-label="Iniciar novo trabalho"
               >
-                ↩
+                {isProcessing('reset-work') ? 'A processar...' : '↩'}
               </button>
             )}
             <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-text-faint)]" title="Fechar" aria-label="Fechar painel">×</button>
@@ -663,7 +663,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                         <button
                           onClick={() => !isInserted && handleInsertSection(sec.index)}
                           disabled={isInserted}
-                          className={`flex h-7 w-7 items-center justify-center rounded border font-mono text-[13px] transition-all ${
+                          className={`flex h-7 ${isProcessing(`insert-section-${sec.index}`) ? 'px-2' : 'w-7'} items-center justify-center rounded border font-mono text-[13px] transition-all ${
                             isInserted
                               ? 'cursor-default border-[color:var(--panel-gold)]/20 text-[color:var(--panel-gold)]/40'
                               : 'border-[color:var(--panel-gold)]/30 text-[var(--panel-gold)] hover:bg-[color:var(--panel-gold)]/10'
@@ -671,7 +671,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                           title={isInserted ? 'Já inserido' : 'Inserir no editor'}
                           aria-label={isInserted ? `${sec.title} já inserida` : `Inserir ${sec.title}`}
                         >
-                          {isInserted ? '✓' : '↓'}
+                          {isProcessing(`insert-section-${sec.index}`) ? 'A processar...' : isInserted ? '✓' : '↓'}
                         </button>
                       )}
                       <button
@@ -681,7 +681,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                           developSection(sec.index);
                         }}
                         disabled={isBusy}
-                        className={`flex h-7 w-7 items-center justify-center rounded border font-mono text-[13px] transition-all ${
+                        className={`flex h-7 ${isProcessing(`develop-section-${sec.index}`) ? 'px-2' : 'w-7'} items-center justify-center rounded border font-mono text-[13px] transition-all ${
                           isDeveloping
                             ? 'animate-pulse border-[var(--panel-accent)] bg-[var(--panel-accent-dim)] text-[var(--panel-accent)]'
                             : isBusy
@@ -691,7 +691,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                         title={isDeveloping ? 'A desenvolver…' : sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'}
                         aria-label={sec.status === 'pending' ? `Desenvolver ${sec.title}` : `Reescrever ${sec.title}`}
                       >
-                        {isDeveloping ? '⋯' : sec.status === 'pending' ? '✦' : '↻'}
+                        {isProcessing(`develop-section-${sec.index}`) ? 'A processar...' : isDeveloping ? '⋯' : sec.status === 'pending' ? '✦' : '↻'}
                       </button>
                     </div>
                   </div>
@@ -803,7 +803,7 @@ function Btn({
         cursor: disabled ? 'not-allowed' : 'pointer',
       }}
     >
-      {children}
+      {processing ? 'A processar...' : children}
     </button>
   );
 }
