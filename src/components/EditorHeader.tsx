@@ -79,6 +79,15 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
                 Ver todos os planos
               </Link>
 
+              {profile?.role === 'admin' && (
+                <Link
+                  href="/admin"
+                  className="mt-2 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+                >
+                  Área administrativa
+                </Link>
+              )}
+
               <button
                 type="button"
                 onClick={() => signOut()}
@@ -136,6 +145,16 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           >
             Ver todos os planos
           </Link>
+
+          {profile?.role === 'admin' && (
+            <Link
+              href="/admin"
+              onClick={() => setShowMobileMenu(false)}
+              className="mt-2 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+            >
+              Área administrativa
+            </Link>
+          )}
 
           <button
             type="button"
