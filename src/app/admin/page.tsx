@@ -80,10 +80,23 @@ export default function AdminPage() {
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
+    setMessage('');
     try {
       const response = await fetch('/api/payment');
       const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[Admin] Erro ao carregar pagamentos:', data);
+        setMessage(`Erro ao carregar pagamentos: ${data?.error ?? `HTTP ${response.status}`}`);
+        setPayments([]);
+        return;
+      }
+
       setPayments(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('[Admin] Falha de rede:', err);
+      setMessage('Falha de rede ao carregar pagamentos.');
+      setPayments([]);
     } finally {
       setLoading(false);
     }

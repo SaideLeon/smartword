@@ -178,27 +178,66 @@ export async function GET(req: Request) {
   if (limited) return limited;
 
   const supabase = await makeSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error('[payment GET] Sessão inválida:', userError?.message);
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
 
-  let query = supabase
+  if (profileError) {
+    console.error('[payment GET] Erro ao ler perfil:', profileError.message);
+  }
+
+  const isAdmin = profile?.role === 'admin';
+
+  let paymentsQuery = supabase
     .from('payment_history')
-    .select('*, profiles(email, full_name), plans(label, price_mzn)')
+    .select('id, user_id, created_at, plan_key, transaction_id, amount_mzn, payment_method, status, notes, confirmed_at')
     .order('created_at', { ascending: false });
 
   // Admin vê todos; utilizador comum só os seus
-  if (profile?.role !== 'admin') {
-    query = query.eq('user_id', user.id);
+  if (!isAdmin) {
+    paymentsQuery = paymentsQuery.eq('user_id', user.id);
   }
 
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data: payments, error: paymentsError } = await paymentsQuery;
+  if (paymentsError) {
+    console.error('[payment GET] Erro na query de pagamentos:', paymentsError.message, 'isAdmin:', isAdmin);
+    return NextResponse.json({ error: paymentsError.message }, { status: 500 });
+  }
 
-  return NextResponse.json(data);
+  if (!payments || payments.length === 0) {
+    return NextResponse.json([]);
+  }
+
+  const userIds = [...new Set(payments.map((payment) => payment.user_id))];
+  const planKeys = [...new Set(payments.map((payment) => payment.plan_key))];
+
+  const [profilesResult, plansResult] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds),
+    supabase
+      .from('plans')
+      .select('key, label, price_mzn')
+      .in('key', planKeys),
+  ]);
+
+  const profilesMap = Object.fromEntries((profilesResult.data ?? []).map((profileItem) => [profileItem.id, profileItem]));
+  const plansMap = Object.fromEntries((plansResult.data ?? []).map((plan) => [plan.key, plan]));
+
+  const enriched = payments.map((payment) => ({
+    ...payment,
+    profiles: profilesMap[payment.user_id] ?? null,
+    plans: plansMap[payment.plan_key] ?? null,
+  }));
+
+  return NextResponse.json(enriched);
 }
