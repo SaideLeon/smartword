@@ -53,6 +53,60 @@ ALTER TABLE work_sessions
 ALTER TABLE work_sessions
   ADD COLUMN IF NOT EXISTS cover_data jsonb;
 
+-- Tabelas de billing/admin (caso tenham sido apagadas ou 006 não tenha corrido)
+CREATE TABLE IF NOT EXISTS payment_history (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now(),
+  user_id         uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  plan_key        text NOT NULL REFERENCES plans(key),
+  transaction_id  text NOT NULL,
+  amount_mzn      numeric(10,2) NOT NULL,
+  payment_method  text CHECK (payment_method IN ('mpesa', 'emola', 'bank_transfer', 'card')),
+  period_months   int DEFAULT 1,
+  status          text DEFAULT 'pending'
+                  CHECK (status IN ('pending', 'confirmed', 'rejected')),
+  notes           text,
+  confirmed_by    uuid REFERENCES profiles(id),
+  confirmed_at    timestamptz,
+  work_session_id uuid,
+  tcc_session_id  uuid
+);
+
+CREATE TABLE IF NOT EXISTS expense_items (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at    timestamptz DEFAULT now(),
+  updated_at    timestamptz DEFAULT now(),
+  created_by    uuid NOT NULL REFERENCES profiles(id),
+  period_month  int NOT NULL CHECK (period_month BETWEEN 1 AND 12),
+  period_year   int NOT NULL,
+  category      text NOT NULL
+                CHECK (category IN ('groq_api', 'supabase', 'hosting', 'domain', 'other')),
+  description   text NOT NULL,
+  amount_mzn    numeric(10,2) NOT NULL,
+  exchange_rate numeric(10,4),
+  amount_usd    numeric(10,2),
+  notes         text
+);
+
+CREATE TABLE IF NOT EXISTS monthly_reports (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  generated_at       timestamptz DEFAULT now(),
+  generated_by       uuid REFERENCES profiles(id),
+  period_month       int NOT NULL CHECK (period_month BETWEEN 1 AND 12),
+  period_year        int NOT NULL,
+  total_subscribers  int DEFAULT 0,
+  active_subscribers int DEFAULT 0,
+  free_users         int DEFAULT 0,
+  avulso_payments    int DEFAULT 0,
+  revenue_mzn        numeric(12,2) DEFAULT 0,
+  total_expenses_mzn numeric(12,2) DEFAULT 0,
+  net_margin_mzn     numeric(12,2) DEFAULT 0,
+  margin_pct         numeric(6,2) DEFAULT 0,
+  exchange_rate_used numeric(10,4),
+  UNIQUE (period_month, period_year)
+);
+
 
 -- ── 3. ÍNDICES ────────────────────────────────────────────────────────────────
 
@@ -71,6 +125,9 @@ CREATE INDEX IF NOT EXISTS idx_payment_history_user
 
 CREATE INDEX IF NOT EXISTS idx_payment_history_status
   ON payment_history (status);
+
+CREATE INDEX IF NOT EXISTS idx_expense_items_period
+  ON expense_items (period_year, period_month);
 
 
 -- ── 4. ACTIVAR RLS NAS TABELAS (idempotente) ──────────────────────────────────
@@ -121,6 +178,7 @@ DROP POLICY IF EXISTS "expenses_admin_only" ON expense_items;
 -- monthly_reports
 DROP POLICY IF EXISTS "reports_read_all"    ON monthly_reports;
 DROP POLICY IF EXISTS "admin_write_reports" ON monthly_reports;
+DROP POLICY IF EXISTS "reports_admin_write" ON monthly_reports;
 
 
 -- ── 6. RECRIAR POLÍTICAS RLS ──────────────────────────────────────────────────
