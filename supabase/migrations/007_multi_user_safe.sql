@@ -116,6 +116,7 @@ DROP POLICY IF EXISTS "admin_all_payments"  ON payment_history;
 
 -- expense_items
 DROP POLICY IF EXISTS "admin_only_expenses" ON expense_items;
+DROP POLICY IF EXISTS "expenses_admin_only" ON expense_items;
 
 -- monthly_reports
 DROP POLICY IF EXISTS "reports_read_all"    ON monthly_reports;
