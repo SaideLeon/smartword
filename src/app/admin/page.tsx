@@ -68,6 +68,7 @@ export default function AdminPage() {
     period_month: today.getMonth() + 1,
     period_year: today.getFullYear(),
   });
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const totalExpenses = useMemo(() => expenses.reduce((total, item) => total + item.amount_mzn, 0), [expenses]);
 
@@ -134,7 +135,17 @@ export default function AdminPage() {
     void loadPayments();
   };
 
-  const handleAddExpense = async () => {
+  const resetExpenseForm = () => {
+    setExpForm((previous) => ({
+      ...previous,
+      category: 'groq_api',
+      description: '',
+      amount_mzn: '',
+    }));
+    setEditingExpenseId(null);
+  };
+
+  const handleSaveExpense = async () => {
     if (!expForm.description || !expForm.amount_mzn) {
       flash('Preenche descrição e valor da despesa.');
       return;
@@ -149,22 +160,54 @@ export default function AdminPage() {
       return;
     }
 
-    const { error } = await supabaseClient.from('expense_items').insert({
-      created_by: user.id,
+    const payload = {
       category: expForm.category,
-      description: expForm.description,
+      description: expForm.description.trim(),
       amount_mzn: Number(expForm.amount_mzn),
       period_month: expForm.period_month,
       period_year: expForm.period_year,
-    });
+    };
+
+    const { error } = editingExpenseId
+      ? await supabaseClient.from('expense_items').update(payload).eq('id', editingExpenseId)
+      : await supabaseClient.from('expense_items').insert({
+          created_by: user.id,
+          ...payload,
+        });
 
     if (error) {
-      flash('Não foi possível registar a despesa.');
+      flash(editingExpenseId ? 'Não foi possível atualizar a despesa.' : 'Não foi possível registar a despesa.');
       return;
     }
 
-    flash('Despesa adicionada.');
-    setExpForm((previous) => ({ ...previous, description: '', amount_mzn: '' }));
+    flash(editingExpenseId ? 'Despesa atualizada.' : 'Despesa adicionada.');
+    resetExpenseForm();
+    void loadExpenses();
+  };
+
+  const handleEditExpense = (expense: ExpenseItem) => {
+    setEditingExpenseId(expense.id);
+    setExpForm({
+      category: expense.category,
+      description: expense.description,
+      amount_mzn: String(expense.amount_mzn),
+      period_month: expense.period_month,
+      period_year: expense.period_year,
+    });
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    const { error } = await supabaseClient.from('expense_items').delete().eq('id', expenseId);
+
+    if (error) {
+      flash('Não foi possível eliminar a despesa.');
+      return;
+    }
+
+    if (editingExpenseId === expenseId) {
+      resetExpenseForm();
+    }
+    flash('Despesa eliminada.');
     void loadExpenses();
   };
 
@@ -317,11 +360,21 @@ export default function AdminPage() {
 
             <button
               type="button"
-              onClick={handleAddExpense}
+              onClick={handleSaveExpense}
               className="self-end rounded-lg bg-[var(--text-primary)] px-4 py-2 text-sm font-semibold text-[var(--bg-base)]"
             >
-              Adicionar
+              {editingExpenseId ? 'Guardar' : 'Adicionar'}
             </button>
+
+            {editingExpenseId && (
+              <button
+                type="button"
+                onClick={resetExpenseForm}
+                className="self-end rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)]"
+              >
+                Cancelar
+              </button>
+            )}
           </div>
 
           <div className="mt-5 space-y-2">
@@ -333,7 +386,23 @@ export default function AdminPage() {
                   </span>
                   <span className="text-sm">{expense.description}</span>
                 </div>
-                <span className="mono text-sm text-rose-300">-{toCurrency(expense.amount_mzn)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="mono text-sm text-rose-300">-{toCurrency(expense.amount_mzn)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleEditExpense(expense)}
+                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteExpense(expense.id)}
+                    className="rounded-md border border-rose-500/40 px-2 py-1 text-xs font-semibold text-rose-300 hover:bg-rose-500/10"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </article>
             ))}
           </div>
