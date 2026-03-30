@@ -12,9 +12,9 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
         </div>
 
         <ul className="hidden items-center gap-8 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:flex">
-          <li><a href="#features" className="hover:text-[var(--gold2)]">Funcionalidades</a></li>
-          <li><a href="#modos" className="hover:text-[var(--gold2)]">Modos</a></li>
-          <li><a href="#equacoes" className="hover:text-[var(--gold2)]">Equações</a></li>
+          <li><a href="#features" className="hover:text-[var(--gold2)]">Vantagens</a></li>
+          <li><a href="#modos" className="hover:text-[var(--gold2)]">Para quem é</a></li>
+          <li><a href="#resultado" className="hover:text-[var(--gold2)]">Resultado final</a></li>
           <li><a href="/planos" className="hover:text-[var(--gold2)]">Planos</a></li>
         </ul>
 
@@ -33,9 +33,9 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
         </div>
 
         <ul className="flex w-full items-center gap-4 overflow-x-auto pb-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:hidden">
-          <li><a href="#features" className="whitespace-nowrap hover:text-[var(--gold2)]">Funcionalidades</a></li>
-          <li><a href="#modos" className="whitespace-nowrap hover:text-[var(--gold2)]">Modos</a></li>
-          <li><a href="#equacoes" className="whitespace-nowrap hover:text-[var(--gold2)]">Equações</a></li>
+          <li><a href="#features" className="whitespace-nowrap hover:text-[var(--gold2)]">Vantagens</a></li>
+          <li><a href="#modos" className="whitespace-nowrap hover:text-[var(--gold2)]">Para quem é</a></li>
+          <li><a href="#resultado" className="whitespace-nowrap hover:text-[var(--gold2)]">Resultado final</a></li>
           <li><a href="/planos" className="whitespace-nowrap hover:text-[var(--gold2)]">Planos</a></li>
         </ul>
       </div>
@@ -56,29 +56,29 @@ export default function LandingPage() {
 
       <section className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-12 md:grid-cols-2 md:px-12 md:py-20">
         <div className="space-y-6">
-          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--green)]">LaTeX → OMML · PWA Instalável</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--green)]">Trabalho académico pronto em minutos</p>
           <h1 className="font-serif text-5xl leading-tight md:text-6xl">
-            Escreve em <em className="text-[var(--gold2)]">Markdown.</em><br />
-            Exporta com equações<br />
-            <span className="text-transparent [text-stroke:1px_var(--ink)] [-webkit-text-stroke:1px_var(--ink)]">Word nativas.</span>
+            Crie seu trabalho<br />
+            com <em className="text-[var(--gold2)]">capa, contracapa</em><br />
+            e texto formatado automaticamente.
           </h1>
           <p className="max-w-xl text-lg leading-relaxed text-[var(--muted)]">
-            Editor académico que converte <code className="rounded bg-[#e8dfc8] px-[5px] py-[1px] font-mono text-[0.85em] text-black">$...$</code> e{' '}
-            <code className="rounded bg-[#e8dfc8] px-[5px] py-[1px] font-mono text-[0.85em] text-black">$$...$$</code> em equações OMML — editáveis directamente no Word.
+            Mesmo sem experiência, você consegue gerar um trabalho completo: capa, contracapa, sumário, capítulos e referências.
+            Também pode adicionar o logotipo da sua instituição e baixar o arquivo pronto para entregar.
           </p>
           <div className="rounded-lg bg-[var(--ink)] p-5 font-mono text-xs leading-7 text-[#8a7d6e] shadow-xl">
-            <div>## Fórmula de Bhaskara</div>
+            <div>✓ Capa personalizada</div>
             <div className="h-2" />
-            <div className="text-[var(--gold)]">{'$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$'}</div>
+            <div className="text-[var(--gold)]">✓ Contracapa automática</div>
             <div className="h-2" />
             <div className="flex items-center gap-3">
-              <span className="text-[#8a6a4a]">→ OMML</span>
-              <span className="text-[#a0c080]">equação editável no Word ✓</span>
+              <span className="text-[#8a6a4a]">✓</span>
+              <span className="text-[#a0c080]">Documento final organizado e pronto para o Word</span>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <a href="/app" className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-7 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow-lg">
-              ↓ Exportar .docx grátis
+              ↓ Criar meu trabalho grátis
             </a>
             <a href="#features" className="border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]">
               Ver funcionalidades →
@@ -92,29 +92,29 @@ export default function LandingPage() {
               <div className="grid h-5 w-5 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-[9px] font-bold text-black">∂</div>
               <span className="italic text-[var(--gold)]">Muneri</span>
             </div>
-            <div className="text-[#e8e2d9]"># Matemática</div>
-            <div className="text-[var(--gold)]">## 1. Bhaskara</div>
-            <div className="text-[var(--teal)]">{'$$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$'}</div>
-            <div>Onde Δ = b² - 4ac é o discriminante...</div>
-            <div className="text-[var(--gold)]">## 2. Logaritmos</div>
-            <div className="text-[var(--teal)]">$$\log_a b = x \iff a^x = b$$</div>
-            <div className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] p-2 text-center text-[10px] italic text-black">↓ Exportar matematica.docx</div>
+            <div className="text-[#e8e2d9]"># Trabalho Acadêmico</div>
+            <div className="text-[var(--gold)]"># Capa e contracapa</div>
+            <div className="text-[var(--teal)]">Nome da instituição + logotipo</div>
+            <div>Nome do aluno, curso, tema, orientador...</div>
+            <div className="text-[var(--gold)]"># Conteúdo completo</div>
+            <div className="text-[var(--teal)]">Introdução, desenvolvimento e conclusão</div>
+            <div className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] p-2 text-center text-[10px] italic text-black">↓ Baixar trabalho-final.docx</div>
           </div>
         </div>
       </section>
 
       <section id="features" className="mx-auto w-full max-w-7xl px-6 py-16 md:px-12">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Funcionalidades</p>
-        <h2 className="font-serif text-4xl leading-tight md:text-5xl">Tudo o que precisas para <em className="text-[var(--gold2)]">documentos académicos perfeitos.</em></h2>
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Vantagens</p>
+        <h2 className="font-serif text-4xl leading-tight md:text-5xl">Tudo o que você precisa para <em className="text-[var(--gold2)]">entregar um trabalho impecável.</em></h2>
 
         <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-[var(--border)] md:grid-cols-3">
           {[
-            ['∑', 'Equações OMML Nativas', 'Converte LaTeX para OMML automaticamente. As equações exportadas são editáveis no Word.'],
-            ['∂', 'Editor Markdown Limpo', 'Interface minimalista com numeração de linhas e suporte completo a GFM.'],
-            ['↓', 'Export Word Profissional', 'Documentos A4 com formatação académica, tabelas e paginação.'],
-            ['≡', 'Secções & Quebras de Página', 'Marcadores {section} e {pagebreak} inserem secções Word independentes.'],
-            ['✦', 'IA Integrada', 'Chat com IA que gera Markdown com equações LaTeX prontas a exportar.'],
-            ['📲', 'PWA Instalável', 'Instala como app no Android ou iOS e usa offline.'],
+            ['📘', 'Modelo pronto para faculdade', 'Seu trabalho já sai com estrutura acadêmica completa e organizada.'],
+            ['🧾', 'Capa e contracapa automáticas', 'Preencha seus dados e o sistema monta tudo no formato certo.'],
+            ['🏛️', 'Logotipo da instituição', 'Adicione facilmente o logotipo da universidade ou escola no documento.'],
+            ['⏱️', 'Mais rapidez', 'Faça em minutos o que normalmente levaria horas para formatar.'],
+            ['🤝', 'Feito para iniciantes', 'Você não precisa conhecer regras técnicas de edição para usar.'],
+            ['⬇️', 'Arquivo pronto para entrega', 'Baixe em Word e faça ajustes finais, se quiser.'],
           ].map(([icon, title, desc]) => (
             <article key={title} className="space-y-3 bg-[var(--parchment)] p-8">
               <div className="text-2xl">{icon}</div>
@@ -128,13 +128,13 @@ export default function LandingPage() {
       <section className="bg-[var(--ink)] px-6 py-16 md:px-12">
         <div className="mx-auto w-full max-w-7xl">
           <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#3a3530]">Como funciona</p>
-          <h2 className="font-serif text-4xl text-[#e8e2d9] md:text-5xl">De Markdown a Word em <em className="text-[var(--gold)]">quatro passos.</em></h2>
+          <h2 className="font-serif text-4xl text-[#e8e2d9] md:text-5xl">Do zero ao trabalho pronto em <em className="text-[var(--gold)]">quatro passos simples.</em></h2>
           <div className="mt-10 grid gap-6 md:grid-cols-4">
             {[
-              ['01', 'Escreve Markdown', 'Usa sintaxe Markdown com equações LaTeX inline e em bloco.'],
-              ['02', 'Conversão Automática', 'LaTeX → MathML via Temml e depois MathML → OMML.'],
-              ['03', 'Estrutura .docx', 'Documento final com estilos académicos, margens e paginação.'],
-              ['04', 'Descarrega e Edita', 'Abre no Word com equações realmente editáveis.'],
+              ['01', 'Informe os dados', 'Digite tema, curso, instituição e outras informações básicas.'],
+              ['02', 'Escolha o tipo de trabalho', 'Selecione o formato que deseja: TCC, trabalho acadêmico ou relatório.'],
+              ['03', 'Geração automática', 'A plataforma monta capa, contracapa, conteúdo e organização do documento.'],
+              ['04', 'Baixe e entregue', 'Você recebe o arquivo Word pronto para revisar e enviar.'],
             ].map(([num, title, desc]) => (
               <div key={num} className="space-y-3">
                 <div className="grid h-12 w-12 place-items-center rounded-full border border-[#3a3530] bg-[#1a1714] font-mono text-xs text-[var(--gold)]">{num}</div>
@@ -146,47 +146,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="equacoes" className="border-y border-[var(--border)] bg-[#faf6ee] px-6 py-16 md:px-12">
+      <section id="resultado" className="border-y border-[var(--border)] bg-[#faf6ee] px-6 py-16 md:px-12">
         <div className="mx-auto grid w-full max-w-5xl gap-8">
-          <h2 className="text-center font-serif text-3xl">LaTeX que se torna <em className="text-[var(--gold2)]">equação real</em> no Word.</h2>
+          <h2 className="text-center font-serif text-3xl">Veja o resultado: <em className="text-[var(--gold2)]">trabalho completo e profissional.</em></h2>
           <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
             <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">Markdown / LaTeX</p>
-              <div className="rounded border border-[#2a2520] bg-[var(--ink)] p-4 font-mono text-sm text-[var(--teal)]">{'$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$'}</div>
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">O que você preenche</p>
+              <div className="rounded border border-[#2a2520] bg-[var(--ink)] p-4 font-mono text-sm text-[var(--teal)]">
+                Tema + curso + instituição + aluno + orientador
+              </div>
             </div>
             <div className="text-center font-mono text-xl text-[var(--gold2)]">→</div>
             <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">Word (OMML nativo)</p>
-              <div className="rounded border border-[var(--border)] bg-[var(--parchment)] p-4 text-center font-serif text-2xl italic">𝑥 = <sup>−𝑏 ± √(𝑏²−4𝑎𝑐)</sup>⁄<sub>2𝑎</sub></div>
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">O que você recebe</p>
+              <div className="rounded border border-[var(--border)] bg-[var(--parchment)] p-4 text-center font-serif text-xl italic">
+                Capa + contracapa + sumário + capítulos + referências
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       <section id="modos" className="mx-auto w-full max-w-7xl px-6 py-16 md:px-12">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Modos especializados</p>
-        <h2 className="font-serif text-4xl leading-tight md:text-5xl">Muito mais do que um <em className="text-[var(--gold2)]">editor Markdown.</em></h2>
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Para quem é</p>
+        <h2 className="font-serif text-4xl leading-tight md:text-5xl">Ideal para quem quer <em className="text-[var(--gold2)]">resultado rápido, sem complicação.</em></h2>
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           <article className="rounded-xl border border-[#1e2a1e] bg-[#0b0d0b] p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#6a9e5f]">📝 Modo TCC</p>
-            <h3 className="mt-3 font-serif text-2xl text-[#d0dcc8]">Do esboço à conclusão, secção a secção.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#4a6644]">Gera, desenvolve e mantém coerência de todas as secções do teu TCC.</p>
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#6a9e5f]">🎓 Universitários</p>
+            <h3 className="mt-3 font-serif text-2xl text-[#d0dcc8]">TCC e trabalhos acadêmicos com padrão profissional.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#4a6644]">Perfeito para quem precisa entregar com qualidade, mesmo sem saber formatar.</p>
           </article>
           <article className="rounded-xl border border-[#1a2a1a] bg-[#0a0d0a] p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#5a9e8f]">📚 Trabalho Escolar</p>
-            <h3 className="mt-3 font-serif text-2xl text-[#c8dcd6]">Copiloto para o ensino secundário e médio.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#3a6e60]">Estrutura fixa com conteúdo contextualizado para Moçambique.</p>
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#5a9e8f]">📚 Ensino médio</p>
+            <h3 className="mt-3 font-serif text-2xl text-[#c8dcd6]">Trabalhos escolares bem organizados e fáceis de montar.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#3a6e60]">Ajuda você a estruturar tudo com linguagem clara e formato correto.</p>
           </article>
           <article className="rounded-xl border border-[#2a2520] bg-[#0d0c0b] p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold)]">✦ IA Chat</p>
-            <h3 className="mt-3 font-serif text-2xl text-[#d8d0c7]">Gera Markdown com equações LaTeX em segundos.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#5a5248]">Explicações passo a passo e inserção directa no editor.</p>
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold)]">👩‍💼 Profissionais</p>
+            <h3 className="mt-3 font-serif text-2xl text-[#d8d0c7]">Relatórios e documentos formais prontos para apresentação.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#5a5248]">Economize tempo e mantenha um padrão visual organizado.</p>
           </article>
           <article className="rounded-xl border border-[var(--border)] bg-[#faf6ee] p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)]">📐 Editor Principal</p>
-            <h3 className="mt-3 font-serif text-2xl">Editor Markdown completo com suporte LaTeX.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Importa .md, insere quebras de página e exporta para Word em segundos.</p>
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)]">🙌 Iniciantes</p>
+            <h3 className="mt-3 font-serif text-2xl">Você não precisa saber nada técnico para começar.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Basta preencher informações simples e deixar o sistema fazer o resto.</p>
           </article>
         </div>
       </section>
@@ -194,17 +198,17 @@ export default function LandingPage() {
       <section className="border-y border-[var(--border)] px-6 py-16 text-center md:px-12">
         <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--faint)]">Começa agora</p>
         <h2 className="mt-4 font-serif text-5xl">O teu próximo documento <em className="text-[var(--gold2)]">começa aqui.</em></h2>
-        <p className="mt-4 text-lg text-[var(--muted)]">Grátis. Sem registo. Sem instalação obrigatória.</p>
+        <p className="mt-4 text-lg text-[var(--muted)]">Grátis. Simples. Feito para quem quer terminar o trabalho com tranquilidade.</p>
         <div className="mt-8 flex justify-center">
           <a href="/app" className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-8 py-[14px] font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--ink)]">
-            ↓ Abrir Muneri — é grátis
+            ↓ Começar agora — é grátis
           </a>
         </div>
-        <p className="mt-8 font-mono text-[10px] tracking-[0.08em] text-[var(--faint)]">temml · mathml2omml · Muneri · Quelimane, Moçambique</p>
+        <p className="mt-8 font-mono text-[10px] tracking-[0.08em] text-[var(--faint)]">Muneri · Trabalhos acadêmicos automáticos · Quelimane, Moçambique</p>
       </section>
 
       <footer className="flex flex-col gap-2 px-6 py-8 text-center md:flex-row md:items-center md:justify-between md:px-12 md:text-left">
-        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · Markdown para Word com Equações Nativas · 2026</div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · Gerador automático de trabalhos académicos · 2026</div>
         <div className="text-sm italic text-[var(--faint)]">feito com ∂ em Quelimane, Moçambique</div>
       </footer>
     </main>
