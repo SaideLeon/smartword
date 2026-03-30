@@ -68,8 +68,10 @@ export default function AdminPage() {
     period_month: today.getMonth() + 1,
     period_year: today.getFullYear(),
   });
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const totalExpenses = useMemo(() => expenses.reduce((total, item) => total + item.amount_mzn, 0), [expenses]);
+  const pendingPayments = useMemo(() => payments.filter((payment) => payment.status === 'pending'), [payments]);
 
   const flash = useCallback((text: string) => {
     setMessage(text);
@@ -134,7 +136,17 @@ export default function AdminPage() {
     void loadPayments();
   };
 
-  const handleAddExpense = async () => {
+  const resetExpenseForm = () => {
+    setExpForm((previous) => ({
+      ...previous,
+      category: 'groq_api',
+      description: '',
+      amount_mzn: '',
+    }));
+    setEditingExpenseId(null);
+  };
+
+  const handleSaveExpense = async () => {
     if (!expForm.description || !expForm.amount_mzn) {
       flash('Preenche descrição e valor da despesa.');
       return;
@@ -149,22 +161,54 @@ export default function AdminPage() {
       return;
     }
 
-    const { error } = await supabaseClient.from('expense_items').insert({
-      created_by: user.id,
+    const payload = {
       category: expForm.category,
-      description: expForm.description,
+      description: expForm.description.trim(),
       amount_mzn: Number(expForm.amount_mzn),
       period_month: expForm.period_month,
       period_year: expForm.period_year,
-    });
+    };
+
+    const { error } = editingExpenseId
+      ? await supabaseClient.from('expense_items').update(payload).eq('id', editingExpenseId)
+      : await supabaseClient.from('expense_items').insert({
+          created_by: user.id,
+          ...payload,
+        });
 
     if (error) {
-      flash('Não foi possível registar a despesa.');
+      flash(editingExpenseId ? 'Não foi possível atualizar a despesa.' : 'Não foi possível registar a despesa.');
       return;
     }
 
-    flash('Despesa adicionada.');
-    setExpForm((previous) => ({ ...previous, description: '', amount_mzn: '' }));
+    flash(editingExpenseId ? 'Despesa atualizada.' : 'Despesa adicionada.');
+    resetExpenseForm();
+    void loadExpenses();
+  };
+
+  const handleEditExpense = (expense: ExpenseItem) => {
+    setEditingExpenseId(expense.id);
+    setExpForm({
+      category: expense.category,
+      description: expense.description,
+      amount_mzn: String(expense.amount_mzn),
+      period_month: expense.period_month,
+      period_year: expense.period_year,
+    });
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    const { error } = await supabaseClient.from('expense_items').delete().eq('id', expenseId);
+
+    if (error) {
+      flash('Não foi possível eliminar a despesa.');
+      return;
+    }
+
+    if (editingExpenseId === expenseId) {
+      resetExpenseForm();
+    }
+    flash('Despesa eliminada.');
     void loadExpenses();
   };
 
@@ -218,12 +262,14 @@ export default function AdminPage() {
 
       {tab === 'payments' && (
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-          <p className="mb-4 text-sm text-[var(--text-secondary)]">Pagamentos pendentes aguardando validação manual da equipe.</p>
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">
+            Contas com compra de plano pendente de validação manual do administrador.
+          </p>
 
           {loading && <p className="text-sm text-[var(--text-tertiary)]">A carregar pagamentos...</p>}
 
           <div className="space-y-3">
-            {payments.map((payment) => (
+            {pendingPayments.map((payment) => (
               <article key={payment.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
@@ -236,39 +282,29 @@ export default function AdminPage() {
                     <p className="mono text-[11px] text-[var(--text-tertiary)]">Transação: {payment.transaction_id}</p>
                   </div>
 
-                  {payment.status === 'pending' ? (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handlePaymentAction(payment.id, 'confirm')}
-                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
-                      >
-                        Confirmar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePaymentAction(payment.id, 'reject')}
-                        className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
-                      >
-                        Rejeitar
-                      </button>
-                    </div>
-                  ) : (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        payment.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'
-                      }`}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentAction(payment.id, 'confirm')}
+                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
                     >
-                      {payment.status === 'confirmed' ? 'Confirmado' : 'Rejeitado'}
-                    </span>
-                  )}
+                      Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentAction(payment.id, 'reject')}
+                      className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
+                    >
+                      Rejeitar
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
           </div>
 
-          {!loading && payments.length === 0 && (
-            <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">Nenhum pagamento registado.</p>
+          {!loading && pendingPayments.length === 0 && (
+            <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">Não há pagamentos pendentes de validação.</p>
           )}
         </section>
       )}
@@ -317,11 +353,21 @@ export default function AdminPage() {
 
             <button
               type="button"
-              onClick={handleAddExpense}
+              onClick={handleSaveExpense}
               className="self-end rounded-lg bg-[var(--text-primary)] px-4 py-2 text-sm font-semibold text-[var(--bg-base)]"
             >
-              Adicionar
+              {editingExpenseId ? 'Guardar' : 'Adicionar'}
             </button>
+
+            {editingExpenseId && (
+              <button
+                type="button"
+                onClick={resetExpenseForm}
+                className="self-end rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)]"
+              >
+                Cancelar
+              </button>
+            )}
           </div>
 
           <div className="mt-5 space-y-2">
@@ -333,7 +379,23 @@ export default function AdminPage() {
                   </span>
                   <span className="text-sm">{expense.description}</span>
                 </div>
-                <span className="mono text-sm text-rose-300">-{toCurrency(expense.amount_mzn)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="mono text-sm text-rose-300">-{toCurrency(expense.amount_mzn)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleEditExpense(expense)}
+                    className="rounded-md border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteExpense(expense.id)}
+                    className="rounded-md border border-rose-500/40 px-2 py-1 text-xs font-semibold text-rose-300 hover:bg-rose-500/10"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </article>
             ))}
           </div>
