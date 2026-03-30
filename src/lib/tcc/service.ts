@@ -1,11 +1,18 @@
-import { supabase } from '@/lib/supabase';
+// src/lib/tcc/service.ts
+// Operações CRUD para sessões TCC.
+// Usa o cliente Supabase autenticado (via cookies) para que o RLS funcione.
+
+import { createClient, requireUserId } from '@/lib/supabase';
 import type { TccSession, TccSection } from './types';
 
 // ─── Criar nova sessão ────────────────────────────────────────────────────────
 export async function createSession(topic: string): Promise<TccSession> {
+  const supabase = await createClient();
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('tcc_sessions')
-    .insert({ topic, status: 'outline_pending' })
+    .insert({ topic, status: 'outline_pending', user_id: userId })
     .select()
     .single();
 
@@ -15,6 +22,8 @@ export async function createSession(topic: string): Promise<TccSession> {
 
 // ─── Buscar sessão por ID ─────────────────────────────────────────────────────
 export async function getSession(id: string): Promise<TccSession | null> {
+  const supabase = await createClient();
+
   const { data, error } = await supabase
     .from('tcc_sessions')
     .select()
@@ -25,8 +34,10 @@ export async function getSession(id: string): Promise<TccSession | null> {
   return data as TccSession | null;
 }
 
-// ─── Listar sessões recentes ──────────────────────────────────────────────────
+// ─── Listar sessões recentes do utilizador actual ─────────────────────────────
 export async function listSessions(): Promise<TccSession[]> {
+  const supabase = await createClient();
+
   const { data, error } = await supabase
     .from('tcc_sessions')
     .select('id, topic, status, created_at, updated_at')
@@ -39,6 +50,8 @@ export async function listSessions(): Promise<TccSession[]> {
 
 // ─── Guardar esboço rascunho ──────────────────────────────────────────────────
 export async function saveOutlineDraft(id: string, outline: string): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('tcc_sessions')
     .update({ outline_draft: outline })
@@ -52,6 +65,7 @@ export async function approveOutline(
   id: string,
   outline: string,
 ): Promise<TccSession> {
+  const supabase = await createClient();
   const sections = extractSections(outline);
 
   const { data, error } = await supabase
@@ -70,17 +84,20 @@ export async function approveOutline(
   return data as TccSession;
 }
 
+// ─── Guardar ficha técnica de pesquisa ───────────────────────────────────────
 export async function saveTccResearchBrief(
   id: string,
   keywords: string[],
   brief: string,
 ): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('tcc_sessions')
     .update({
-      research_keywords: keywords,
-      research_brief: brief,
-      research_generated_at: new Date().toISOString(),
+      research_keywords:      keywords,
+      research_brief:         brief,
+      research_generated_at:  new Date().toISOString(),
     })
     .eq('id', id);
 
@@ -89,11 +106,13 @@ export async function saveTccResearchBrief(
 
 // ─── Guardar conteúdo de uma secção desenvolvida ─────────────────────────────
 export async function saveSectionContent(
-  id:      string,
-  index:   number,
-  content: string,
+  id:              string,
+  index:           number,
+  content:         string,
   currentSections: TccSection[],
 ): Promise<TccSession> {
+  const supabase = await createClient();
+
   const updated = currentSections.map(s =>
     s.index === index
       ? { ...s, content, status: 'developed' as const }
@@ -116,10 +135,12 @@ export async function saveSectionContent(
 
 // ─── Marcar secção como inserida no editor ────────────────────────────────────
 export async function markSectionInserted(
-  id:      string,
-  index:   number,
+  id:              string,
+  index:           number,
   currentSections: TccSection[],
 ): Promise<void> {
+  const supabase = await createClient();
+
   const updated = currentSections.map(s =>
     s.index === index ? { ...s, status: 'inserted' as const } : s,
   );
@@ -134,6 +155,8 @@ export async function markSectionInserted(
 
 // ─── Eliminar sessão ──────────────────────────────────────────────────────────
 export async function deleteSession(id: string): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('tcc_sessions')
     .delete()
@@ -161,27 +184,17 @@ function extractSections(outline: string): TccSection[] {
     if (raw[i].level === 2) {
       const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
       if (!nextIsH3) {
-        sections.push({
-          index,
-          title: raw[i].title,
-          status: 'pending',
-          content: '',
-        });
+        sections.push({ index, title: raw[i].title, status: 'pending', content: '' });
         index++;
       }
       continue;
     }
 
-    sections.push({
-      index,
-      title: raw[i].title,
-      status: 'pending',
-      content: '',
-    });
+    sections.push({ index, title: raw[i].title, status: 'pending', content: '' });
     index++;
   }
 
-  // Fallback: se não houver ##/### usa # de nível 1-3
+  // Fallback: usa # de nível 1-3 se não encontrar ## ou ###
   if (sections.length === 0) {
     for (const line of lines) {
       const match = line.match(/^#{1,3}\s+(.+)/);

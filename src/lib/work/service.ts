@@ -1,11 +1,18 @@
-import { supabase } from '@/lib/supabase';
+// src/lib/work/service.ts
+// Operações CRUD para sessões de trabalho escolar.
+// Usa o cliente Supabase autenticado (via cookies) para que o RLS funcione.
+
+import { createClient, requireUserId } from '@/lib/supabase';
 import type { WorkSection, WorkSessionRecord } from './types';
 import type { CoverData } from '@/lib/docx/cover-types';
 
 export async function createWorkSession(topic: string): Promise<WorkSessionRecord> {
+  const supabase = await createClient();
+  const userId = await requireUserId();
+
   const { data, error } = await supabase
     .from('work_sessions')
-    .insert({ topic, status: 'outline_pending' })
+    .insert({ topic, status: 'outline_pending', user_id: userId })
     .select()
     .single();
 
@@ -14,6 +21,8 @@ export async function createWorkSession(topic: string): Promise<WorkSessionRecor
 }
 
 export async function getWorkSession(id: string): Promise<WorkSessionRecord | null> {
+  const supabase = await createClient();
+
   const { data, error } = await supabase
     .from('work_sessions')
     .select()
@@ -25,6 +34,8 @@ export async function getWorkSession(id: string): Promise<WorkSessionRecord | nu
 }
 
 export async function listWorkSessions(): Promise<WorkSessionRecord[]> {
+  const supabase = await createClient();
+
   const { data, error } = await supabase
     .from('work_sessions')
     .select('id, topic, status, created_at, updated_at')
@@ -36,6 +47,8 @@ export async function listWorkSessions(): Promise<WorkSessionRecord[]> {
 }
 
 export async function saveWorkOutlineDraft(id: string, outline: string): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('work_sessions')
     .update({ outline_draft: outline })
@@ -45,12 +58,13 @@ export async function saveWorkOutlineDraft(id: string, outline: string): Promise
 }
 
 export async function approveWorkOutline(id: string, outline: string): Promise<WorkSessionRecord> {
+  const supabase = await createClient();
   const sections = extractSections(outline);
 
   const { data, error } = await supabase
     .from('work_sessions')
     .update({
-      outline_draft: outline,
+      outline_draft:    outline,
       outline_approved: outline,
       sections,
       status: 'outline_approved',
@@ -68,12 +82,14 @@ export async function saveWorkResearchBrief(
   keywords: string[],
   brief: string,
 ): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('work_sessions')
     .update({
-      research_keywords: keywords,
-      research_brief: brief,
-      research_generated_at: new Date().toISOString(),
+      research_keywords:      keywords,
+      research_brief:         brief,
+      research_generated_at:  new Date().toISOString(),
     })
     .eq('id', id);
 
@@ -86,6 +102,8 @@ export async function saveWorkSectionContent(
   content: string,
   currentSections: WorkSection[],
 ): Promise<WorkSessionRecord> {
+  const supabase = await createClient();
+
   const sections = currentSections.map(section =>
     section.index === index
       ? { ...section, content, status: 'developed' as const }
@@ -110,6 +128,8 @@ export async function markWorkSectionInserted(
   index: number,
   currentSections: WorkSection[],
 ): Promise<void> {
+  const supabase = await createClient();
+
   const sections = currentSections.map(section =>
     section.index === index
       ? { ...section, status: 'inserted' as const }
@@ -128,6 +148,8 @@ export async function saveWorkCoverData(
   id: string,
   coverData: CoverData | null,
 ): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('work_sessions')
     .update({ cover_data: coverData })
@@ -137,6 +159,8 @@ export async function saveWorkCoverData(
 }
 
 export async function deleteWorkSession(id: string): Promise<void> {
+  const supabase = await createClient();
+
   const { error } = await supabase
     .from('work_sessions')
     .delete()
@@ -152,8 +176,8 @@ function normalizeTitle(title: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/^[ivxlcdm]+\.\s*/i, '')  // remove prefixo romano (I., II., III.)
-    .replace(/^\d+(\.\d+)?\.\s*/,'')   // remove prefixo árabe (1., 1.1.)
+    .replace(/^[ivxlcdm]+\.\s*/i, '')
+    .replace(/^\d+(\.\d+)?\.\s*/, '')
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -163,7 +187,7 @@ function isAutomaticIndex(title: string): boolean {
   return normalizeTitle(title) === 'indice';
 }
 
-// ── Secções fixas de fallback (nova estrutura) ────────────────────────────────
+// ── Secções fixas de fallback ─────────────────────────────────────────────────
 
 const FALLBACK_SECTIONS = [
   'I. Introdução',
@@ -183,14 +207,6 @@ function buildFallbackSections(): WorkSection[] {
 }
 
 // ── Extracção de secções do esboço Markdown ───────────────────────────────────
-//
-// Regras:
-//  - ## → secção principal
-//  - ### → subsecção (sempre incluída como secção accionável)
-//  - Se um ## tem ### filhos → o ## pai não é inserido como secção separada
-//    (apenas as ### filhas são accionáveis, excepto "Desenvolvimento Teórico")
-//  - Remove "Índice" automaticamente
-//  - Mantém prefixos romanos e numéricos tal como estão no esboço
 
 function extractSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
@@ -218,13 +234,10 @@ function extractSections(outline: string): WorkSection[] {
     if (raw[i].level === 2) {
       const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
       if (!nextIsH3) {
-        // Secção principal sem subsecções → accionável directamente
         sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
         index++;
       }
-      // Se tem subsecções, o ## pai não é accionável (apenas as ### filhas)
     } else {
-      // Subsecção → sempre accionável
       sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
       index++;
     }
