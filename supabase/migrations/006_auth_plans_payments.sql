@@ -27,7 +27,7 @@ INSERT INTO plans (key, label, price_usd, price_mzn, works_limit, tcc_enabled, a
 VALUES
   ('free',    'Gratuito',   0,     0,      20,   false, false, false, false, NULL, 1),
   ('avulso',  'Avulso',     0,    50,       1,   false, false, true,  true,  2,    0),
-  ('basico',  'Básico',     4.99, 320,   NULL,   false, true,  false, true,  NULL, 1),
+  ('basico',  'Básico',     4.99, 320,      5,   false, true,  true,  true,  2,    1),
   ('standard','Standard',   7.99, 512,   NULL,   false, true,  true,  true,  NULL, 1),
   ('pro',     'Pro',        9.99, 640,   NULL,   true,  true,  true,  true,  NULL, 1),
   ('premium', 'Premium',   14.99, 960,   NULL,   true,  true,  true,  true,  NULL, 1)
