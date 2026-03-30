@@ -71,6 +71,7 @@ export default function AdminPage() {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
   const totalExpenses = useMemo(() => expenses.reduce((total, item) => total + item.amount_mzn, 0), [expenses]);
+  const pendingPayments = useMemo(() => payments.filter((payment) => payment.status === 'pending'), [payments]);
 
   const flash = useCallback((text: string) => {
     setMessage(text);
@@ -261,12 +262,14 @@ export default function AdminPage() {
 
       {tab === 'payments' && (
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
-          <p className="mb-4 text-sm text-[var(--text-secondary)]">Pagamentos pendentes aguardando validação manual da equipe.</p>
+          <p className="mb-4 text-sm text-[var(--text-secondary)]">
+            Contas com compra de plano pendente de validação manual do administrador.
+          </p>
 
           {loading && <p className="text-sm text-[var(--text-tertiary)]">A carregar pagamentos...</p>}
 
           <div className="space-y-3">
-            {payments.map((payment) => (
+            {pendingPayments.map((payment) => (
               <article key={payment.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-base)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1">
@@ -279,39 +282,29 @@ export default function AdminPage() {
                     <p className="mono text-[11px] text-[var(--text-tertiary)]">Transação: {payment.transaction_id}</p>
                   </div>
 
-                  {payment.status === 'pending' ? (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handlePaymentAction(payment.id, 'confirm')}
-                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
-                      >
-                        Confirmar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePaymentAction(payment.id, 'reject')}
-                        className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
-                      >
-                        Rejeitar
-                      </button>
-                    </div>
-                  ) : (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        payment.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'
-                      }`}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentAction(payment.id, 'confirm')}
+                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
                     >
-                      {payment.status === 'confirmed' ? 'Confirmado' : 'Rejeitado'}
-                    </span>
-                  )}
+                      Confirmar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePaymentAction(payment.id, 'reject')}
+                      className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
+                    >
+                      Rejeitar
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
           </div>
 
-          {!loading && payments.length === 0 && (
-            <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">Nenhum pagamento registado.</p>
+          {!loading && pendingPayments.length === 0 && (
+            <p className="py-6 text-center text-sm text-[var(--text-tertiary)]">Não há pagamentos pendentes de validação.</p>
           )}
         </section>
       )}
