@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type CSSProperties,
 } from 'react';
+import { AudioInputButton } from '@/components/AudioInputButton';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { workTheme as C } from '@/lib/theme';
 
@@ -236,6 +237,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.institution}
                 onChange={handleText('institution')}
+                onVoiceText={text => setField('institution', text)}
                 placeholder="Ex: Instituto Industrial e Comercial 1º de Maio"
                 hasError={!!errors.institution}
               />
@@ -244,6 +246,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.delegation}
                 onChange={handleText('delegation')}
+                onVoiceText={text => setField('delegation', text)}
                 placeholder="Ex: Quelimane"
               />
             </Field>
@@ -290,6 +293,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.course}
                 onChange={handleText('course')}
+                onVoiceText={text => setField('course', text)}
                 placeholder="Ex: Contabilidade CV3"
                 hasError={!!errors.course}
               />
@@ -298,6 +302,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.subject}
                 onChange={handleText('subject')}
+                onVoiceText={text => setField('subject', text)}
                 placeholder="Ex: Legislação Comercial e Fiscal"
                 hasError={!!errors.subject}
               />
@@ -306,6 +311,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Textarea
                 value={form.theme}
                 onChange={handleText('theme')}
+                onVoiceText={text => setField('theme', text)}
                 placeholder="Ex: Princípios Básicos da Legislação Laboral em Moçambique"
                 hasError={!!errors.theme}
                 rows={2}
@@ -315,6 +321,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.group}
                 onChange={handleText('group')}
+                onVoiceText={text => setField('group', text)}
                 placeholder="Ex: 3º Grupo"
               />
             </Field>
@@ -336,6 +343,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
                   <Input
                     value={member}
                     onChange={e => updateMember(i, e.target.value)}
+                    onVoiceText={text => updateMember(i, text)}
                     placeholder={`Membro ${i + 1}`}
                     hasError={!!errors.members && !member.trim()}
                   />
@@ -365,6 +373,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.teacher}
                 onChange={handleText('teacher')}
+                onVoiceText={text => setField('teacher', text)}
                 placeholder="Ex: Prof. António Machava"
                 hasError={!!errors.teacher}
               />
@@ -378,6 +387,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
                 <Input
                   value={form.city}
                   onChange={handleText('city')}
+                  onVoiceText={text => setField('city', text)}
                   placeholder="Ex: Quelimane"
                   hasError={!!errors.city}
                 />
@@ -386,6 +396,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
                 <Input
                   value={form.date}
                   onChange={handleText('date')}
+                  onVoiceText={text => setField('date', text)}
                   placeholder="Ex: Março de 2026"
                   hasError={!!errors.date}
                 />
@@ -458,49 +469,59 @@ function Field({
 function Input({
   value,
   onChange,
+  onVoiceText,
   placeholder,
   hasError,
 }: {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onVoiceText: (text: string) => void;
   placeholder?: string;
   hasError?: boolean;
 }) {
   return (
-    <input
-      type="text"
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className={`w-full rounded border bg-[var(--modal-surface)] px-3 py-2 font-mono text-[12px] text-[var(--modal-text)] outline-none caret-[var(--modal-accent)] transition-colors placeholder:text-[var(--modal-faint)] focus:border-[var(--modal-accent)] ${
-        hasError ? 'border-[var(--modal-error)]' : 'border-[var(--modal-border)]'
-      }`}
-    />
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full rounded border bg-[var(--modal-surface)] px-3 py-2 font-mono text-[12px] text-[var(--modal-text)] outline-none caret-[var(--modal-accent)] transition-colors placeholder:text-[var(--modal-faint)] focus:border-[var(--modal-accent)] ${
+          hasError ? 'border-[var(--modal-error)]' : 'border-[var(--modal-border)]'
+        }`}
+      />
+      <AudioInputButton onTranscription={onVoiceText} className="py-2" />
+    </div>
   );
 }
 
 function Textarea({
   value,
   onChange,
+  onVoiceText,
   placeholder,
   hasError,
   rows = 2,
 }: {
   value: string;
   onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  onVoiceText: (text: string) => void;
   placeholder?: string;
   hasError?: boolean;
   rows?: number;
 }) {
   return (
-    <textarea
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      rows={rows}
-      className={`w-full resize-none rounded border bg-[var(--modal-surface)] px-3 py-2 font-mono text-[12px] leading-[1.6] text-[var(--modal-text)] outline-none caret-[var(--modal-accent)] transition-colors placeholder:text-[var(--modal-faint)] focus:border-[var(--modal-accent)] ${
-        hasError ? 'border-[var(--modal-error)]' : 'border-[var(--modal-border)]'
-      }`}
-    />
+    <div className="flex items-end gap-2">
+      <textarea
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+        className={`w-full resize-none rounded border bg-[var(--modal-surface)] px-3 py-2 font-mono text-[12px] leading-[1.6] text-[var(--modal-text)] outline-none caret-[var(--modal-accent)] transition-colors placeholder:text-[var(--modal-faint)] focus:border-[var(--modal-accent)] ${
+          hasError ? 'border-[var(--modal-error)]' : 'border-[var(--modal-border)]'
+        }`}
+      />
+      <AudioInputButton onTranscription={onVoiceText} className="py-2" />
+    </div>
   );
 }
