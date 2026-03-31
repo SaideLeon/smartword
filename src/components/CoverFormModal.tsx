@@ -32,6 +32,10 @@ interface FormState {
   date: string;
 }
 
+function normalizeInstitution(value: string): string {
+  return value.toLocaleUpperCase('pt-PT');
+}
+
 const INITIAL: FormState = {
   institution: '',
   delegation: '',
@@ -85,7 +89,11 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
   const handleText = useCallback(
     (key: keyof FormState) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setField(key, e.target.value as any);
+      const value = e.target.value as any;
+      setField(
+        key,
+        (key === 'institution' ? normalizeInstitution(value) : value) as FormState[typeof key],
+      );
     },
     [setField],
   );
@@ -152,7 +160,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
     }
 
     const coverData: CoverData = {
-      institution: form.institution.trim(),
+      institution: normalizeInstitution(form.institution.trim()),
       ...(form.delegation.trim() && { delegation: form.delegation.trim() }),
       ...(form.logoBase64 && {
         logoBase64: form.logoBase64,
@@ -237,7 +245,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
               <Input
                 value={form.institution}
                 onChange={handleText('institution')}
-                onVoiceText={text => setField('institution', text)}
+                onVoiceText={text => setField('institution', normalizeInstitution(text))}
                 placeholder="Ex: Instituto Industrial e Comercial 1º de Maio"
                 hasError={!!errors.institution}
               />
