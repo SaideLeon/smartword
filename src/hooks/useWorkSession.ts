@@ -1,11 +1,18 @@
 'use client';
 
-// hooks/useWorkSession.ts (versão actualizada — nova estrutura de numeração)
+// hooks/useWorkSession.ts
 //
 // REGRA DE PAGEBREAK:
 // O conteúdo guardado no Supabase é SEMPRE puro — sem {pagebreak} nem {section}.
 // Os {pagebreak} são adicionados APENAS quando o conteúdo é inserido no editor,
-// pela função buildSectionMarkdown em WorkPanel.tsx.
+// pelas funções buildSectionMarkdown e buildReconstructedContent em WorkPanel.tsx.
+//
+// REGRA DO HEADING PAI:
+// O heading "## 1. Desenvolvimento Teórico" não existe nas sections (é filtrado do esboço).
+// É inserido automaticamente pelo WorkPanel quando a primeira subsecção do grupo
+// (ex: "1.1 X") é inserida no editor.
+// A função buildReconstructedContent neste ficheiro replica essa lógica para o
+// caso de reset/rebuild de todo o conteúdo do editor (ex: regeneração de secção).
 
 import { useState, useCallback, useRef } from 'react';
 import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
@@ -19,7 +26,7 @@ export type WorkStep =
   | 'developing'
   | 'section_ready';
 
-// ── Normalização de título ────────────────────────────────────────────────────
+// ── Helpers de normalização ───────────────────────────────────────────────────
 
 function normalizeTitle(title: string): string {
   return title
@@ -37,7 +44,98 @@ function isAutomaticIndex(title: string): boolean {
   return normalizeTitle(title) === 'indice';
 }
 
-// ── Secções fixas de fallback (nova estrutura com numeração) ─────────────────
+function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
+  const firstLine = content.trimStart().split('\n')[0].trim();
+  if (!firstLine.startsWith('#')) return false;
+  const headingText = firstLine.replace(/^#+\s*/, '');
+  const normalizedHeading = normalizeTitle(headingText);
+  const normalizedTitle = normalizeTitle(sectionTitle);
+  return (
+    normalizedHeading === normalizedTitle ||
+    normalizedHeading.includes(normalizedTitle) ||
+    normalizedTitle.includes(normalizedHeading)
+  );
+}
+
+// ── Helper: extrai heading pai do esboço ─────────────────────────────────────
+
+/**
+ * Extrai o título do capítulo pai (## N. Título) a partir do esboço.
+ * parentNum: string com o número pai, ex: "1"
+ */
+function getParentTitleFromOutline(outline: string, parentNum: string): string | null {
+  for (const line of outline.split('\n')) {
+    const match = line.match(/^##\s+(\d+)\.?\s+(.+)/);
+    if (match && match[1] === parentNum) {
+      return `${match[1]}. ${match[2].trim()}`;
+    }
+  }
+  return null;
+}
+
+// ── Reconstrução do conteúdo do editor com headings pai ───────────────────────
+
+/**
+ * Reconstrói o conteúdo completo do editor a partir das secções desenvolvidas,
+ * inserindo automaticamente os headings pai para grupos de subsecções.
+ *
+ * Usado no reset do editor quando uma secção é regenerada e o editor precisa
+ * de ser reconstruído do zero com todas as secções já inseridas.
+ *
+ * Regras:
+ *   - Subsecções numéricas (1.1, 1.2…): o heading pai (## 1. Desenvolvimento Teórico)
+ *     é inserido antes da primeira subsecção do grupo, com {pagebreak} se necessário.
+ *   - Subsecções seguintes do mesmo grupo fluem sem pagebreak.
+ *   - Secções autónomas (Introdução, Conclusão…) recebem {pagebreak} entre si.
+ */
+function buildReconstructedContent(
+  sections: WorkSection[],
+  outline: string | null,
+): string {
+  const sorted = [...sections]
+    .filter(s => s.content.trim())
+    .sort((a, b) => a.index - b.index);
+
+  const parts: string[] = [];
+  const insertedParentNums = new Set<string>();
+
+  for (const section of sorted) {
+    const isSubsection = /^\d+\.\d+/.test(section.title);
+    const heading = isSubsection ? '###' : '##';
+    const hasHeading = contentStartsWithTitle(section.content, section.title);
+    const body = hasHeading
+      ? section.content
+      : `${heading} ${section.title}\n\n${section.content}`;
+
+    if (isSubsection && outline) {
+      const parentMatch = section.title.match(/^(\d+)\.\d+/);
+      if (parentMatch) {
+        const parentNum = parentMatch[1];
+
+        // Insere o heading pai antes da primeira subsecção do grupo
+        if (!insertedParentNums.has(parentNum)) {
+          const parentTitle = getParentTitleFromOutline(outline, parentNum);
+          if (parentTitle) {
+            const parentBlock = `## ${parentTitle}`;
+            parts.push(parts.length === 0 ? parentBlock : `{pagebreak}\n\n${parentBlock}`);
+            insertedParentNums.add(parentNum);
+          }
+        }
+
+        // Subsecção flui sem pagebreak após o heading pai
+        parts.push(body);
+        continue;
+      }
+    }
+
+    // Secção autónoma (Introdução, Objectivos, Metodologia, Conclusão, Referências…)
+    parts.push(parts.length === 0 ? body : `{pagebreak}\n\n${body}`);
+  }
+
+  return parts.join('\n\n');
+}
+
+// ── Secções fixas de fallback ─────────────────────────────────────────────────
 
 const FALLBACK_SECTIONS = [
   'I. Introdução',
@@ -56,27 +154,15 @@ function buildFallbackSections(): WorkSection[] {
   }));
 }
 
-// ── Verifica se o conteúdo começa com o título ────────────────────────────────
-
-function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
-  const firstLine = content.trimStart().split('\n')[0].trim();
-  if (!firstLine.startsWith('#')) return false;
-  const headingText = firstLine.replace(/^#+\s*/, '');
-  const normalizedHeading = normalizeTitle(headingText);
-  const normalizedTitle = normalizeTitle(sectionTitle);
-  return (
-    normalizedHeading === normalizedTitle ||
-    normalizedHeading.includes(normalizedTitle) ||
-    normalizedTitle.includes(normalizedHeading)
-  );
-}
-
 // ── Parse do esboço em secções accionáveis ────────────────────────────────────
 //
 // Regras:
-//  - ## com ### filhos → o ## pai não é accionável, apenas as ### filhas
+//  - ## com ### filhos → o ## pai não é accionável (apenas os ### filhos)
 //  - ## sem ### filhos → accionável directamente
 //  - Prefixos romanos (I., II., III.) e numéricos (1.1) são mantidos no título
+//
+// Nota: o ## pai (ex: "1. Desenvolvimento Teórico") é filtrado aqui mas
+// inserido automaticamente pelo WorkPanel na função buildSectionMarkdown.
 
 function parseOutlineSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
@@ -107,7 +193,7 @@ function parseOutlineSections(outline: string): WorkSection[] {
         sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
         index++;
       }
-      // Se tem subsecções, o ## pai não é accionável
+      // ## com filhos ### → não accionável (heading pai inserido automaticamente)
     } else {
       sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
       index++;
@@ -374,23 +460,19 @@ export function useWorkSession() {
       });
 
       if (options?.shouldResetEditor && options.onReplace) {
+        // Busca a sessão actualizada para reconstruir o conteúdo completo
         const refreshRes = await fetch(`/api/work/session?id=${session.id}`);
         if (!refreshRes.ok) throw new Error('Erro ao sincronizar sessão regenerada');
 
         const refreshedSession: WorkSessionRecord = await refreshRes.json();
         fetchedSession = refreshedSession;
 
-        const organizedContent = [...refreshedSession.sections]
-          .filter(section => section.content.trim())
-          .sort((a, b) => a.index - b.index)
-          .map((section, i) => {
-            const sectionHasHeading = contentStartsWithTitle(section.content, section.title);
-            const sectionIsSubsection = /^\d+\.\d+/.test(section.title);
-            const sectionHeading = sectionIsSubsection ? '###' : '##';
-            const text = sectionHasHeading ? section.content : `${sectionHeading} ${section.title}\n\n${section.content}`;
-            return i === 0 ? text : `{pagebreak}\n\n${text}`;
-          })
-          .join('\n\n');
+        // Usa buildReconstructedContent para incluir headings pai automaticamente
+        const outline = refreshedSession.outline_approved ?? refreshedSession.outline_draft;
+        const organizedContent = buildReconstructedContent(
+          refreshedSession.sections.filter(s => s.content.trim()),
+          outline ?? null,
+        );
 
         options.onReplace(organizedContent);
       } else {

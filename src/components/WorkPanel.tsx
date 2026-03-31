@@ -11,20 +11,29 @@
 //   • Todas as outras secções principais → COM {pagebreak} antes do título
 //   • Subsecções (1.1, 1.2, …)          → NUNCA pagebreak — fluem na mesma página
 //
-// Esta lógica está EXCLUSIVAMENTE em buildSectionMarkdown().
+// Esta lógica está EXCLUSIVAMENTE em buildSectionMarkdown() e buildReconstructedContent().
 // O servidor (develop/route.ts) guarda conteúdo PURO — sem pagebreaks.
 // O hook (useWorkSession.ts) também não adiciona pagebreaks.
-// APENAS esta função decide o pagebreak.
+// APENAS estas funções decidem o pagebreak.
 //
 // ── REGRA DE NUMERAÇÃO ───────────────────────────────────────────────────────
 //
 //   I.   Introdução                → ## I. Introdução
 //   II.  Objectivos                → ## II. Objectivos
 //   III. Metodologia               → ## III. Metodologia
-//   1.1  Subsecção do Desenv.      → ### 1.1 Título  (sem pagebreak)
+//   1. Desenvolvimento Teórico     → ## 1. Desenvolvimento Teórico  (heading pai, auto-inserido)
+//   1.1  Subsecção do Desenv.      → ### 1.1 Título  (sem pagebreak, segue o pai)
 //   1.2  Subsecção do Desenv.      → ### 1.2 Título  (sem pagebreak)
 //   Conclusão                      → ## Conclusão    (sem número)
 //   Referências Bibliográficas     → ## Referências  (sem número)
+//
+// ── REGRA DO HEADING PAI ─────────────────────────────────────────────────────
+//
+//   Quando a primeira subsecção (ex: 1.1) de um grupo é inserida:
+//     → O heading pai (ex: ## 1. Desenvolvimento Teórico) é inserido automaticamente
+//     → O heading pai recebe o {pagebreak} (se não for primeira secção do editor)
+//     → A subsecção segue sem pagebreak adicional
+//   Subsecções seguintes (1.2, 1.3…) inserem-se sem pagebreak, fluindo após o pai.
 //
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -35,6 +44,7 @@ import { useEditorActions } from '@/hooks/useEditorStore';
 import { CoverFormModal } from '@/components/CoverFormModal';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
+import type { WorkSection } from '@/lib/work/types';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -76,46 +86,119 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
   );
 }
 
+// ── Helpers para heading pai do Desenvolvimento Teórico ───────────────────────
+
 /**
- * buildSectionMarkdown — A ÚNICA função que decide heading, pagebreak e numeração.
+ * Extrai o título do capítulo pai (## N. Título) a partir do esboço.
+ * Recebe o número pai como string, ex: "1"
+ */
+function getParentTitleFromOutline(outline: string, parentNum: string): string | null {
+  for (const line of outline.split('\n')) {
+    // Aceita formatos: ## 1. Desenvolvimento Teórico  ou  ## 1 Desenvolvimento Teórico
+    const match = line.match(/^##\s+(\d+)\.?\s+(.+)/);
+    if (match && match[1] === parentNum) {
+      return `${match[1]}. ${match[2].trim()}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Reconstrói o conteúdo do editor a partir das secções desenvolvidas,
+ * inserindo automaticamente os headings pai para as subsecções numéricas.
+ * Usado na restauração de sessão e no reset do editor.
+ */
+function buildReconstructedContent(
+  sections: WorkSection[],
+  outline: string | null,
+): string {
+  const sorted = [...sections]
+    .filter(s => s.content.trim())
+    .sort((a, b) => a.index - b.index);
+
+  const parts: string[] = [];
+  const insertedParentNums = new Set<string>();
+
+  for (const section of sorted) {
+    const isSubsection = /^\d+\.\d+/.test(section.title);
+    const heading = isSubsection ? '###' : '##';
+    const hasHeading = contentStartsWithTitle(section.content, section.title);
+    const body = hasHeading
+      ? section.content
+      : `${heading} ${section.title}\n\n${section.content}`;
+
+    if (isSubsection && outline) {
+      const parentMatch = section.title.match(/^(\d+)\.\d+/);
+      if (parentMatch) {
+        const parentNum = parentMatch[1];
+
+        // Insere o heading pai antes da primeira subsecção deste grupo
+        if (!insertedParentNums.has(parentNum)) {
+          const parentTitle = getParentTitleFromOutline(outline, parentNum);
+          if (parentTitle) {
+            const parentBlock = `## ${parentTitle}`;
+            parts.push(parts.length === 0 ? parentBlock : `{pagebreak}\n\n${parentBlock}`);
+            insertedParentNums.add(parentNum);
+          }
+        }
+
+        // Subsecção segue sem pagebreak (flui depois do heading pai)
+        parts.push(body);
+        continue;
+      }
+    }
+
+    // Secção autónoma (Introdução, Objectivos, Metodologia, Conclusão, Referências…)
+    parts.push(parts.length === 0 ? body : `{pagebreak}\n\n${body}`);
+  }
+
+  return parts.join('\n\n');
+}
+
+/**
+ * buildSectionMarkdown — A ÚNICA função que decide heading, pagebreak e numeração
+ * para inserção individual de uma secção no editor.
  *
  * Regras de heading:
  *   - Subsecções (ex: "1.1 Conceito X") → ### (três cerquilhas)
  *   - Todas as outras                   → ## (duas cerquilhas)
  *
  * Regras de pagebreak:
- *   - Subsecções                        → NUNCA pagebreak (fluem na mesma página)
- *   - Secções principais, 1ª no editor  → SEM pagebreak
- *   - Secções principais, restantes     → COM {pagebreak} antes
+ *   - Subsecções sem pai               → NUNCA pagebreak (fluem na mesma página)
+ *   - Subsecções com pai (1ª do grupo) → o heading pai recebe o pagebreak, subsecção segue
+ *   - Secções principais, 1ª no editor → SEM pagebreak
+ *   - Secções principais, restantes    → COM {pagebreak} antes
  *
- * @param title           Título da secção (ex: "I. Introdução", "1.1 Conceito X", "Conclusão")
+ * @param title           Título da secção (ex: "I. Introdução", "1.1 Conceito X")
  * @param content         Conteúdo puro da secção (sem pagebreaks, sem título)
  * @param isFirstInEditor true se o editor estiver vazio quando esta secção é inserida
+ * @param parentTitle     Título do capítulo pai (ex: "1. Desenvolvimento Teórico"), apenas
+ *                        quando esta é a primeira subsecção do grupo a ser inserida
  */
 function buildSectionMarkdown(
   title: string,
   content: string,
   isFirstInEditor: boolean,
+  parentTitle?: string | null,
 ): string {
-  // Subsecção: começa com dígito ponto dígito (ex: "1.1 Conceito X")
   const isSubsection = /^\d+\.\d+/.test(title);
   const heading = isSubsection ? '###' : '##';
 
-  // Verificar se o conteúdo já inclui o título como cabeçalho
   const titleAlreadyPresent = contentStartsWithTitle(content, title);
   const body = titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
 
-  // Subsecções — NUNCA quebram página
   if (isSubsection) {
+    if (parentTitle) {
+      // Primeira subsecção do grupo: heading pai + subsecção, com pagebreak se necessário
+      const fullBlock = `## ${parentTitle}\n\n${body}`;
+      return isFirstInEditor ? fullBlock : `{pagebreak}\n\n${fullBlock}`;
+    }
+    // Subsecções seguintes: sem pagebreak, fluem após o heading pai já inserido
     return body;
   }
 
-  // Secções principais — quebram página sempre, excepto a primeira no editor
-  if (isFirstInEditor) {
-    return body;
-  }
-
-  return `{pagebreak}\n\n${body}`;
+  // Secções autónomas
+  return isFirstInEditor ? body : `{pagebreak}\n\n${body}`;
 }
 
 export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
@@ -180,17 +263,17 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   }, [showSessions, recentSessions.length]);
 
   // ── Restaurar sessão retomada ─────────────────────────────────────────────
+  // Usa buildReconstructedContent para incluir headings pai automaticamente
 
   useEffect(() => {
     if (!resumeRestoreSessionId || !session || session.id !== resumeRestoreSessionId) return;
 
-    const completedSections = [...session.sections]
-      .filter((section) => section.status !== 'pending' && section.content.trim())
-      .sort((a, b) => a.index - b.index);
+    const completedSections = session.sections.filter(
+      s => s.status !== 'pending' && s.content.trim(),
+    );
 
-    const editorContent = completedSections
-      .map((section, i) => buildSectionMarkdown(section.title, section.content, i === 0))
-      .join('\n\n');
+    const outline = session.outline_approved ?? session.outline_draft ?? null;
+    const editorContent = buildReconstructedContent(completedSections, outline);
 
     setContent(editorContent);
     setResumeRestoreSessionId(null);
@@ -314,10 +397,14 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   };
 
   /**
-   * handleInsertSection — insere uma secção no editor com pagebreak e numeração correctos.
+   * handleInsertSection — insere uma secção no editor com pagebreak, numeração
+   * e heading pai corretos.
    *
-   * Determina se o editor está vazio (primeira secção) ou já tem conteúdo
-   * (secções seguintes precisam de {pagebreak}).
+   * Lógica de heading pai:
+   *   - Se a secção é uma subsecção (ex: "1.1 Foo") E é a PRIMEIRA do seu grupo
+   *     a ser inserida → o heading pai (ex: "## 1. Desenvolvimento Teórico") é
+   *     automaticamente prefixado, com {pagebreak} se necessário.
+   *   - Subsecções seguintes (1.2, 1.3…) fluem sem pagebreak após o pai.
    */
   const handleInsertSection = useCallback((sectionIndex: number) => {
     if (!session) return;
@@ -329,13 +416,32 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     const shouldResetEditor = hasContentInEditor && isSectionRegenerated(sectionIndex);
 
     if (shouldResetEditor) {
+      // Regeneração: o hook reconstrói todo o conteúdo; o hook também usa
+      // buildReconstructedContent para incluir headings pai (ver useWorkSession.ts)
       insertSection(sectionIndex, onInsert, {
         shouldResetEditor: true,
         onReplace: setContent,
       });
     } else {
       const isFirstInEditor = !hasContentInEditor;
-      const textToInsert = buildSectionMarkdown(sec.title, sec.content, isFirstInEditor);
+
+      // Detectar se é subsecção e se é a primeira do grupo a ser inserida
+      let parentTitle: string | null = null;
+      const parentNumMatch = sec.title.match(/^(\d+)\.\d+/);
+      if (parentNumMatch) {
+        const parentNum = parentNumMatch[1];
+        const hasSiblingAlreadyInserted = session.sections.some(s => {
+          const m = s.title.match(/^(\d+)\.\d+/);
+          return m && m[1] === parentNum && s.status === 'inserted';
+        });
+
+        if (!hasSiblingAlreadyInserted) {
+          const outline = session.outline_approved ?? session.outline_draft ?? '';
+          parentTitle = getParentTitleFromOutline(outline, parentNum);
+        }
+      }
+
+      const textToInsert = buildSectionMarkdown(sec.title, sec.content, isFirstInEditor, parentTitle);
       insertSection(sectionIndex, () => onInsert(textToInsert));
     }
   }, [session, editorMarkdown, isSectionRegenerated, insertSection, onInsert, setContent]);
@@ -464,11 +570,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                   'I. Introdução',
                   'II. Objectivos',
                   'III. Metodologia',
-                  '1.1, 1.2, 1.3… Desenvolvimento',
+                  '1. Desenvolvimento Teórico',
+                  '  1.1, 1.2, 1.3… Subsecções',
                   'Conclusão',
                   'Referências Bibliográficas',
-                ].map((s, i) => (
-                  <div key={s} className="py-0.5 font-mono text-[11px] text-[var(--panel-text-dim)]">{s}</div>
+                ].map((s) => (
+                  <div key={s} className={`py-0.5 font-mono text-[11px] ${s.startsWith('  ') ? 'pl-3 text-[var(--panel-text-faint)]' : 'text-[var(--panel-text-dim)]'}`}>{s}</div>
                 ))}
               </div>
               <div className="flex flex-col gap-2.5">
@@ -638,7 +745,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               </Label>
 
               <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
-                ↕ Cada secção começa automaticamente numa nova página ao ser inserida.
+                ↕ Cada secção principal começa numa nova página. O título "Desenvolvimento Teórico" é inserido automaticamente com a primeira subsecção.
               </div>
 
               {session.sections.map(sec => {
