@@ -16,14 +16,14 @@ export async function POST(req: Request) {
 
     const session = await approveWorkOutline(sessionId, outline.trim());
 
-    if (!session.research_brief) {
-      try {
-        const research = await generateResearchBrief(session.topic, outline.trim());
-        await saveWorkResearchBrief(session.id, research.keywords, research.brief);
-      } catch (error) {
-        console.error('Falha ao gerar ficha técnica de pesquisa (work):', error);
-      }
-    }
+    // A ficha técnica é obrigatória imediatamente após a aprovação do esboço.
+    // Se a geração falhar, devolvemos erro para que o cliente possa reenviar.
+    const research = await generateResearchBrief(session.topic, outline.trim());
+    await saveWorkResearchBrief(session.id, research.keywords, research.brief);
+
+    session.research_keywords = research.keywords;
+    session.research_brief = research.brief;
+    session.research_generated_at = new Date().toISOString();
 
     return NextResponse.json(session);
   } catch (e: any) {
