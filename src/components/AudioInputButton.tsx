@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { Loader2, Mic, Square } from 'lucide-react';
 
 interface Props {
   onTranscription: (text: string) => void;
@@ -104,13 +105,19 @@ export function AudioInputButton({ onTranscription, disabled = false, className 
       disabled={disabled || isTranscribing || unsupported}
       title={title ?? (isRecording ? 'Parar gravação' : 'Gravar áudio')}
       aria-label={title ?? (isRecording ? 'Parar gravação' : 'Gravar áudio')}
-      className={`shrink-0 rounded border px-2 py-1 font-mono text-[10px] transition-colors ${
+      className={`flex shrink-0 items-center justify-center rounded border px-2 py-1 font-mono text-[10px] transition-colors ${
         isRecording
           ? 'border-red-500/50 bg-red-900/30 text-red-300'
           : 'border-[var(--panel-border,#2e2e2e)] text-[var(--panel-text-dim,#9ca3af)] hover:border-[var(--panel-accent,#7dd3fc)] hover:text-[var(--panel-accent,#7dd3fc)]'
       } ${className}`}
     >
-      {isTranscribing ? '…' : isRecording ? '■' : '🎤'}
+      {isTranscribing ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : isRecording ? (
+        <Square className="h-4 w-4" />
+      ) : (
+        <Mic className="h-4 w-4" />
+      )}
     </button>
   );
 }
