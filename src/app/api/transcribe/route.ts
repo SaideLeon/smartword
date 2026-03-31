@@ -3,10 +3,22 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 function getGroqApiKey() {
-  if (process.env.GROQ_API_KEY) return process.env.GROQ_API_KEY;
-  if (!process.env.GROQ_API_KEYS) return null;
-  const first = process.env.GROQ_API_KEYS.split(',').map(v => v.trim()).find(Boolean);
-  return first ?? null;
+  const collected: string[] = [];
+
+  if (process.env.GROQ_API_KEY) {
+    collected.push(...process.env.GROQ_API_KEY.split(',').map(v => v.trim()).filter(Boolean));
+  }
+
+  if (process.env.GROQ_API_KEYS) {
+    collected.push(...process.env.GROQ_API_KEYS.split(',').map(v => v.trim()).filter(Boolean));
+  }
+
+  for (let i = 1; i <= 20; i++) {
+    const key = process.env[`GROQ_API_KEY_${i}`]?.trim();
+    if (key) collected.push(key);
+  }
+
+  return collected[0] ?? null;
 }
 
 export async function POST(request: Request) {
