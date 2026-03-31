@@ -42,6 +42,7 @@ import { useWorkSession } from '@/hooks/useWorkSession';
 import { useCoverAgent } from '@/hooks/useCoverAgent';
 import { useEditorActions } from '@/hooks/useEditorStore';
 import { CoverFormModal } from '@/components/CoverFormModal';
+import { AudioInputButton } from '@/components/AudioInputButton';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
 import type { WorkSection } from '@/lib/work/types';
@@ -600,15 +601,18 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {step === 'topic_input' && (
             <div className="flex flex-col gap-3">
               <Label>Qual é o tema do trabalho?</Label>
-              <textarea
-                value={topicInput}
-                onChange={e => setTopicInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTopicSubmit(); } }}
-                placeholder="Ex: A importância da água potável para a saúde pública em Moçambique"
-                rows={4}
-                autoFocus
-                className="resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
-              />
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={topicInput}
+                  onChange={e => setTopicInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTopicSubmit(); } }}
+                  placeholder="Ex: A importância da água potável para a saúde pública em Moçambique"
+                  rows={4}
+                  autoFocus
+                  className="flex-1 resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+                />
+                <AudioInputButton onTranscription={text => setTopicInput(prev => (prev ? `${prev} ${text}` : text))} className="py-2" />
+              </div>
               <Btn onClick={handleTopicSubmit} color={C.accent} disabled={!topicInput.trim()} processing={isProcessing('submit-topic')}>✦ Gerar esboço orientador</Btn>
             </div>
           )}
@@ -625,20 +629,26 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {step === 'review_outline' && (
             <div className="flex flex-col gap-3">
               <Label>Esboço gerado. Podes editar antes de aprovar.</Label>
-              <textarea
-                value={outlineEdit}
-                onChange={e => setOutlineEdit(e.target.value)}
-                rows={16}
-                className="min-h-32 resize-y rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
-              />
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={outlineEdit}
+                  onChange={e => setOutlineEdit(e.target.value)}
+                  rows={16}
+                  className="min-h-32 flex-1 resize-y rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+                />
+                <AudioInputButton onTranscription={text => setOutlineEdit(prev => (prev ? `${prev}\n${text}` : text))} className="py-2" />
+              </div>
               <div className="flex flex-col gap-2">
                 <Label>Podes pedir ajustes antes de aprovar.</Label>
-                <input
-                  value={outlineSuggestions}
-                  onChange={e => setOutlineSuggestions(e.target.value)}
-                  placeholder="Ex: incluir mais foco em impactos sociais e exemplos locais"
-                  className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={outlineSuggestions}
+                    onChange={e => setOutlineSuggestions(e.target.value)}
+                    placeholder="Ex: incluir mais foco em impactos sociais e exemplos locais"
+                    className="flex-1 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+                  />
+                  <AudioInputButton onTranscription={text => setOutlineSuggestions(prev => (prev ? `${prev} ${text}` : text))} className="py-2" />
+                </div>
               </div>
               <div className="flex gap-2">
                 <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline} processing={isProcessing('approve-outline')}>
@@ -687,14 +697,21 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
 
               {(coverAgent.step === 'asking' || coverAgent.step === 'awaiting_form') && (
                 <div className="flex items-end gap-2">
-                  <input
-                    value={agentInput}
-                    onChange={e => setAgentInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAgentSend(); }}
-                    placeholder="Responde ao assistente…"
-                    disabled={agentSending}
-                    className="flex-1 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)] disabled:opacity-50"
-                  />
+                  <div className="flex flex-1 items-center gap-2">
+                    <input
+                      value={agentInput}
+                      onChange={e => setAgentInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAgentSend(); }}
+                      placeholder="Responde ao assistente…"
+                      disabled={agentSending}
+                      className="flex-1 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)] disabled:opacity-50"
+                    />
+                    <AudioInputButton
+                      onTranscription={text => setAgentInput(prev => (prev ? `${prev} ${text}` : text))}
+                      disabled={agentSending}
+                      className="py-2"
+                    />
+                  </div>
                   <button
                     onClick={handleAgentSend}
                     disabled={agentSending || !agentInput.trim()}
