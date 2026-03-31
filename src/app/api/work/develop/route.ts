@@ -3,9 +3,10 @@
 // O servidor devolve conteúdo puro, sem marcadores estruturais.
 
 import { NextResponse } from 'next/server';
-import { getWorkSession, saveWorkSectionContent } from '@/lib/work/service';
+import { getWorkSession, saveWorkResearchBrief, saveWorkSectionContent } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { groqFetch } from '@/lib/groq-resilient';
+import { generateResearchBrief } from '@/lib/research/brief';
 
 // ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
 
@@ -175,6 +176,14 @@ export async function POST(req: Request) {
 
     const section = session.sections.find(current => current.index === sectionIndex);
     if (!section) return NextResponse.json({ error: 'Secção não encontrada' }, { status: 404 });
+
+    if (!session.research_brief) {
+      const research = await generateResearchBrief(session.topic, outline);
+      await saveWorkResearchBrief(session.id, research.keywords, research.brief);
+      session.research_keywords = research.keywords;
+      session.research_brief = research.brief;
+      session.research_generated_at = new Date().toISOString();
+    }
 
     const previousSections = session.sections
       .filter(current => current.index < sectionIndex && current.content)
