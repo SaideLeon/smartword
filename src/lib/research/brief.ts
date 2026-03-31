@@ -57,13 +57,24 @@ Formato de resposta obrigatório (Markdown):
 ## FICHA TÉCNICA DE PESQUISA
 - Tema delimitado
 - Critérios de relevância
-- Achados centrais com dados/contexto
+- Principais achados com dados/contexto verificável
+- Definições-chave (conceitos e termos técnicos)
+- Autores/obras de referência (autor + contribuição)
 - Fontes recomendadas (nome + link)
 - Conceitos obrigatórios por secção do esboço
 - Limites e lacunas
 
-  ## DIRETRIZ DE USO
-Explique como usar esta ficha técnica para manter relevância e coerência no desenvolvimento de cada secção sem nova pesquisa web.`;
+## REFERÊNCIAS BIBLIOGRÁFICAS SUGERIDAS
+- [Autor, ano] Título — link directo
+
+## DIRETRIZ DE USO
+Explique como usar esta ficha técnica para manter relevância e coerência no desenvolvimento de cada secção sem nova pesquisa web.
+
+Regras críticas:
+- Não inventar factos, dados, autores ou publicações.
+- Só incluir afirmações apoiadas em fonte explícita.
+- Sempre que possível, indicar data da fonte e contexto temporal dos dados.
+- Se houver lacunas ou conflito entre fontes, declarar explicitamente.`;
 
   const body = {
     model: 'groq/compound',
@@ -79,7 +90,7 @@ Explique como usar esta ficha técnica para manter relevância e coerência no d
     stream: false,
     compound_custom: {
       tools: {
-        enabled_tools: ['web_search', 'visit_website'],
+        enabled_tools: ['web_search', 'visit_website', 'code_interpreter'],
       },
     },
   };
@@ -119,7 +130,7 @@ Explique como usar esta ficha técnica para manter relevância e coerência no d
         ],
         compound_custom: {
           tools: {
-            enabled_tools: ['web_search'],
+            enabled_tools: ['web_search', 'code_interpreter'],
           },
         },
       }),
