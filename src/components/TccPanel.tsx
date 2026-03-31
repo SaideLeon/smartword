@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTccSession } from '@/hooks/useTccSession';
 import { ContextCompressionBadge } from '@/components/ContextCompressionBadge';
+import { AudioInputButton } from '@/components/AudioInputButton';
 import type { TccSection } from '@/lib/tcc/types';
 import { tccTheme as C } from '@/lib/theme';
 
@@ -163,15 +164,21 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
         {step === 'review_outline' && (
           <div className="flex flex-col gap-3">
             <Label>Revê o esboço gerado. Podes editar directamente antes de aprovar.</Label>
-            <textarea value={outlineEdit} onChange={(e) => setOutlineEdit(e.target.value)} rows={18} className="min-h-32 resize-y rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
+            <div className="flex items-end gap-2">
+              <textarea value={outlineEdit} onChange={(e) => setOutlineEdit(e.target.value)} rows={18} className="min-h-32 flex-1 resize-y rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
+              <AudioInputButton onTranscription={(text) => setOutlineEdit((prev) => (prev ? `${prev}\n${text}` : text))} className="py-2" />
+            </div>
             <div className="flex flex-col gap-2">
               <Label>Antes de aprovar, adiciona sugestões para regenerar a estrutura.</Label>
-              <input
-                value={outlineSuggestions}
-                onChange={(e) => setOutlineSuggestions(e.target.value)}
-                placeholder="Ex: reforçar revisão de literatura e delimitar melhor metodologia"
-                className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  value={outlineSuggestions}
+                  onChange={(e) => setOutlineSuggestions(e.target.value)}
+                  placeholder="Ex: reforçar revisão de literatura e delimitar melhor metodologia"
+                  className="flex-1 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+                />
+                <AudioInputButton onTranscription={(text) => setOutlineSuggestions((prev) => (prev ? `${prev} ${text}` : text))} className="py-2" />
+              </div>
             </div>
             <div className="flex gap-2">
               <Btn onClick={handleApproveOutline} color={C.accent} flex disabled={isApprovingOutline}>
@@ -239,7 +246,10 @@ function TopicInput({ value, onChange, onSubmit }: { value: string; onChange: (v
   return (
     <div className="flex flex-col gap-3">
       <Label>Qual é o tópico do teu TCC?</Label>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(); } }} placeholder="Ex: O impacto das tecnologias digitais na educação básica em Moçambique" rows={4} autoFocus className="resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
+      <div className="flex items-end gap-2">
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(); } }} placeholder="Ex: O impacto das tecnologias digitais na educação básica em Moçambique" rows={4} autoFocus className="flex-1 resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
+        <AudioInputButton onTranscription={(text) => onChange(value ? `${value} ${text}` : text)} className="py-2" />
+      </div>
       <Btn onClick={onSubmit} color={C.accent} disabled={!value.trim()}>✦ Gerar esboço</Btn>
     </div>
   );
