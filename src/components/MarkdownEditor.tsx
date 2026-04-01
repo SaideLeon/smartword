@@ -13,14 +13,14 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
-  const [recentAction, setRecentAction] = useState<'import' | 'clear' | 'pagebreak' | 'section' | null>(null);
+  const [recentAction, setRecentAction] = useState<'import' | 'clear' | 'pagebreak' | 'section' | 'toc' | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
   }, []);
 
-  const showActionFeedback = useCallback((action: 'import' | 'clear' | 'pagebreak' | 'section') => {
+  const showActionFeedback = useCallback((action: 'import' | 'clear' | 'pagebreak' | 'section' | 'toc') => {
     setRecentAction(action);
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     feedbackTimeoutRef.current = setTimeout(() => {
@@ -29,7 +29,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
     }, 1800);
   }, []);
 
-  const insertAtCursor = useCallback((marker: string, feedbackKey: 'pagebreak' | 'section') => {
+  const insertAtCursor = useCallback((marker: string, feedbackKey: 'pagebreak' | 'section' | 'toc') => {
     const textarea = textareaRef.current;
     const insertion = `\n\n${marker}\n\n`;
 
@@ -131,13 +131,24 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
             tone="section"
             fullWidth={isMobile}
           />
+
+          {/* ── Botão de índice automático ── */}
+          <ToolbarBtn
+            onClick={() => insertAtCursor('{toc}', 'toc')}
+            label={recentAction === 'toc' ? 'Inserido ✓' : '☰ Índice'}
+            title="Insere um índice automático gerado pelos títulos do documento"
+            tone="toc"
+            fullWidth={isMobile}
+          />
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 px-0.5">
+      {/* Legenda dos marcadores */}
+      <div className={`flex flex-wrap gap-4 px-0.5 ${isMobile ? 'gap-2' : ''}`}>
         {[
           { marker: '{pagebreak}', desc: 'quebra de página', markerClassName: 'text-text-faint' },
-          { marker: '{section}', desc: 'nova secção · paginação reinicia em 1', markerClassName: 'text-green' },
+          { marker: '{section}',   desc: 'nova secção · paginação reinicia em 1', markerClassName: 'text-green' },
+          { marker: '{toc}',       desc: 'índice automático · actualizado no Word', markerClassName: 'text-[#7db8e0]' },
         ].map(({ marker, desc, markerClassName }) => (
           <span key={marker} className="font-mono text-[10px] tracking-[0.04em] text-text-dim">
             <code className={`rounded-[3px] bg-surface px-[5px] py-px ${markerClassName}`}>{marker}</code>
@@ -203,12 +214,15 @@ function ToolbarBtn({
   label: string;
   icon?: ReactNode;
   title?: string;
-  tone?: 'muted' | 'section';
+  tone?: 'muted' | 'section' | 'toc';
   fullWidth?: boolean;
 }) {
-  const toneClassName = tone === 'section'
-    ? 'text-[#6a9e5f] hover:border-[#6a9e5f55]'
-    : 'text-text-muted hover:border-[#8a7d6e55]';
+  const toneClassName =
+    tone === 'section'
+      ? 'text-[#6a9e5f] hover:border-[#6a9e5f55]'
+      : tone === 'toc'
+        ? 'text-[#7db8e0] hover:border-[#7db8e055]'
+        : 'text-text-muted hover:border-[#8a7d6e55]';
 
   return (
     <button

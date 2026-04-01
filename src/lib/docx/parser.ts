@@ -53,10 +53,12 @@ export function parseToAST(markdown: string): DocumentNode[] {
         // ── Marcadores estruturais especiais ────────────────────────────────
         // Uma linha com apenas {pagebreak} → quebra de página (sem nova secção)
         // Uma linha com apenas {section}   → nova secção (reinicia paginação)
+        // Uma linha com apenas {toc}       → índice automático
         if (node.children.length === 1 && node.children[0].type === 'text') {
           const marker = (node.children[0].value as string).trim();
           if (marker === '{pagebreak}') return { type: 'page_break' };
           if (marker === '{section}')   return { type: 'section_break' };
+          if (marker === '{toc}')       return { type: 'toc' };
         }
         return {
           type: 'paragraph',

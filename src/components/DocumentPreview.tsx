@@ -26,6 +26,143 @@ const FOOTER_RESERVED_SPACE = 28;
 const BODY_FONT_SIZE_DESKTOP = 16;
 const BODY_FONT_SIZE_MOBILE = 12;
 
+// ── Extrai texto simples de um array de InlineNodes ───────────────────────────
+function extractText(nodes: InlineNode[]): string {
+  return nodes.map(n => {
+    if (n.type === 'text') return n.value;
+    if (n.type === 'strong' || n.type === 'emphasis' || n.type === 'link') return extractText(n.children);
+    return '';
+  }).join('');
+}
+
+// ── Componente de prévia do índice ────────────────────────────────────────────
+function PreviewTocNode({
+  allNodes,
+  bodyFontSize,
+}: {
+  allNodes: DocumentNode[];
+  bodyFontSize: number;
+}) {
+  const headings = useMemo(
+    () =>
+      allNodes.filter(
+        (n): n is Extract<DocumentNode, { type: 'heading' }> =>
+          n.type === 'heading' && n.level <= 3,
+      ),
+    [allNodes],
+  );
+
+  const labelSize    = bodyFontSize * 0.72;
+  const entrySize    = bodyFontSize * 0.875;
+  const titleSize    = bodyFontSize * 0.95;
+
+  return (
+    <div
+      style={{
+        fontFamily: '"Times New Roman", Times, serif',
+        margin: '0.25rem 0 0.75rem',
+      }}
+    >
+      {/* Título do índice */}
+      <p
+        style={{
+          margin: '0 0 0.9rem 0',
+          textAlign: 'center',
+          fontWeight: 700,
+          fontSize: `${titleSize}px`,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          borderBottom: '1px solid #ccc',
+          paddingBottom: '0.4rem',
+        }}
+      >
+        Índice
+      </p>
+
+      {/* Entradas do índice */}
+      {headings.length === 0 ? (
+        <p style={{ color: '#aaa', fontSize: `${labelSize}px`, textAlign: 'center', fontStyle: 'italic' }}>
+          Ainda não há títulos no documento.
+        </p>
+      ) : (
+        <div style={{ display: 'grid', gap: '0.3rem' }}>
+          {headings.map((heading, i) => {
+            const text   = extractText(heading.children);
+            const indent = (heading.level - 1) * 18;
+            const isMain = heading.level <= 2;
+
+            return (
+              <div
+                key={i}
+                style={{
+                  display:     'flex',
+                  alignItems:  'baseline',
+                  paddingLeft: `${indent}px`,
+                  gap:         '3px',
+                }}
+              >
+                {/* Texto da entrada */}
+                <span
+                  style={{
+                    fontWeight:  isMain ? 700 : 400,
+                    fontSize:    `${isMain ? entrySize : entrySize * 0.94}px`,
+                    flexShrink:  0,
+                    maxWidth:    '78%',
+                    whiteSpace:  'nowrap',
+                    overflow:    'hidden',
+                    textOverflow:'ellipsis',
+                    color:       '#111',
+                  }}
+                >
+                  {text}
+                </span>
+
+                {/* Linha de pontos */}
+                <span
+                  style={{
+                    flex:          1,
+                    height:        '1px',
+                    borderBottom:  '1px dotted #bbb',
+                    marginBottom:  '3px',
+                    marginLeft:    '5px',
+                    marginRight:   '5px',
+                    minWidth:      '16px',
+                  }}
+                />
+
+                {/* Marcador de página — no Word virá o número real */}
+                <span
+                  style={{
+                    fontSize:   `${labelSize}px`,
+                    color:      '#999',
+                    flexShrink: 0,
+                    fontStyle:  'italic',
+                  }}
+                >
+                  {i + 1}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Nota explicativa */}
+      <p
+        style={{
+          marginTop:  '0.85rem',
+          textAlign:  'center',
+          fontSize:   `${labelSize}px`,
+          color:      '#aaa',
+          fontStyle:  'italic',
+        }}
+      >
+        Índice automático · os números de página são actualizados ao abrir no Word
+      </p>
+    </div>
+  );
+}
+
 export function DocumentPreview({ markdown, isMobile = false }: Props) {
   const documentNodes = useMemo(() => parseToAST(markdown), [markdown]);
   const measureRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -48,7 +185,8 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
 
     for (let i = 0; i < documentNodes.length; i += 1) {
       const node = documentNodes[i];
-      if (node.type === 'page_break' || node.type === 'section_break') continue;
+      // toc é excluído da medição — usa estimativa fixa
+      if (node.type === 'page_break' || node.type === 'section_break' || node.type === 'toc') continue;
 
       const element = measureRefs.current[i];
       if (!element) continue;
@@ -109,9 +247,24 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
 
               <div style={{ display: 'grid', gap: '0.9rem' }}>
                 {page.nodeIndexes.length > 0
-                  ? page.nodeIndexes.map((nodeIndex) => (
-                      <PreviewBlockNode key={`${page.key}-${nodeIndex}`} node={documentNodes[nodeIndex]} />
-                    ))
+                  ? page.nodeIndexes.map((nodeIndex) => {
+                      const node = documentNodes[nodeIndex];
+
+                      // Renderiza o índice como componente especial
+                      if (node.type === 'toc') {
+                        return (
+                          <PreviewTocNode
+                            key={`${page.key}-${nodeIndex}-toc`}
+                            allNodes={documentNodes}
+                            bodyFontSize={bodyFontSize}
+                          />
+                        );
+                      }
+
+                      return (
+                        <PreviewBlockNode key={`${page.key}-${nodeIndex}`} node={node} />
+                      );
+                    })
                   : <p style={{ margin: 0, color: '#6f665a' }}>Página em branco</p>}
               </div>
 
@@ -151,6 +304,7 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
         </div>
       </div>
 
+      {/* Área de medição oculta */}
       <div aria-hidden style={{ position: 'absolute', inset: '-99999px auto auto -99999px', width: `${PAGE_WIDTH}px`, visibility: 'hidden' }}>
         <div
           style={{
@@ -161,7 +315,8 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
           }}
         >
           {documentNodes.map((node, index) => {
-            if (node.type === 'page_break' || node.type === 'section_break') return null;
+            // Não medir nodes especiais — usam estimativas fixas
+            if (node.type === 'page_break' || node.type === 'section_break' || node.type === 'toc') return null;
 
             return (
               <div
@@ -248,6 +403,8 @@ function estimateFallbackHeight(node: DocumentNode): number {
       return 100;
     case 'blockquote':
       return 92;
+    case 'toc':
+      return 420; // estimativa para o índice (varia com o número de títulos)
     case 'paragraph':
       return 44;
     default:
@@ -315,6 +472,7 @@ function PreviewBlockNode({ node }: { node: DocumentNode }) {
       return <MathNode latex={node.latex} displayMode />;
     case 'table':
       return <TableNode rows={node.rows} align={node.align} />;
+    // toc é tratado no nível de cima (DocumentPreview) — não chega aqui
     default:
       return null;
   }

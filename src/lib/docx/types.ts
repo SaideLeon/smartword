@@ -22,6 +22,7 @@ export type DocumentNode =
   | { type: 'table'; align: (TableAlign | null)[]; rows: TableRowNode[] }
   | { type: 'page_break' }
   | { type: 'section_break' }
+  | { type: 'toc' }
   | ChartNode;
 
 export type TableAlign = 'left' | 'center' | 'right';

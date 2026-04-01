@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, ImportedXmlComponent,
   ExternalHyperlink, IParagraphOptions, AlignmentType, convertMillimetersToTwip,
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
-  PageBreak, Footer, PageNumber, NumberFormat, SectionType,
+  PageBreak, Footer, PageNumber, NumberFormat, SectionType, TableOfContents,
 } from 'docx';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 import { convertLatexToOmml } from './math-converter';
@@ -121,6 +121,48 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
   });
 }
 
+// ── Índice automático (TOC nativo do Word) ────────────────────────────────────
+
+function buildToc(): any[] {
+  // Título do índice
+  const titleParagraph = new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 0, after: 240, line: 240, lineRule: 'auto' as any },
+    children: [
+      new TextRun({
+        text: 'ÍNDICE',
+        bold: true,
+        size: 24,
+        font: 'Times New Roman',
+      }),
+    ],
+  });
+
+  // Campo TOC nativo — o Word popula com títulos e números de página ao abrir
+  // \h = hyperlinks | \z = ocultar delimitadores | \u = usar estilos de títulos
+  const toc = new TableOfContents('Índice', {
+    hyperlink: true,
+    headingStyleRange: '1-3',
+  });
+
+  // Parágrafo de nota após o índice
+  const noteParagraph = new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 120, after: 0, line: 240, lineRule: 'auto' as any },
+    children: [
+      new TextRun({
+        text: '[Ao abrir no Word: clique com o botão direito no índice → Actualizar campo]',
+        italics: true,
+        size: 18,
+        color: '888888',
+        font: 'Times New Roman',
+      }),
+    ],
+  });
+
+  return [titleParagraph, toc, noteParagraph];
+}
+
 // ── Inline nodes ─────────────────────────────────────────────────────────────
 
 interface TextOptions {
@@ -223,6 +265,10 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
     case 'chart':
       return buildChart(node);
 
+    // ── Índice automático ──────────────────────────────────────────────────
+    case 'toc':
+      return buildToc();
+
     case 'section_break':
       return null;
   }
@@ -249,8 +295,6 @@ function buildPageNumberFooter(): Footer {
 }
 
 // ── Estilos e numeração partilhados ──────────────────────────────────────────
-//
-//  Exportados para que generateDocxWithCover possa reutilizá-los sem duplicar.
 
 export const SHARED_STYLES = {
   default: {
@@ -323,13 +367,8 @@ export const SHARED_NUMBERING = {
   ],
 } as const;
 
-// ── Secções de conteúdo (exportada para uso em generateDocxWithCover) ─────────
+// ── Secções de conteúdo ───────────────────────────────────────────────────────
 
-/**
- * Constrói e devolve o array de secções do conteúdo do trabalho.
- * Cada {section} no markdown origina uma nova secção com propriedades independentes.
- * A primeira secção de conteúdo arranca sempre em nova página (NEXT_PAGE).
- */
 export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> {
   const sectionAsts: DocumentNode[][] = [[]];
 
@@ -359,7 +398,6 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
 
       return {
         properties: {
-          // A primeira secção de conteúdo arranca sempre em nova página
           type: SectionType.NEXT_PAGE,
           page: {
             size: PAGE_SIZE,
@@ -379,7 +417,7 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
   );
 }
 
-// ── Documento completo (API original — inalterada) ────────────────────────────
+// ── Documento completo ────────────────────────────────────────────────────────
 
 export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> {
   const sections = await buildContentSections(ast);
