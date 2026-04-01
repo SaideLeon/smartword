@@ -20,8 +20,8 @@ export async function generateDocx(markdown: string): Promise<Buffer> {
  *   Página 2 — Contra-capa (sem logo, com resumo opcional, docente centrado)
  *   Página 3+ — Conteúdo do trabalho em markdown, com rodapé de paginação
  *
- * @param coverData  Dados da capa (ver CoverData em cover-types.ts)
- * @param markdown   Conteúdo do trabalho em markdown (pode estar vazio)
+ * CRÍTICO: features.updateFields = true é obrigatório para que o Word
+ * processe os campos TOC ({toc}) e mostre as entradas do índice ao abrir.
  */
 export async function generateDocxWithCover(
   coverData: CoverData,
@@ -29,11 +29,11 @@ export async function generateDocxWithCover(
 ): Promise<Buffer> {
   const coverSections   = buildCoverSections(coverData);
 
-  // Conteúdo pode estar vazio — nesse caso produz uma terceira página em branco
   const ast             = parseToAST(markdown || '');
   const contentSections = await buildContentSections(ast);
 
   const doc = new Document({
+    features: { updateFields: true },   // ← faz o Word actualizar o TOC ao abrir
     styles:    SHARED_STYLES,
     numbering: SHARED_NUMBERING,
     sections:  [...coverSections, ...contentSections] as any[],

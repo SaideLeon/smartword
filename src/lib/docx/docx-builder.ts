@@ -122,9 +122,13 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
 }
 
 // ── Índice automático (TOC nativo do Word) ────────────────────────────────────
+//
+// REQUISITO CRÍTICO: o Document que contém este TOC DEVE ter:
+//   features: { updateFields: true }
+// Sem isso o Word não processa o campo e o índice fica vazio.
 
 function buildToc(): any[] {
-  // Título do índice
+  // Título "ÍNDICE" centrado e em maiúsculas
   const titleParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 0, after: 240, line: 240, lineRule: 'auto' as any },
@@ -139,13 +143,14 @@ function buildToc(): any[] {
   });
 
   // Campo TOC nativo — o Word popula com títulos e números de página ao abrir
-  // \h = hyperlinks | \z = ocultar delimitadores | \u = usar estilos de títulos
+  // hyperlink: true  → entradas clicáveis
+  // headingStyleRange: '1-3' → captura Heading 1, 2 e 3
   const toc = new TableOfContents('Índice', {
     hyperlink: true,
     headingStyleRange: '1-3',
   });
 
-  // Parágrafo de nota após o índice
+  // Nota de instrução ao utilizador
   const noteParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 0, line: 240, lineRule: 'auto' as any },
@@ -418,11 +423,15 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
 }
 
 // ── Documento completo ────────────────────────────────────────────────────────
+//
+// CRÍTICO: features.updateFields = true é obrigatório para que o Word
+// processe o campo {TOC} e mostre as entradas do índice ao abrir o documento.
 
 export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> {
   const sections = await buildContentSections(ast);
 
   return new Document({
+    features: { updateFields: true },   // ← faz o Word actualizar o TOC ao abrir
     styles:    SHARED_STYLES,
     numbering: SHARED_NUMBERING,
     sections,
