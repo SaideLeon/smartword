@@ -223,10 +223,24 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [agentSending, setAgentSending] = useState(false);
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const sessionsTopRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'work-recent-sessions';
   const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    setDeletingSessionId(sessionId);
+    try {
+      const res = await fetch(`/api/work/session?id=${sessionId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Não foi possível excluir o trabalho');
+      await loadSessions();
+    } catch {
+      // ignorar por agora; erros já aparecem em requests seguintes
+    } finally {
+      setDeletingSessionId(null);
+    }
+  }, [loadSessions]);
 
   const vars = useMemo(() => ({
     '--panel-bg':         C.bg,
@@ -537,25 +551,35 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                     <p className="font-mono text-[11px] text-[var(--panel-text-faint)]">Nenhum trabalho anterior encontrado.</p>
                   )}
                   {recentSessions.map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setProcessingButtonId(`resume-session-${s.id}`);
-                        onTopicChange(s.topic);
-                        setContent('');
-                        setResumeRestoreSessionId(s.id);
-                        resumeSession(s.id);
-                      }}
-                      className={`flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
-                    >
-                      <div>
-                        <div className="font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
-                        <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
-                      </div>
-                      <span className="rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
-                        {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
-                      </span>
-                    </button>
+                    <div key={s.id} className="flex items-center gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-2 py-2">
+                      <button
+                        onClick={() => {
+                          setProcessingButtonId(`resume-session-${s.id}`);
+                          onTopicChange(s.topic);
+                          setContent('');
+                          setResumeRestoreSessionId(s.id);
+                          resumeSession(s.id);
+                        }}
+                        className={`flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
+                          <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
+                        </div>
+                        <span className="ml-2 rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
+                          {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSession(s.id)}
+                        disabled={deletingSessionId === s.id}
+                        className="rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Excluir trabalho"
+                        aria-label={`Excluir trabalho ${s.topic}`}
+                      >
+                        {deletingSessionId === s.id ? '...' : 'Excluir'}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
