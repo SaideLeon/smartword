@@ -77,4 +77,26 @@ describe('parseToAST', () => {
     expect(table.rows[0].isHeader).toBe(true);
     expect(table.rows[1].isHeader).toBe(false);
   });
+
+  it('preserva título HTML acima da tabela', () => {
+    const markdown = [
+      '<p><strong>Tabela 1:</strong> Distribuição por classe</p>',
+      '',
+      '| Classe | Total |',
+      '| --- | ---: |',
+      '| A | 12 |',
+    ].join('\n');
+
+    const ast = parseToAST(markdown);
+
+    expect(ast[0]?.type).toBe('paragraph');
+    if (!ast[0] || ast[0].type !== 'paragraph') throw new Error('Parágrafo do título não encontrado');
+    expect(ast[0].children[0]).toEqual({
+      type: 'text',
+      value: 'Tabela 1: Distribuição por classe',
+    });
+
+    const table = ast.find(node => node.type === 'table');
+    expect(table?.type).toBe('table');
+  });
 });

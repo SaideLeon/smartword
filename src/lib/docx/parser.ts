@@ -5,6 +5,19 @@ import remarkGfm from 'remark-gfm';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 import { parseChartBlock } from './chart-parser';
 
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>(\s*)/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .trim();
+}
+
 export function parseToAST(markdown: string): DocumentNode[] {
   // Preprocess Gemini-style math delimiters to standard markdown math delimiters
   const preprocessed = markdown
@@ -42,6 +55,11 @@ export function parseToAST(markdown: string): DocumentNode[] {
           url: node.url,
           children: node.children.map(processInline).filter(Boolean) as InlineNode[],
         };
+      case 'html': {
+        const text = htmlToPlainText(node.value as string);
+        if (!text) return null;
+        return { type: 'text', value: text };
+      }
       default:
         return null;
     }
@@ -86,6 +104,15 @@ export function parseToAST(markdown: string): DocumentNode[] {
           type: 'blockquote',
           children: node.children.map(processBlock).filter(Boolean) as DocumentNode[],
         };
+
+      case 'html': {
+        const text = htmlToPlainText(node.value as string);
+        if (!text) return null;
+        return {
+          type: 'paragraph',
+          children: [{ type: 'text', value: text }],
+        };
+      }
 
       // ── Tabelas GFM ──────────────────────────────────────────────────────
       case 'code': {
