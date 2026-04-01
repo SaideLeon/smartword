@@ -27,6 +27,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
   const [outlineSuggestions, setOutlineSuggestions] = useState('');
   const [isApprovingOutline, setIsApprovingOutline] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
 
@@ -76,6 +77,19 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
       await approveOutline(outlineEdit);
     } finally {
       setIsApprovingOutline(false);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    setDeletingSessionId(sessionId);
+    try {
+      const res = await fetch(`/api/tcc/session?id=${sessionId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Não foi possível excluir a sessão');
+      await loadSessions();
+    } catch {
+      // ignorar por agora
+    } finally {
+      setDeletingSessionId(null);
     }
   };
 
@@ -140,15 +154,26 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
               <div id={sessionsRegionId} className="mt-4 flex flex-col gap-1.5">
                 {recentSessions.length === 0 && <p className="font-mono text-[11px] text-[var(--panel-text-faint)]">Nenhuma sessão anterior encontrada.</p>}
                 {recentSessions.map((s) => (
-                  <button key={s.id} onClick={() => { onTopicChange(s.topic); resumeSession(s.id); }} className="flex items-center justify-between rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 text-left transition-colors hover:border-[var(--panel-accent-dim)]">
-                    <div>
-                      <div className="font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
-                      <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
-                    </div>
-                    <span className="rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
-                      {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
-                    </span>
-                  </button>
+                  <div key={s.id} className="flex items-center gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-2 py-2">
+                    <button onClick={() => { onTopicChange(s.topic); resumeSession(s.id); }} className="flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)]">
+                      <div className="min-w-0">
+                        <div className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
+                        <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
+                      </div>
+                      <span className="ml-2 rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
+                        {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSession(s.id)}
+                      disabled={deletingSessionId === s.id}
+                      className="rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Excluir sessão"
+                      aria-label={`Excluir sessão ${s.topic}`}
+                    >
+                      {deletingSessionId === s.id ? '...' : 'Excluir'}
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
