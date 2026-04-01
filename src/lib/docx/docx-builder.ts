@@ -31,8 +31,11 @@ const PAGE_MARGIN = {
 function deepFlat(arr: any[]): any[] {
   const result: any[] = [];
   for (const item of arr) {
-    if (Array.isArray(item)) result.push(...deepFlat(item));
-    else result.push(item);
+    if (Array.isArray(item)) {
+      for (const inner of item) result.push(inner);
+    } else {
+      result.push(item);
+    }
   }
   return result;
 }
