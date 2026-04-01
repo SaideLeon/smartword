@@ -57,6 +57,28 @@ export function useDocumentEditor() {
     }
   };
 
+  const importTextFile = async (file: File) => {
+    try {
+      const importedContent = await file.text();
+      setContent(importedContent);
+
+      const normalizedName = file.name
+        .replace(/\.(txt|md)$/i, '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-{2,}/g, '-')
+        .slice(0, 80);
+
+      setFilename(normalizedName || 'documento');
+    } catch (error) {
+      console.error(error);
+      alert('Falha ao importar o ficheiro');
+    }
+  };
+
   return {
     markdown,
     previewMarkdown,
@@ -67,6 +89,7 @@ export function useDocumentEditor() {
     loading,
     exportDocx: exportDocument,
     exportDocument,
+    importTextFile,
     clearDefaultMarkdown: clearDefaultContent,
     setFilenameFromTopic,
   };

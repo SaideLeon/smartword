@@ -1,17 +1,28 @@
 'use client';
 
+import type { ChangeEvent } from 'react';
+
 interface Props {
   filename: string;
   onFilenameChange: (value: string) => void;
+  onImportFile: (file: File) => void;
 }
 
-export function EditorFileToolbar({ filename, onFilenameChange }: Props) {
+export function EditorFileToolbar({ filename, onFilenameChange, onImportFile }: Props) {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    onImportFile(file);
+    event.target.value = '';
+  };
+
   return (
     <div className="flex items-center gap-2">
       <div className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-[linear-gradient(135deg,#1e3a5f,#2d5a8e)] text-sm">📄</div>
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="mono text-[11px] font-bold text-[var(--text-primary)]">Workspace</span>
-        <div className="relative mt-1">
+        <div className="relative mt-1 flex items-center gap-2">
           <input
             type="text"
             value={filename}
@@ -20,6 +31,16 @@ export function EditorFileToolbar({ filename, onFilenameChange }: Props) {
             aria-label="Nome do ficheiro"
           />
           <span className="mono pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)]">.docx</span>
+          <label className="mono cursor-pointer rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--text-secondary)] transition hover:border-[var(--accent-amber)] hover:text-[var(--text-primary)]">
+            Importar
+            <input
+              type="file"
+              accept=".txt,.md,text/plain,text/markdown"
+              onChange={handleFileChange}
+              className="sr-only"
+              aria-label="Importar ficheiro TXT ou Markdown"
+            />
+          </label>
         </div>
       </div>
     </div>
