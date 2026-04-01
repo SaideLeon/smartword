@@ -80,7 +80,15 @@ export default function Home() {
             <EditorFileToolbar filename={filename} onFilenameChange={setFilename} />
             <div className={cn('grid min-h-0 flex-1 gap-3', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
               {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
-              <DocumentPreview markdown={previewMarkdown} isMobile={isMobile} />
+              {/* 
+                originalMarkdown = markdown antes de formalizePreviewHeadings
+                → preserva os níveis reais dos headings para o TOC ({toc})
+              */}
+              <DocumentPreview
+                markdown={previewMarkdown}
+                originalMarkdown={markdown}
+                isMobile={isMobile}
+              />
             </div>
           </div>
         </section>

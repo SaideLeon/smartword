@@ -7,6 +7,7 @@ import type { DocumentNode, InlineNode, TableAlign, TableRowNode } from '@/lib/d
 
 interface Props {
   markdown: string;
+  originalMarkdown?: string; // markdown antes de formalizePreviewHeadings, usado pelo TOC
   isMobile?: boolean;
 }
 
@@ -38,18 +39,24 @@ function extractText(nodes: InlineNode[]): string {
 // ── Componente de prévia do índice ────────────────────────────────────────────
 function PreviewTocNode({
   allNodes,
+  originalNodes,
   bodyFontSize,
 }: {
-  allNodes: DocumentNode[];
+  allNodes: DocumentNode[];       // nós do preview (headings já em nível 6)
+  originalNodes: DocumentNode[];  // nós do markdown original (níveis reais)
   bodyFontSize: number;
 }) {
+  // Usa os nós originais para preservar os níveis reais de heading (1, 2, 3…)
+  // Se não houver nós originais, cai de volta para os nós do preview
+  const sourceNodes = originalNodes.length > 0 ? originalNodes : allNodes;
+
   const headings = useMemo(
     () =>
-      allNodes.filter(
+      sourceNodes.filter(
         (n): n is Extract<DocumentNode, { type: 'heading' }> =>
-          n.type === 'heading' && n.level <= 3,
+          n.type === 'heading' && n.level <= 6,
       ),
-    [allNodes],
+    [sourceNodes],
   );
 
   const labelSize    = bodyFontSize * 0.72;
@@ -88,7 +95,8 @@ function PreviewTocNode({
         <div style={{ display: 'grid', gap: '0.3rem' }}>
           {headings.map((heading, i) => {
             const text   = extractText(heading.children);
-            const indent = (heading.level - 1) * 18;
+            // Indentação baseada no nível real (1=sem recuo, 2=18px, 3=36px…)
+            const indent = Math.max(0, heading.level - 1) * 18;
             const isMain = heading.level <= 2;
 
             return (
@@ -163,8 +171,16 @@ function PreviewTocNode({
   );
 }
 
-export function DocumentPreview({ markdown, isMobile = false }: Props) {
+export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }: Props) {
+  // documentNodes: AST do markdown formalizado (headings em nível 6 para visual uniforme)
   const documentNodes = useMemo(() => parseToAST(markdown), [markdown]);
+
+  // originalNodes: AST do markdown original (níveis reais de heading para o TOC)
+  const originalNodes = useMemo(
+    () => (originalMarkdown ? parseToAST(originalMarkdown) : []),
+    [originalMarkdown],
+  );
+
   const measureRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [nodeHeights, setNodeHeights] = useState<Record<number, number>>({});
   const [measureTick, setMeasureTick] = useState(0);
@@ -185,7 +201,6 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
 
     for (let i = 0; i < documentNodes.length; i += 1) {
       const node = documentNodes[i];
-      // toc é excluído da medição — usa estimativa fixa
       if (node.type === 'page_break' || node.type === 'section_break' || node.type === 'toc') continue;
 
       const element = measureRefs.current[i];
@@ -250,12 +265,12 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
                   ? page.nodeIndexes.map((nodeIndex) => {
                       const node = documentNodes[nodeIndex];
 
-                      // Renderiza o índice como componente especial
                       if (node.type === 'toc') {
                         return (
                           <PreviewTocNode
                             key={`${page.key}-${nodeIndex}-toc`}
                             allNodes={documentNodes}
+                            originalNodes={originalNodes}
                             bodyFontSize={bodyFontSize}
                           />
                         );
@@ -315,7 +330,6 @@ export function DocumentPreview({ markdown, isMobile = false }: Props) {
           }}
         >
           {documentNodes.map((node, index) => {
-            // Não medir nodes especiais — usam estimativas fixas
             if (node.type === 'page_break' || node.type === 'section_break' || node.type === 'toc') return null;
 
             return (
@@ -404,7 +418,7 @@ function estimateFallbackHeight(node: DocumentNode): number {
     case 'blockquote':
       return 92;
     case 'toc':
-      return 420; // estimativa para o índice (varia com o número de títulos)
+      return 420;
     case 'paragraph':
       return 44;
     default:
@@ -472,7 +486,6 @@ function PreviewBlockNode({ node }: { node: DocumentNode }) {
       return <MathNode latex={node.latex} displayMode />;
     case 'table':
       return <TableNode rows={node.rows} align={node.align} />;
-    // toc é tratado no nível de cima (DocumentPreview) — não chega aqui
     default:
       return null;
   }
