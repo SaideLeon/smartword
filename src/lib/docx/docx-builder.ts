@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, ImportedXmlComponent,
   ExternalHyperlink, IParagraphOptions, AlignmentType, convertMillimetersToTwip,
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
-  PageBreak, Footer, PageNumber, NumberFormat, SectionType, TableOfContents,
+  PageBreak, Footer, PageNumber, NumberFormat, SectionType,
 } from 'docx';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 import { convertLatexToOmml } from './math-converter';
@@ -28,11 +28,12 @@ const PAGE_MARGIN = {
   right:  convertMillimetersToTwip(20),
 };
 
+// Aplana apenas 1 nível — preserva objetos docx (TableOfContents, Paragraph, etc.)
 function deepFlat(arr: any[]): any[] {
   const result: any[] = [];
   for (const item of arr) {
     if (Array.isArray(item)) {
-      for (const inner of item) result.push(inner);
+      for (const inner of item) result.push(inner); // apenas 1 nível
     } else {
       result.push(item);
     }
@@ -124,11 +125,23 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
   });
 }
 
-// ── Índice automático (TOC nativo do Word) ────────────────────────────────────
+// ── Índice automático (TOC nativo do Word via campo direto) ──────────────────
 //
-// REQUISITO CRÍTICO: o Document que contém este TOC DEVE ter:
-//   features: { updateFields: true }
-// Sem isso o Word não processa o campo e o índice fica vazio.
+// Não usamos TableOfContents da biblioteca docx porque esta envolve o campo
+// num <w:sdt> (Structured Document Tag) que impede o Word de processar
+// automaticamente o campo TOC ao abrir o documento.
+//
+// Em vez disso, injectamos o XML do campo directamente via ImportedXmlComponent,
+// produzindo w:fldChar + w:instrText sem wrapper sdt — idêntico ao que o Word
+// gera quando inseres um índice nativo via Referências → Índice.
+//
+// Instrução TOC:
+//   \h  → entradas com hiperligação (Ctrl+click para navegar)
+//   \o "1-3" → captura Heading 1, 2 e 3
+//   \z  → oculta nº de página no Web Layout (opcional, boa prática)
+//   \u  → usa os estilos de parágrafo usados no documento
+//
+// REQUISITO: o Document DEVE ter features: { updateFields: true }
 
 function buildToc(): any[] {
   // Título "ÍNDICE" centrado e em maiúsculas
@@ -145,13 +158,24 @@ function buildToc(): any[] {
     ],
   });
 
-  // Campo TOC nativo — o Word popula com títulos e números de página ao abrir
-  // hyperlink: true  → entradas clicáveis
-  // headingStyleRange: '1-3' → captura Heading 1, 2 e 3
-  const toc = new TableOfContents('Índice', {
-    hyperlink: true,
-    headingStyleRange: '1-3',
-  });
+  // Campo TOC injectado como XML puro — sem w:sdt.
+  //
+  // O Word processa este campo ao abrir com updateFields=true e preenche
+  // as entradas automaticamente com base nos headings do documento.
+  // O texto "— Índice será gerado..." é o placeholder visível antes da atualização.
+  const tocXml =
+    `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+      `<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>` +
+      `<w:r><w:instrText xml:space="preserve"> TOC \\h \\o &quot;1-3&quot; \\z \\u </w:instrText></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
+      `<w:r>` +
+        `<w:rPr><w:color w:val="888888"/><w:sz w:val="20"/></w:rPr>` +
+        `<w:t xml:space="preserve">&#x2014; Abrir no Word e clicar em Actualizar &#x2014;</w:t>` +
+      `</w:r>` +
+      `<w:r><w:fldChar w:fldCharType="end"/></w:r>` +
+    `</w:p>`;
+
+  const tocComponent = ImportedXmlComponent.fromXmlString(tocXml);
 
   // Nota de instrução ao utilizador
   const noteParagraph = new Paragraph({
@@ -168,7 +192,8 @@ function buildToc(): any[] {
     ],
   });
 
-  return [titleParagraph, toc, noteParagraph];
+  // Extrair o nó XML do componente (equivalente a como math-converter.ts faz)
+  return [titleParagraph, (tocComponent as any).root[0], noteParagraph];
 }
 
 // ── Inline nodes ─────────────────────────────────────────────────────────────
