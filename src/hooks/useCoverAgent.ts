@@ -24,6 +24,10 @@ export interface CoverAgentState {
   streamingAbstract: string;
 }
 
+interface CoverAgentContext {
+  mode: 'tcc' | 'work';
+}
+
 // ── JSON Schema da tool ───────────────────────────────────────────────────────
 
 const COVER_TOOL = {
@@ -152,6 +156,7 @@ export function useCoverAgent() {
     topic: string,
     outline: string,
     appendMessage: (role: 'assistant', content: string) => void,
+    context?: CoverAgentContext,
   ) => {
     setState(prev => ({ ...prev, step: 'asking', error: null }));
 
@@ -159,7 +164,13 @@ export function useCoverAgent() {
       const res = await fetch('/api/cover/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, outline, messages: [] }),
+        body: JSON.stringify({
+          topic,
+          outline,
+          messages: [],
+          mode: context?.mode ?? 'work',
+          phase: 'ask',
+        }),
       });
 
       if (!res.ok) throw new Error('Erro no agente de capa');
@@ -181,6 +192,7 @@ export function useCoverAgent() {
     conversationHistory: { role: 'user' | 'assistant'; content: string }[],
     appendMessage: (role: 'assistant', content: string) => void,
     onToolCall: () => void,
+    context?: CoverAgentContext,
   ) => {
     try {
       const res = await fetch('/api/cover/agent', {
@@ -193,6 +205,8 @@ export function useCoverAgent() {
             ...conversationHistory,
             { role: 'user', content: userMessage },
           ],
+          mode: context?.mode ?? 'work',
+          phase: 'reply',
         }),
       });
 
@@ -200,20 +214,23 @@ export function useCoverAgent() {
       const data = await res.json();
 
       const choice = data.choices?.[0];
-      const finishReason = choice?.finish_reason;
-
-      if (finishReason === 'tool_calls') {
-        const toolCall = choice?.message?.tool_calls?.[0];
-        if (toolCall?.function?.name === 'criar_capa') {
-          setState(prev => ({ ...prev, step: 'awaiting_form' }));
-          onToolCall();
-          return;
-        }
+      const toolCalls = choice?.message?.tool_calls ?? [];
+      const hasCreateCoverTool = toolCalls.some((tc: any) => tc?.function?.name === 'criar_capa');
+      if (hasCreateCoverTool) {
+        setState(prev => ({ ...prev, step: 'awaiting_form' }));
+        onToolCall();
+        return;
       }
 
       const message = choice?.message?.content ?? '';
       if (message) {
         appendMessage('assistant', message);
+        setState(prev => ({ ...prev, step: 'done_without_cover' }));
+      } else {
+        appendMessage(
+          'assistant',
+          'Entendido. Podes desenvolver as secções directamente.',
+        );
         setState(prev => ({ ...prev, step: 'done_without_cover' }));
       }
     } catch (e: any) {

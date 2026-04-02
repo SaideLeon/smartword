@@ -115,12 +115,16 @@ export async function POST(req: Request) {
     maxRequests: 30,
     windowMs: 60_000,
   });
-  if (limited) return limited;
+  if (limited) {
+    console.warn('[cover:agent] rate_limited');
+    return limited;
+  }
 
   try {
-    const { topic, outline, messages } = await req.json();
+    const { topic, outline, messages, mode = 'unknown', phase = 'unknown' } = await req.json();
 
     if (!topic) {
+      console.warn('[cover:agent] bad_request missing_topic', { mode, phase });
       return NextResponse.json(
         { error: 'topic é obrigatório' },
         { status: 400 },
@@ -131,13 +135,32 @@ export async function POST(req: Request) {
       ? outline.trim()
       : 'Esboço aprovado não fornecido.';
 
+    const messageList = Array.isArray(messages) ? messages : [];
+    const lastUserMessage = [...messageList].reverse().find((m: any) => m?.role === 'user')?.content ?? '';
+    const normalizedLastUserMessage = String(lastUserMessage).toLowerCase();
+    const userIntent = /\b(sim|quero|ok|pode|inclui|incluir)\b/.test(normalizedLastUserMessage)
+      ? 'accept_cover_likely'
+      : /\b(nao|não|sem capa|saltar|dispenso)\b/.test(normalizedLastUserMessage)
+        ? 'reject_cover_likely'
+        : 'unknown';
+
+    console.info('[cover:agent] request', {
+      mode,
+      phase,
+      topicPreview: String(topic).slice(0, 120),
+      outlineChars: normalizedOutline.length,
+      messagesCount: messageList.length,
+      userIntent,
+      lastUserPreview: String(lastUserMessage).slice(0, 120),
+    });
+
     const systemPrompt = buildSystemPrompt(topic, normalizedOutline);
 
     const data = await groqJSON((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
-          ...(messages ?? []),
+          ...messageList,
         ],
         tools: [COVER_TOOL],
         tool_choice: 'auto',
@@ -146,8 +169,31 @@ export async function POST(req: Request) {
         temperature: 0.3,
       }));
 
+    const choice = (data as any)?.choices?.[0];
+    const toolCalls = choice?.message?.tool_calls ?? [];
+    const toolNames = toolCalls
+      .map((tc: any) => tc?.function?.name)
+      .filter(Boolean);
+    const hasCreateCover = toolNames.includes('criar_capa');
+    const assistantPreview = String(choice?.message?.content ?? '').slice(0, 180);
+
+    console.info('[cover:agent] response', {
+      mode,
+      phase,
+      finishReason: choice?.finish_reason ?? null,
+      hasToolCalls: toolCalls.length > 0,
+      toolNames,
+      hasCreateCover,
+      assistantPreview,
+      modalExpected: hasCreateCover,
+    });
+
     return NextResponse.json(data);
   } catch (e: any) {
+    console.error('[cover:agent] error', {
+      message: e?.message ?? 'Erro desconhecido',
+      stack: e?.stack,
+    });
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
