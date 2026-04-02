@@ -83,14 +83,14 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
   if (isSubsection) {
     return `Desenvolve este subtópico de forma clara e didáctica para alunos do ensino secundário. Deve:
 - Apresentar o conceito com uma definição simples e acessível
-- Incluir pelo menos 1 exemplo prático ligado ao quotidiano moçambicano se for necessário( nem todos trabalhos vão precisar de menção de quotidiano moçambicano)
+- Incluir pelo menos 1 exemplo prático quando isso ajudar a compreensão
 - Ter entre 200 e 350 palavras
 - Usar Markdown (negrito para termos importantes, listas quando adequado)
 - NÃO repetir conteúdo já presente nas secções anteriores
 - NÃO incluir conclusão nem lista de referências no final`;
   }
 
-  if (normalizedName === 'introducao' || normalizedName === 'introducao') {
+  if (normalizedName === 'introducao') {
     return `Escreve uma introdução académica simples para um trabalho do ensino secundário/médio. Deve:
 - Contextualizar o tema de forma acessível (o que é e porquê é importante)
 - Apresentar o problema de pesquisa em 1-2 frases
@@ -190,16 +190,16 @@ export async function POST(req: Request) {
       .map(current => ({ title: current.title, content: current.content }));
 
     const previousContext = previousSections.length > 0
-      ? `\nSECÇÕES JÁ DESENVOLVIDAS (para manter coerência e NÃO repetir conteúdo):\n${
+      ? `\n[SECÇÕES ANTERIORES]\n${
           previousSections.map(current =>
             `### ${current.title}\n${current.content.slice(0, 400)}${current.content.length > 400 ? '…' : ''}`
           ).join('\n\n')
         }\n`
-      : '';
+      : '\n[SECÇÕES ANTERIORES]\n(nenhuma secção anterior disponível)\n';
 
     const researchContext = session.research_brief
-      ? `\nFICHA TÉCNICA DE PESQUISA (gerada após aprovação do esboço e reutilizada em todas as secções):\n${session.research_brief}\n`
-      : '';
+      ? `\n[FICHA DE PESQUISA]\n${session.research_brief}\n`
+      : '\n[FICHA DE PESQUISA]\n(não disponível)\n';
 
     const isSubsection = /^\d+\.\d+/.test(section.title);
     const normalizedName = normalizeTitle(section.title);
@@ -215,30 +215,64 @@ PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
 O trabalho tem secções próprias para isso — NÃO as antecipes aqui.`
       : '';
 
-    const systemPrompt = `És um especialista académico a desenvolver um trabalho escolar do ensino secundário/médio em Moçambique sobre: "${session.topic}".
+    const systemPrompt = `IDENTIDADE E PAPEL
+==================
+És um redactor académico especializado em trabalhos escolares do ensino secundário e médio.
+O teu trabalho é produzir conteúdo académico rigoroso, claro e adequado ao nível etário dos alunos (14–18 anos).
 
-ESBOÇO ORIENTADOR DO TRABALHO:
+Escreves sempre em português europeu com normas ortográficas moçambicanas quando aplicável.
+A norma de referenciação é APA (7.ª edição) em todo o trabalho.
+
+CONTEXTO DO PROJECTO (fornecido pelo sistema a cada chamada)
+============================================================
+[TÓPICO DO TRABALHO]
+${session.topic}
+
+[ESBOÇO ORIENTADOR]
 ${outline}
 ${previousContext}
 ${researchContext}
-A TUA TAREFA AGORA:
+
+REGRAS DE ADEQUAÇÃO AO CONTEXTO MOÇAMBICANO
+===========================================
+O trabalho é produzido em Moçambique para alunos moçambicanos. Isto NÃO significa que todos os trabalhos devem mencionar Moçambique explicitamente.
+
+Aplica contexto moçambicano APENAS quando:
+- O tema é de natureza social, económica, histórica, geográfica ou cívica
+- O exemplo moçambicano clarifica o conceito melhor do que um exemplo genérico
+- O esboço ou a ficha de pesquisa já referenciam dados ou contexto moçambicano
+
+NÃO forces contexto moçambicano quando:
+- O tema é universal e abstracto (ex: Matemática, Física, Química, Filosofia geral, Literatura clássica)
+- A menção seria artificial ou reduziria a qualidade académica do texto
+- O aluno não pediu explicitamente esse ângulo
+
+INSTRUÇÃO DA TAREFA ACTUAL
+==========================
 Desenvolve APENAS a secção: "${section.title}"
 
-INSTRUÇÃO ESPECÍFICA PARA ESTA SECÇÃO:
+Instrução específica para esta secção:
 ${specificInstruction}
 ${antiClosingInstruction}
 
-REGRAS ABSOLUTAS:
-- Escreve APENAS o conteúdo da secção, sem introduções do tipo "Nesta secção…" ou "Vou desenvolver…"
-- NÃO incluas o título da secção no início do conteúdo — ele é adicionado automaticamente
-- NÃO incluas marcadores {pagebreak} ou {section} no conteúdo — são adicionados automaticamente
-- Português europeu/moçambicano correcto
-- Usa Markdown: negrito, listas, sub-títulos ### quando adequado
-- Mantém coerência terminológica com as secções anteriores
-- Usa a ficha técnica de pesquisa como base factual prioritária
-- Tom académico mas SIMPLES e acessível ao nível do ensino secundário/médio
-- Norma de referenciação obrigatória: APA (7.ª edição) — citações no texto apenas
-- NÃO faças nova pesquisa web`.trim();
+REGRAS DE ESCRITA — OBRIGATÓRIAS
+=================================
+- Começa directamente pelo conteúdo — sem "Nesta secção…", "Vou desenvolver…"
+- NÃO incluas o título da secção no início — é inserido automaticamente
+- NÃO incluas marcadores {pagebreak} ou {section} — são inseridos automaticamente
+- Usa Markdown: negrito para termos-chave, ### para sub-títulos, listas quando a estrutura do conteúdo o justifica
+- Mantém coerência terminológica com as secções anteriores fornecidas acima
+- Usa a ficha de pesquisa como base factual — não inventes dados, estatísticas nem autores
+- NÃO faças nova pesquisa — toda a informação necessária está no contexto acima
+- Tom académico claro e acessível ao nível do ensino secundário/médio
+
+PROIBIÇÕES ABSOLUTAS (excepto Conclusão e Referências)
+=======================================================
+❌ NÃO escrevas "Em conclusão", "Em suma", "Conclui-se que", "Por fim" ou equivalentes
+❌ NÃO adiciones lista de referências bibliográficas no final desta secção
+❌ NÃO cries cabeçalhos ## Conclusão, ## Referências, ### Considerações Finais
+❌ NÃO fechas com parágrafo de encerramento — termina no último ponto de conteúdo
+O trabalho tem secções próprias para Conclusão e Referências — não as antecipes aqui.`.trim();
 
     const response = await groqFetch((_key, _attempt) => ({
         model: 'openai/gpt-oss-120b',
