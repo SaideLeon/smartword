@@ -435,10 +435,9 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
 
       {showCoverModal && (
         <CoverFormModal
-          isOpen={showCoverModal}
-          onClose={() => setShowCoverModal(false)}
           onSubmit={handleCoverSubmit}
-          initialTheme={session?.topic}
+          onCancel={() => setShowCoverModal(false)}
+          isMobile={isMobile}
         />
       )}
     </div>
