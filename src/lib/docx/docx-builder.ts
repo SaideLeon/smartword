@@ -28,17 +28,22 @@ const PAGE_MARGIN = {
   right:  convertMillimetersToTwip(20),
 };
 
-// Aplana apenas 1 nível — preserva objetos docx (TableOfContents, Paragraph, etc.)
+// Aplana recursivamente apenas arrays — preserva objetos docx (TableOfContents, Paragraph, etc.)
 function deepFlat(arr: any[]): any[] {
   const result: any[] = [];
   for (const item of arr) {
     if (Array.isArray(item)) {
-      for (const inner of item) result.push(inner); // apenas 1 nível
+      result.push(...deepFlat(item));
     } else {
       result.push(item);
     }
   }
   return result;
+}
+
+function getTextRunText(run: TextRun): string | null {
+  const directText = (run as any).options?.text ?? (run as any).text;
+  return typeof directText === 'string' ? directText : null;
 }
 
 const CELL_BORDER = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
@@ -71,7 +76,8 @@ async function buildTableRow(
       const styledRuns = row.isHeader
         ? runs.map((run: any) => {
             if (run instanceof TextRun) {
-              const text = (run as any).text ?? (run as any).options?.text ?? '';
+              const text = getTextRunText(run);
+              if (text === null) return run;
               return new TextRun({ text, bold: true, color: COLOR_HEADER_FG });
             }
             return run;
