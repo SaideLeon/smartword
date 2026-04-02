@@ -327,6 +327,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           (role, content) => {
             setAgentMessages(prev => [...prev, { role, content }]);
           },
+          { mode: 'work' },
         );
       }
     }
@@ -353,6 +354,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
         setAgentMessages(prev => [...prev, { role, content }]);
       },
       () => setShowCoverModal(true),
+      { mode: 'work' },
     );
 
     setAgentSending(false);
