@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTccSession } from '@/hooks/useTccSession';
+import { useCoverAgent } from '@/hooks/useCoverAgent';
+import { useEditorActions } from '@/hooks/useEditorStore';
 import { ContextCompressionBadge } from '@/components/ContextCompressionBadge';
+import { CoverFormModal } from '@/components/CoverFormModal';
 import { AudioInputButton } from '@/components/AudioInputButton';
 import type { TccSection } from '@/lib/tcc/types';
+import type { CoverData } from '@/lib/docx/cover-types';
 import { tccTheme as C } from '@/lib/theme';
 
 interface Props {
@@ -14,6 +18,11 @@ interface Props {
   isMobile?: boolean;
 }
 
+interface AgentMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
   const {
     step, session, outline, streamingText, activeSectionIdx, error,
@@ -21,19 +30,25 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
     startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession, reset,
   } = useTccSession();
+  const coverAgent = useCoverAgent();
+  const { setIncludeCover, setCoverData, resetExportPreferences } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
   const [outlineSuggestions, setOutlineSuggestions] = useState('');
   const [isApprovingOutline, setIsApprovingOutline] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
+  const [showCoverModal, setShowCoverModal] = useState(false);
+  const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
+  const [agentInput, setAgentInput] = useState('');
+  const [agentSending, setAgentSending] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [streamingText, step]);
+  }, [streamingText, step, agentMessages, coverAgent.streamingAbstract]);
 
   useEffect(() => {
     if (step === 'review_outline') {
@@ -45,6 +60,40 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    if (coverAgent.step === 'done_with_cover' && coverAgent.coverData) {
+      setIncludeCover(true);
+      setCoverData(coverAgent.coverData);
+      return;
+    }
+
+    if (coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') {
+      setIncludeCover(false);
+      setCoverData(null);
+    }
+  }, [coverAgent.step, coverAgent.coverData, setCoverData, setIncludeCover]);
+
+  useEffect(() => {
+    if (step !== 'outline_approved' || !session) return;
+    if (coverAgent.step !== 'idle') return;
+
+    const existingCover = session.cover_data ?? null;
+    if (existingCover) {
+      coverAgent.restoreCoverData(existingCover);
+      setIncludeCover(true);
+      setCoverData(existingCover);
+      return;
+    }
+
+    setAgentMessages([]);
+    coverAgent.askAboutCover(
+      session.topic,
+      session.outline_approved ?? session.outline_draft ?? '',
+      (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, session?.id]);
 
   const progressPct = session?.sections.length
     ? Math.round((session.sections.filter((s) => s.status !== 'pending').length / session.sections.length) * 100)
@@ -93,6 +142,63 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
     }
   };
 
+  const handleResetSession = () => {
+    coverAgent.reset();
+    resetExportPreferences();
+    setAgentMessages([]);
+    setAgentInput('');
+    setShowCoverModal(false);
+    reset();
+  };
+
+  const handleAgentSend = async () => {
+    const text = agentInput.trim();
+    if (!text || agentSending || !session) return;
+
+    setAgentMessages(prev => [...prev, { role: 'user', content: text }]);
+    setAgentInput('');
+    setAgentSending(true);
+
+    await coverAgent.handleUserResponse(
+      text,
+      session.topic,
+      session.outline_approved ?? session.outline_draft ?? '',
+      agentMessages,
+      (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
+      () => setShowCoverModal(true),
+    );
+
+    setAgentSending(false);
+  };
+
+  const handleCoverSubmit = async (coverData: CoverData) => {
+    setShowCoverModal(false);
+    if (!session) return;
+
+    const finalData = await coverAgent.submitCoverData(
+      coverData,
+      session.topic,
+      session.outline_approved ?? session.outline_draft ?? '',
+      (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
+    );
+
+    if (!finalData) return;
+
+    try {
+      await fetch('/api/tcc/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          _action: 'saveCoverData',
+          sessionId: session.id,
+          coverData: finalData,
+        }),
+      });
+    } catch {
+      // não crítico; estado local já está actualizado
+    }
+  };
+
   const statusLabel = (s: TccSection) => {
     if (s.status === 'inserted') return { label: 'Inserido ✓', color: C.gold };
     if (s.status === 'developed') return { label: 'Desenvolvido', color: C.accent };
@@ -117,7 +223,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
           </div>
           <div className="flex items-center gap-2">
             {session && (
-              <button onClick={reset} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)]" title="Nova sessão" aria-label="Iniciar nova sessão de TCC">↩</button>
+              <button onClick={handleResetSession} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)]" title="Nova sessão" aria-label="Iniciar nova sessão de TCC">↩</button>
             )}
             <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-text-faint)]" title="Fechar" aria-label="Fechar painel do modo TCC">×</button>
           </div>
@@ -219,7 +325,70 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
           </div>
         )}
 
-        {(step === 'outline_approved' || step === 'section_ready') && session && (
+        {step === 'outline_approved' &&
+         coverAgent.step !== 'idle' &&
+         coverAgent.step !== 'done_with_cover' &&
+         coverAgent.step !== 'done_without_cover' && (
+          <div className="flex flex-col gap-3">
+            {agentMessages.map((msg, i) => (
+              <div key={i} className={`rounded border px-3 py-2.5 ${msg.role === 'assistant' ? 'border-[var(--panel-border)] bg-[var(--panel-surface)]' : 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/25'}`}>
+                <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] ${msg.role === 'assistant' ? 'text-[var(--panel-accent)]' : 'text-[var(--panel-muted)]'}`}>
+                  {msg.role === 'assistant' ? '✦ Assistente' : 'Tu'}
+                </span>
+                <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-text)]">{msg.content}</p>
+              </div>
+            ))}
+
+            {coverAgent.step === 'generating_abstract' && coverAgent.streamingAbstract && (
+              <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2.5">
+                <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">A gerar resumo…</span>
+                <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-text)]">{coverAgent.streamingAbstract}</p>
+              </div>
+            )}
+
+            {(coverAgent.step === 'asking' || coverAgent.step === 'awaiting_form') && (
+              <div className="flex items-end gap-2">
+                <div className="flex flex-1 items-center gap-2">
+                  <input
+                    value={agentInput}
+                    onChange={e => setAgentInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAgentSend(); }}
+                    placeholder="Responde ao assistente…"
+                    disabled={agentSending}
+                    className="flex-1 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)] disabled:opacity-50"
+                  />
+                  <AudioInputButton
+                    onTranscription={text => setAgentInput(prev => (prev ? `${prev} ${text}` : text))}
+                    disabled={agentSending}
+                    className="py-2"
+                  />
+                </div>
+                <button
+                  onClick={handleAgentSend}
+                  disabled={agentSending || !agentInput.trim()}
+                  className="h-8 w-8 rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)] transition-all hover:bg-[var(--panel-accent-dim)] disabled:opacity-40"
+                  aria-label="Enviar resposta ao agente de capa"
+                >
+                  {agentSending ? '⋯' : '↑'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 'outline_approved' && coverAgent.step === 'done_with_cover' && coverAgent.coverData && (
+          <div className="rounded border border-[color:var(--panel-gold)]/30 bg-[color:var(--panel-gold)]/10 px-3 py-2.5">
+            <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">📄 Capa disponível</div>
+            <p className="font-mono text-[11px] text-[var(--panel-text)]">
+              {coverAgent.coverData.theme && <span className="block mb-1 text-[var(--panel-muted)]">Tema: {coverAgent.coverData.theme}</span>}
+              {coverAgent.coverData.members?.length && <span className="block text-[var(--panel-muted)]">{coverAgent.coverData.members.length} membro(s) · {coverAgent.coverData.teacher}</span>}
+            </p>
+          </div>
+        )}
+
+        {(step === 'outline_approved' || step === 'section_ready') &&
+         (coverAgent.step === 'done_with_cover' || coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') &&
+         session && (
           <div className="flex flex-col gap-2">
             <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
             {session.sections.map((sec) => {
@@ -259,10 +428,19 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
           </div>
         )}
 
-        {error && <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">⚠ {error}</div>}
+        {(error || coverAgent.error) && <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">⚠ {error || coverAgent.error}</div>}
 
         <div ref={bottomRef} />
       </div>
+
+      {showCoverModal && (
+        <CoverFormModal
+          isOpen={showCoverModal}
+          onClose={() => setShowCoverModal(false)}
+          onSubmit={handleCoverSubmit}
+          initialTheme={session?.topic}
+        />
+      )}
     </div>
   );
 }

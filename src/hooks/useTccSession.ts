@@ -321,7 +321,12 @@ export function useTccSession(): UseTccSession {
       await fetch('/api/tcc/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _action: 'markInserted', sessionId: session.id, sectionIndex: index }),
+        body: JSON.stringify({
+          _action: 'markInserted',
+          sessionId: session.id,
+          sectionIndex: index,
+          sections: session.sections,
+        }),
       });
     } catch { /* não crítico */ }
 
