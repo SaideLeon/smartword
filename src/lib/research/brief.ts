@@ -47,6 +47,15 @@ async function requestBrief(body: Record<string, unknown>): Promise<any> {
   return response.json();
 }
 
+function isRequestTooLargeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return (
+    message.includes('413') ||
+    message.toLowerCase().includes('request entity too large') ||
+    message.toLowerCase().includes('request_too_large')
+  );
+}
+
 function compactOutline(outline: string, maxChars: number): string {
   if (outline.length <= maxChars) return outline;
 
@@ -73,12 +82,10 @@ function parseKeywords(text: string): string[] {
 }
 
 export async function generateResearchBrief(topic: string, outline: string): Promise<ResearchBrief> {
-  const outlineForPrompt = compactOutline(outline, 4_000);
-
-  const prompt = `Atua como um agente de pesquisa académica.
+  const basePrompt = (outlineExcerpt: string) => `Atua como um agente de pesquisa académica.
 TEMA: "${topic}"
 ESBOÇO APROVADO:
-${outlineForPrompt}
+${outlineExcerpt}
 
 Tarefa obrigatória em 3 passos:
 1) Seleciona palavras-chave de alta relevância para pesquisa web.
@@ -113,59 +120,84 @@ Regras críticas:
 - Sempre que possível, indicar data da fonte e contexto temporal dos dados.
 - Se houver lacunas ou conflito entre fontes, declarar explicitamente.`;
 
-  const toolBody = {
-    model: 'groq/compound',
-    messages: [
-      {
-        role: 'system',
-        content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
-      },
-      { role: 'user', content: prompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 1200,
-    stream: false,
-    compound_custom: {
-      tools: {
-        enabled_tools: ['web_search', 'visit_website', 'code_interpreter'],
-      },
-    },
-  };
+  const toolOutlineBudgets = [4_000, 2_500, 1_500, 900];
+  for (let i = 0; i < toolOutlineBudgets.length; i++) {
+    const outlineForPrompt = compactOutline(outline, toolOutlineBudgets[i]);
+    const prompt = basePrompt(outlineForPrompt);
 
-  const reducedPrompt = prompt.replace(outlineForPrompt, compactOutline(outline, 1_500));
-
-  const plainFallbackBody = {
-    model: 'llama-3.3-70b-versatile',
-    messages: [
-      {
-        role: 'system',
-        content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
+    const toolBody = {
+      model: 'groq/compound',
+      messages: [
+        {
+          role: 'system',
+          content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: i === 0 ? 1200 : 900,
+      stream: false,
+      compound_custom: {
+        tools: {
+          enabled_tools: ['web_search', 'visit_website'],
+        },
       },
-      { role: 'user', content: reducedPrompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 900,
-    stream: false,
-  };
+    };
 
-  try {
-    const payload = await requestBrief(toolBody);
-    const brief = payload.choices?.[0]?.message?.content?.trim();
-    if (!brief) throw new Error('Resposta vazia na pesquisa com ferramentas');
-    const keywords = parseKeywords(brief);
-    return { keywords, brief };
-  } catch (toolError) {
-    console.warn('[research] Falha no modo com web tools, a usar fallback sem tools.', toolError);
+    try {
+      const payload = await requestBrief(toolBody);
+      const brief = payload.choices?.[0]?.message?.content?.trim();
+      if (!brief) throw new Error('Resposta vazia na pesquisa com ferramentas');
+      const keywords = parseKeywords(brief);
+      return { keywords, brief };
+    } catch (toolError) {
+      if (isRequestTooLargeError(toolError) && i < toolOutlineBudgets.length - 1) {
+        console.warn('[research] 413 no modo com web tools; a reduzir prompt e tentar novamente.', {
+          attempt: i + 1,
+          nextOutlineBudget: toolOutlineBudgets[i + 1],
+        });
+        continue;
+      }
+      console.warn('[research] Falha no modo com web tools, a usar fallback sem tools.', toolError);
+      break;
+    }
   }
 
-  try {
-    const payload = await requestBrief(plainFallbackBody);
-    const brief = payload.choices?.[0]?.message?.content?.trim();
-    if (!brief) throw new Error('Resposta vazia no fallback sem tools');
-    const keywords = parseKeywords(brief);
-    return { keywords, brief };
-  } catch (fallbackError) {
-    console.warn('[research] Falha no fallback LLM; a usar ficha heurística local.', fallbackError);
-    return buildHeuristicBrief(topic, outline);
+  const fallbackOutlineBudgets = [1_500, 900, 600];
+  for (let i = 0; i < fallbackOutlineBudgets.length; i++) {
+    const outlineForPrompt = compactOutline(outline, fallbackOutlineBudgets[i]);
+    const plainFallbackBody = {
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
+        },
+        { role: 'user', content: basePrompt(outlineForPrompt) },
+      ],
+      temperature: 0.2,
+      max_tokens: i === 0 ? 900 : 700,
+      stream: false,
+    };
+
+    try {
+      const payload = await requestBrief(plainFallbackBody);
+      const brief = payload.choices?.[0]?.message?.content?.trim();
+      if (!brief) throw new Error('Resposta vazia no fallback sem tools');
+      const keywords = parseKeywords(brief);
+      return { keywords, brief };
+    } catch (fallbackError) {
+      if (isRequestTooLargeError(fallbackError) && i < fallbackOutlineBudgets.length - 1) {
+        console.warn('[research] 413 no fallback sem tools; a reduzir prompt e tentar novamente.', {
+          attempt: i + 1,
+          nextOutlineBudget: fallbackOutlineBudgets[i + 1],
+        });
+        continue;
+      }
+      console.warn('[research] Falha no fallback LLM; a usar ficha heurística local.', fallbackError);
+      break;
+    }
   }
+
+  return buildHeuristicBrief(topic, outline);
 }
