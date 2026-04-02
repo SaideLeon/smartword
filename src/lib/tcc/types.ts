@@ -1,4 +1,5 @@
 // lib/tcc/types.ts  (versão actualizada — substitui o ficheiro original)
+import type { CoverData } from '@/lib/docx/cover-types';
 
 export type TccSectionStatus = 'pending' | 'developed' | 'inserted';
 
@@ -33,6 +34,8 @@ export interface TccSession {
   research_keywords: string[] | null;
   research_brief: string | null;
   research_generated_at: string | null;
+  /** Dados de capa persistidos — restaurados automaticamente ao retomar a sessão. */
+  cover_data: CoverData | null;
 }
 
 // ── Tipos auxiliares para o sistema de compressão ─────────────────────────
