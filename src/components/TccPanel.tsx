@@ -92,6 +92,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
       session.topic,
       session.outline_approved ?? session.outline_draft ?? '',
       (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
+      { mode: 'tcc' },
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, session?.id]);
@@ -167,6 +168,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
       agentMessages,
       (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
       () => setShowCoverModal(true),
+      { mode: 'tcc' },
     );
 
     setAgentSending(false);
@@ -387,6 +389,18 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                   {agentSending ? '⋯' : '↑'}
                 </button>
               </div>
+            )}
+
+            {coverAgent.step === 'asking' && agentMessages.length > 0 && (
+              <button
+                onClick={() => {
+                  setAgentMessages(prev => [...prev, { role: 'assistant', content: 'Entendido. Podes desenvolver as secções directamente.' }]);
+                  coverAgent.chooseWithoutCover();
+                }}
+                className="font-mono text-[10px] text-[var(--panel-text-faint)] hover:text-[var(--panel-muted)] transition-colors underline"
+              >
+                Saltar — desenvolver sem capa
+              </button>
             )}
           </div>
         )}
