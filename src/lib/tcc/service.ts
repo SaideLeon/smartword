@@ -4,6 +4,7 @@
 
 import { createClient, requireUserId } from '@/lib/supabase';
 import type { TccSession, TccSection } from './types';
+import type { CoverData } from '@/lib/docx/cover-types';
 
 // ─── Criar nova sessão ────────────────────────────────────────────────────────
 export async function createSession(topic: string): Promise<TccSession> {
@@ -148,6 +149,21 @@ export async function markSectionInserted(
   const { error } = await supabase
     .from('tcc_sessions')
     .update({ sections: updated })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
+// ─── Persistir dados de capa (incluindo abstract) ───────────────────────────
+export async function saveTccCoverData(
+  id: string,
+  coverData: CoverData | null,
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('tcc_sessions')
+    .update({ cover_data: coverData })
     .eq('id', id);
 
   if (error) throw new Error(error.message);
