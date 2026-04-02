@@ -1,10 +1,27 @@
-// hooks/useTccSession.ts  (versão actualizada — substitui o original)
-// Adiciona estado de compressão e exposição do indicador para a UI.
+// hooks/useTccSession.ts
+//
+// ── REGRA DE PAGEBREAK (LEIA ANTES DE MODIFICAR) ────────────────────────────
+//
+// O conteúdo guardado no Supabase é SEMPRE puro — sem {pagebreak}.
+// Os {pagebreak} são adicionados EXCLUSIVAMENTE por buildTccSectionMarkdown()
+// em src/lib/tcc/pagebreak.ts, no momento de inserção no editor.
+//
+// REGRAS:
+//   • Primeira secção inserida num editor vazio → SEM {pagebreak}
+//   • Secções estruturais (Introdução, Justificativa, Metodologia, etc.) → COM {pagebreak}
+//   • Primeira subsecção de um grupo (1.1) → heading pai + {pagebreak} antes do bloco
+//   • Subsecções seguintes (1.2, 1.3…) → SEM pagebreak, fluem após o pai
+//
+// Toda a lógica de classificação está em src/lib/tcc/pagebreak.ts.
 
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
 import type { TccSession, TccSection } from '@/lib/tcc/types';
+import {
+  buildTccSectionMarkdown,
+  buildReconstructedTccContent,
+} from '@/lib/tcc/pagebreak';
 
 type TccStep =
   | 'idle'
@@ -18,8 +35,8 @@ type TccStep =
 
 // ── Estado de compressão exposto à UI ────────────────────────────────────────
 export interface CompressionStatus {
-  active: boolean;          // compressão já foi activada pelo menos uma vez
-  justCompressed: boolean;  // comprimiu nesta chamada (para feedback visual)
+  active: boolean;
+  justCompressed: boolean;
   coveredUpTo: number | null;
   summaryLength: number;
 }
@@ -39,7 +56,11 @@ interface UseTccSession {
   approveOutline:    (outlineOverride?: string) => Promise<void>;
   requestNewOutline: (suggestions?: string) => Promise<void>;
   developSection:    (index: number) => Promise<void>;
-  insertSection:     (index: number, onInsert: (text: string) => void) => Promise<void>;
+  insertSection:     (
+    index: number,
+    onInsert: (text: string) => void,
+    options?: { editorMarkdown?: string; onReplace?: (text: string) => void }
+  ) => Promise<void>;
   backToOutline:     () => void;
   loadSessions:      () => Promise<void>;
   resumeSession:     (id: string) => Promise<void>;
@@ -55,10 +76,10 @@ export function useTccSession(): UseTccSession {
   const [error, setError]             = useState<string | null>(null);
   const [recentSessions, setRecentSessions] = useState<UseTccSession['recentSessions']>([]);
   const [compressionStatus, setCompressionStatus] = useState<CompressionStatus>({
-    active:        false,
+    active:         false,
     justCompressed: false,
-    coveredUpTo:   null,
-    summaryLength: 0,
+    coveredUpTo:    null,
+    summaryLength:  0,
   });
   const abortRef = useRef<AbortController | null>(null);
 
@@ -225,8 +246,6 @@ export function useTccSession(): UseTccSession {
     setActiveSectionIdx(index);
     setStreamingText('');
     setStep('developing');
-
-    // Limpa o "justCompressed" do ciclo anterior
     setCompressionStatus(prev => ({ ...prev, justCompressed: false }));
 
     try {
@@ -242,7 +261,6 @@ export function useTccSession(): UseTccSession {
 
       if (!res.ok) throw new Error('Erro ao desenvolver secção');
 
-      // Lê headers de compressão da resposta
       const wasCompressed = res.headers.get('X-Context-Compressed') === 'true';
       const coveredUpTo   = parseInt(res.headers.get('X-Summary-Covers-Up-To') ?? '-1', 10);
 
@@ -285,10 +303,8 @@ export function useTccSession(): UseTccSession {
           ...prev,
           sections: updatedSections,
           status: allDone ? 'completed' : 'in_progress',
-          // Actualiza summary_covers_up_to localmente se houve compressão
           summary_covers_up_to: wasCompressed && coveredUpTo >= 0 ? coveredUpTo : prev.summary_covers_up_to,
         };
-        // Actualiza o indicador de compressão com os dados reais da sessão
         if (wasCompressed) updateCompressionStatus(updated, true);
         return updated;
       });
@@ -300,6 +316,13 @@ export function useTccSession(): UseTccSession {
   }, [session, updateCompressionStatus]);
 
   // ── Inserir secção no editor ─────────────────────────────────────────────────
+  //
+  // Usa buildTccSectionMarkdown() para determinar heading, pagebreak e heading pai.
+  // O conteúdo do Supabase é sempre puro — sem {pagebreak}.
+  //
+  // options.editorMarkdown  → conteúdo actual do editor (para detectar se está vazio)
+  // options.onReplace       → usado quando se regenera uma secção já inserida
+
   const backToOutline = useCallback(() => {
     setStep('outline_approved');
     setActiveSectionIdx(null);
@@ -308,15 +331,67 @@ export function useTccSession(): UseTccSession {
   const insertSection = useCallback(async (
     index: number,
     onInsert: (text: string) => void,
+    options?: {
+      editorMarkdown?: string;
+      onReplace?: (text: string) => void;
+    },
   ) => {
     if (!session) return;
     const sec = session.sections.find(s => s.index === index);
     if (!sec?.content) return;
 
-    const isSubsection = /^\d+\.\d+/.test(sec.title);
-    const heading = isSubsection ? '###' : '##';
-    onInsert(`${heading} ${sec.title}\n\n${sec.content}`);
+    const isFirstInEditor = !options?.editorMarkdown?.trim();
+    const currentOutline = session.outline_approved ?? session.outline_draft ?? '';
 
+    // Detecta regeneração: secção que já estava inserida e foi regenerada
+    const wasInserted = sec.status === 'inserted';
+    const shouldResetEditor = wasInserted && !!options?.onReplace;
+
+    if (shouldResetEditor && options?.onReplace) {
+      // Regeneração: reconstrói todo o conteúdo do editor com as secções actuais
+      // mais o conteúdo novo (a secção acabou de ser desenvolvida, status 'developed')
+      try {
+        // Marca no servidor como inserida primeiro
+        await fetch('/api/tcc/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            _action: 'markInserted',
+            sessionId: session.id,
+            sectionIndex: index,
+            sections: session.sections,
+          }),
+        });
+
+        // Busca a sessão actualizada
+        const refreshRes = await fetch(`/api/tcc/session?id=${session.id}`);
+        if (refreshRes.ok) {
+          const refreshed: TccSession = await refreshRes.json();
+          const outline = refreshed.outline_approved ?? refreshed.outline_draft ?? '';
+          const organizedContent = buildReconstructedTccContent(
+            refreshed.sections.filter(s => s.content.trim()),
+            outline,
+          );
+          options.onReplace(organizedContent);
+          setSession(refreshed);
+          setStep('outline_approved');
+          setActiveSectionIdx(null);
+          return;
+        }
+      } catch { /* fallback abaixo */ }
+    }
+
+    // Inserção normal (primeira vez ou regeneração sem reset)
+    const textToInsert = buildTccSectionMarkdown({
+      section: sec,
+      allSections: session.sections,
+      isFirstInEditor,
+      outline: currentOutline,
+    });
+
+    onInsert(textToInsert);
+
+    // Marca como inserida no servidor
     try {
       await fetch('/api/tcc/session', {
         method: 'POST',

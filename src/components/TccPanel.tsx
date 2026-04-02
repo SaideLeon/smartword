@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTccSession } from '@/hooks/useTccSession';
 import { useCoverAgent } from '@/hooks/useCoverAgent';
 import { useEditorActions } from '@/hooks/useEditorStore';
@@ -16,6 +16,8 @@ interface Props {
   onTopicChange: (topic: string) => void;
   onClose: () => void;
   isMobile?: boolean;
+  /** Conteúdo actual do editor — usado para detectar se está vazio e para regeneração */
+  editorMarkdown?: string;
 }
 
 interface AgentMessage {
@@ -23,7 +25,7 @@ interface AgentMessage {
   content: string;
 }
 
-export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }: Props) {
+export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, outline, streamingText, activeSectionIdx, error,
     recentSessions, compressionStatus,
@@ -31,7 +33,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
     developSection, insertSection, backToOutline, loadSessions, resumeSession, reset,
   } = useTccSession();
   const coverAgent = useCoverAgent();
-  const { setIncludeCover, setCoverData, resetExportPreferences } = useEditorActions();
+  const { setIncludeCover, setCoverData, resetExportPreferences, setContent } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
   const [outlineEdit, setOutlineEdit] = useState('');
@@ -67,7 +69,6 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
       setCoverData(coverAgent.coverData);
       return;
     }
-
     if (coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') {
       setIncludeCover(false);
       setCoverData(null);
@@ -136,7 +137,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
       if (!res.ok) throw new Error('Não foi possível excluir a sessão');
       await loadSessions();
     } catch {
-      // ignorar por agora
+      // ignorar
     } finally {
       setDeletingSessionId(null);
     }
@@ -195,9 +196,23 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
         }),
       });
     } catch {
-      // não crítico; estado local já está actualizado
+      // não crítico
     }
   };
+
+  // ── Handler de inserção com pagebreak ────────────────────────────────────────
+  //
+  // Passa editorMarkdown e onReplace para que buildTccSectionMarkdown possa
+  // decidir: (a) se o editor está vazio (sem pagebreak antes); (b) se é uma
+  // regeneração e precisa reconstruir todo o conteúdo.
+
+  const handleInsertSection = useCallback((sectionIndex: number) => {
+    if (!session) return;
+    insertSection(sectionIndex, onInsert, {
+      editorMarkdown,
+      onReplace: setContent,
+    });
+  }, [session, insertSection, onInsert, editorMarkdown, setContent]);
 
   const statusLabel = (s: TccSection) => {
     if (s.status === 'inserted') return { label: 'Inserido ✓', color: C.gold };
@@ -391,31 +406,69 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
          session && (
           <div className="flex flex-col gap-2">
             <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
+
+            {/* Nota explicativa sobre pagebreaks */}
+            <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
+              ↕ Cada secção principal começa numa nova página. Subsecções (1.1, 1.2…) fluem juntas no mesmo bloco.
+            </div>
+
             {session.sections.map((sec) => {
               const { label, color } = statusLabel(sec);
               const isActive = activeSectionIdx === sec.index;
               const isCompressed = compressionStatus.active && compressionStatus.coveredUpTo !== null && sec.index <= compressionStatus.coveredUpTo;
+              const isSubsec = /^\d+\.\d+|^[ivxlcdm]+\.\d+/i.test(sec.title.trim());
               return (
-                <div key={sec.index} className={`flex items-center justify-between gap-2 rounded border px-3 py-2.5 transition-all ${isActive ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20' : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'} ${isCompressed ? 'opacity-75' : ''}`}>
+                <div key={sec.index} className={`flex items-center justify-between gap-2 rounded border px-3 py-2.5 transition-all ${isActive ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20' : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'} ${isCompressed ? 'opacity-75' : ''} ${isSubsec ? 'ml-3' : ''}`}>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5"><span className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">{sec.title}</span>{isCompressed && <span title="Secção no resumo de contexto" className="rounded border border-[var(--panel-border)] px-1 font-mono text-[9px] text-[var(--panel-text-faint)]">∑</span>}</div>
+                    <div className="flex items-center gap-1.5">
+                      {isSubsec && <span className="text-[var(--panel-text-faint)]">↳</span>}
+                      <span className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">{sec.title}</span>
+                      {isCompressed && <span title="Secção no resumo de contexto" className="rounded border border-[var(--panel-border)] px-1 font-mono text-[9px] text-[var(--panel-text-faint)]">∑</span>}
+                    </div>
                     <div className="mt-0.5 font-mono text-[10px]" style={{ color }}>{label}</div>
                   </div>
                   <div className="flex shrink-0 gap-1.5">
-                    {sec.status !== 'pending' && <button onClick={() => insertSection(sec.index, onInsert)} className="flex h-7 w-7 items-center justify-center rounded border border-[color:var(--panel-gold)]/30 font-mono text-[13px] text-[var(--panel-gold)]" title="Inserir no editor" aria-label={`Inserir secção ${sec.title} no editor`}>↓</button>}
-                    <button onClick={() => developSection(sec.index)} className="flex h-7 w-7 items-center justify-center rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)]" title={sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'} aria-label={sec.status === 'pending' ? `Desenvolver secção ${sec.title}` : `Reescrever secção ${sec.title}`}>{sec.status === 'pending' ? '✦' : '↻'}</button>
+                    {sec.status !== 'pending' && (
+                      <button
+                        onClick={() => handleInsertSection(sec.index)}
+                        className="flex h-7 w-7 items-center justify-center rounded border border-[color:var(--panel-gold)]/30 font-mono text-[13px] text-[var(--panel-gold)]"
+                        title="Inserir no editor"
+                        aria-label={`Inserir secção ${sec.title} no editor`}
+                      >
+                        ↓
+                      </button>
+                    )}
+                    <button
+                      onClick={() => developSection(sec.index)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)]"
+                      title={sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'}
+                      aria-label={sec.status === 'pending' ? `Desenvolver secção ${sec.title}` : `Reescrever secção ${sec.title}`}
+                    >
+                      {sec.status === 'pending' ? '✦' : '↻'}
+                    </button>
                   </div>
                 </div>
               );
             })}
-            {session.status === 'completed' && <div className="mt-2 rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent)]/20 p-3 text-center"><div className="mb-1 text-2xl">🎓</div><div className="font-mono text-xs text-[var(--panel-accent)]">TCC concluído! Todas as secções desenvolvidas.</div></div>}
+            {session.status === 'completed' && (
+              <div className="mt-2 rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent)]/20 p-3 text-center">
+                <div className="mb-1 text-2xl">🎓</div>
+                <div className="font-mono text-xs text-[var(--panel-accent)]">TCC concluído! Todas as secções desenvolvidas.</div>
+              </div>
+            )}
           </div>
         )}
 
         {step === 'developing' && (
           <div>
-            {session && activeSectionIdx !== null && <Label>A desenvolver: <span className="text-[var(--panel-accent)]">{session.sections.find((s) => s.index === activeSectionIdx)?.title}</span></Label>}
-            {compressionStatus.justCompressed && <div className="mb-2 rounded border border-[var(--panel-gold)]/30 bg-[var(--panel-gold)]/10 px-3 py-1.5 font-mono text-[10px] text-[var(--panel-gold)]">✦ Contexto comprimido automaticamente para optimizar a janela de tokens</div>}
+            {session && activeSectionIdx !== null && (
+              <Label>A desenvolver: <span className="text-[var(--panel-accent)]">{session.sections.find((s) => s.index === activeSectionIdx)?.title}</span></Label>
+            )}
+            {compressionStatus.justCompressed && (
+              <div className="mb-2 rounded border border-[var(--panel-gold)]/30 bg-[var(--panel-gold)]/10 px-3 py-1.5 font-mono text-[10px] text-[var(--panel-gold)]">
+                ✦ Contexto comprimido automaticamente para optimizar a janela de tokens
+              </div>
+            )}
             <StreamBox text={streamingText} />
           </div>
         )}
@@ -423,12 +476,21 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false }:
         {step === 'section_ready' && session && activeSectionIdx !== null && (
           <div className="mt-2 flex flex-col gap-3">
             <Label>Secção pronta: <span className="text-[var(--panel-accent)]">{session.sections.find((s) => s.index === activeSectionIdx)?.title}</span></Label>
-            <div className="max-h-[260px] overflow-y-auto whitespace-pre-wrap rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)]">{streamingText}</div>
-            <div className="flex gap-2"><Btn onClick={() => insertSection(activeSectionIdx, onInsert)} color={C.accent} flex>↓ Inserir no editor</Btn><Btn onClick={backToOutline} color={C.muted} outline flex>← Voltar</Btn></div>
+            <div className="max-h-[260px] overflow-y-auto whitespace-pre-wrap rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.65] text-[var(--panel-text)]">
+              {streamingText}
+            </div>
+            <div className="flex gap-2">
+              <Btn onClick={() => handleInsertSection(activeSectionIdx)} color={C.accent} flex>↓ Inserir no editor</Btn>
+              <Btn onClick={backToOutline} color={C.muted} outline flex>← Voltar</Btn>
+            </div>
           </div>
         )}
 
-        {(error || coverAgent.error) && <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">⚠ {error || coverAgent.error}</div>}
+        {(error || coverAgent.error) && (
+          <div className="rounded border border-red-900 bg-red-950/60 px-3 py-2 font-mono text-[11px] text-red-300">
+            ⚠ {error || coverAgent.error}
+          </div>
+        )}
 
         <div ref={bottomRef} />
       </div>
