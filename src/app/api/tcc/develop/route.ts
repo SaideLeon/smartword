@@ -60,7 +60,7 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - Explicar o conceito central com precisão técnica e enquadramento teórico
 - Incluir pelo menos 1 exemplo prático quando isso ajudar a compreensão
 - Integrar citações no corpo do texto em norma APA (7.ª edição)
-- Manter entre 300 e 600 palavras
+- Manter entre 300 e 500 palavras
 - Usar Markdown (negrito para termos-chave, listas e ### quando fizer sentido)
 - NÃO repetir conteúdo já desenvolvido noutras secções
 - NÃO incluir conclusão nem lista final de referências nesta secção`;
