@@ -196,7 +196,7 @@ function renderTextBlock(raw: string): ReactNode {
     const hMatch = line.match(/^(#{1,4})\s+(.+)/);
     if (hMatch) {
       const level = hMatch[1].length;
-      const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+      const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4';
       const sizes = ['1.15em', '1.05em', '0.98em', '0.93em'];
       nodes.push(
         <Tag key={key++} style={{
