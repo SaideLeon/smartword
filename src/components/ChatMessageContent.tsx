@@ -184,6 +184,95 @@ function renderInlineMarkdown(text: string): ReactNode[] {
   return parts;
 }
 
+type TableAlign = 'left' | 'center' | 'right';
+
+interface TableBlock {
+  type: 'table';
+  headers: string[];
+  aligns: TableAlign[];
+  rows: string[][];
+}
+
+interface TextBlock {
+  type: 'text';
+  value: string;
+}
+
+type ParsedBlock = TableBlock | TextBlock;
+
+function parseTableRow(line: string): string[] {
+  const cleaned = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  return cleaned.split('|').map((cell) => cell.trim());
+}
+
+function parseTableAlign(sepCell: string): TableAlign {
+  const cell = sepCell.trim();
+  const left = cell.startsWith(':');
+  const right = cell.endsWith(':');
+  if (left && right) return 'center';
+  if (right) return 'right';
+  return 'left';
+}
+
+function isTableSeparator(line: string): boolean {
+  const raw = line.trim();
+  if (!raw.includes('|')) return false;
+  const cells = parseTableRow(raw);
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+}
+
+function parseBlocks(raw: string): ParsedBlock[] {
+  const lines = raw.split('\n');
+  const blocks: ParsedBlock[] = [];
+  let i = 0;
+  let textBuffer: string[] = [];
+
+  const flushTextBuffer = () => {
+    if (!textBuffer.length) return;
+    const value = textBuffer.join('\n');
+    if (value.trim()) blocks.push({ type: 'text', value });
+    textBuffer = [];
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const next = lines[i + 1];
+
+    const maybeTable =
+      line?.includes('|') &&
+      next !== undefined &&
+      isTableSeparator(next);
+
+    if (!maybeTable) {
+      textBuffer.push(line);
+      i += 1;
+      continue;
+    }
+
+    flushTextBuffer();
+
+    const headers = parseTableRow(line);
+    const sep = parseTableRow(next);
+    const aligns = sep.map(parseTableAlign);
+
+    const rows: string[][] = [];
+    i += 2;
+
+    while (i < lines.length) {
+      const rowLine = lines[i];
+      if (!rowLine.trim()) break;
+      if (!rowLine.includes('|')) break;
+      rows.push(parseTableRow(rowLine));
+      i += 1;
+    }
+
+    blocks.push({ type: 'table', headers, aligns, rows });
+  }
+
+  flushTextBuffer();
+  return blocks;
+}
+
 function renderTextBlock(raw: string): ReactNode {
   const lines = raw.split('\n');
   const nodes: ReactNode[] = [];
@@ -307,6 +396,72 @@ function renderTextBlock(raw: string): ReactNode {
   return <>{nodes}</>;
 }
 
+function RenderTable({ headers, aligns, rows }: Omit<TableBlock, 'type'>) {
+  return (
+    <div style={{ overflowX: 'auto', margin: '10px 0' }}>
+      <table style={{
+        width: '100%',
+        minWidth: 420,
+        borderCollapse: 'separate',
+        borderSpacing: 0,
+        border: '1px solid var(--chat-border, #2f2f2f)',
+        borderRadius: 10,
+        overflow: 'hidden',
+        background: 'var(--ac-card-bg, #14141c)',
+      }}>
+        <thead>
+          <tr style={{ background: '#1c1c24' }}>
+            {headers.map((header, index) => (
+              <th key={`th-${index}`} style={{
+                textAlign: aligns[index] ?? 'left',
+                padding: '10px 12px',
+                color: 'var(--ac-primary, #f59e0b)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontSize: '0.72em',
+                fontWeight: 700,
+                borderRight: index < headers.length - 1 ? '1px solid var(--ac-border, rgba(255,255,255,0.08))' : 'none',
+              }}>
+                {renderInlineMarkdown(header)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr
+              key={`tr-${rowIndex}`}
+              style={{
+                background: rowIndex % 2 === 0 ? 'var(--ac-surface, rgba(255,255,255,0.01))' : 'var(--ac-surface-2, rgba(255,255,255,0.03))',
+                transition: 'background 140ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ac-hover, rgba(245,158,11,0.08))'; }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = rowIndex % 2 === 0
+                  ? 'var(--ac-surface, rgba(255,255,255,0.01))'
+                  : 'var(--ac-surface-2, rgba(255,255,255,0.03))';
+              }}
+            >
+              {headers.map((_, colIndex) => (
+                <td key={`td-${rowIndex}-${colIndex}`} style={{
+                  textAlign: aligns[colIndex] ?? 'left',
+                  padding: '9px 12px',
+                  borderTop: '1px solid var(--ac-border, rgba(255,255,255,0.08))',
+                  borderRight: colIndex < headers.length - 1 ? '1px solid var(--ac-border, rgba(255,255,255,0.08))' : 'none',
+                  color: 'var(--chat-text, #f0f0f0)',
+                  fontSize: '0.9em',
+                }}>
+                  {renderInlineMarkdown(row[colIndex] ?? '')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Bloco de código com header ────────────────────────────────────────────────
 
 function CodeBlock({ lang, code }: { lang: string; code: string }) {
@@ -379,7 +534,22 @@ export function ChatMessageContent({ content, role }: Props) {
           case 'code-block':
             return <CodeBlock key={i} lang={token.lang} code={token.value} />;
           case 'text':
-            return <span key={i}>{renderTextBlock(token.value)}</span>;
+            return (
+              <span key={i}>
+                {parseBlocks(token.value).map((block, blockIndex) => (
+                  block.type === 'table'
+                    ? (
+                      <RenderTable
+                        key={`${i}-table-${blockIndex}`}
+                        headers={block.headers}
+                        aligns={block.aligns}
+                        rows={block.rows}
+                      />
+                    )
+                    : <span key={`${i}-text-${blockIndex}`}>{renderTextBlock(block.value)}</span>
+                ))}
+              </span>
+            );
           default:
             return null;
         }
