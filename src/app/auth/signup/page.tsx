@@ -45,7 +45,7 @@ export default function SignupPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] px-4 text-[var(--text-primary)]" data-theme="dark">
-      <section className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+      <section className="mn-card w-full max-w-md shadow-2xl">
         <p className="mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Muneri</p>
         <h1 className="mt-1 text-2xl font-semibold">Inscrição</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">Crie a sua conta para começar.</p>
@@ -58,7 +58,7 @@ export default function SignupPage() {
               required
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
+              className="mn-input mt-1 text-sm"
               placeholder="Seu nome"
             />
           </label>
@@ -70,7 +70,7 @@ export default function SignupPage() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
+              className="mn-input mt-1 text-sm"
               placeholder="teuemail@exemplo.com"
             />
           </label>
@@ -83,7 +83,7 @@ export default function SignupPage() {
               minLength={6}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
+              className="mn-input mt-1 text-sm"
               placeholder="••••••••"
             />
           </label>
@@ -96,7 +96,7 @@ export default function SignupPage() {
               minLength={6}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
+              className="mn-input mt-1 text-sm"
               placeholder="••••••••"
             />
           </label>
@@ -104,7 +104,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading || submitting}
-            className="w-full rounded-md bg-[var(--accent-amber)] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mn-btn mn-btn-accent w-full text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? 'A criar conta...' : 'Criar conta'}
           </button>

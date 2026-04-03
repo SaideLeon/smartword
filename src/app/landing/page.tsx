@@ -202,15 +202,15 @@ export default function LandingPage() {
         </h2>
 
         <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
-          <article className="rounded-xl border border-[#1e2a1e] bg-[#0b0d0b] p-5 sm:p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#6a9e5f]">🎓 Universitários</p>
-            <h3 className="mt-3 font-serif text-xl text-[#d0dcc8] sm:text-2xl">TCC e trabalhos académicos com padrão profissional.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#4a6644]">Perfeito para quem precisa entregar com qualidade, mesmo sem saber formatar.</p>
+          <article className="rounded-xl border border-[var(--bg-active)] bg-[var(--bg-overlay)] p-5 sm:p-6">
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--green)]">🎓 Universitários</p>
+            <h3 className="mt-3 font-serif text-xl text-[var(--text)] sm:text-2xl">TCC e trabalhos académicos com padrão profissional.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">Perfeito para quem precisa entregar com qualidade, mesmo sem saber formatar.</p>
           </article>
-          <article className="rounded-xl border border-[#1a2a1a] bg-[#0a0d0a] p-5 sm:p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#5a9e8f]">📚 Ensino médio</p>
-            <h3 className="mt-3 font-serif text-xl text-[#c8dcd6] sm:text-2xl">Trabalhos escolares bem organizados e fáceis de montar.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#3a6e60]">Ajuda você a estruturar tudo com linguagem clara e formato correto.</p>
+          <article className="rounded-xl border border-[var(--green-dim)] bg-[var(--bg-overlay)] p-5 sm:p-6">
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--green)]">📚 Ensino médio</p>
+            <h3 className="mt-3 font-serif text-xl text-[var(--text)] sm:text-2xl">Trabalhos escolares bem organizados e fáceis de montar.</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">Ajuda você a estruturar tudo com linguagem clara e formato correto.</p>
           </article>
           <article className="rounded-xl border border-[#2a2520] bg-[#0d0c0b] p-5 sm:p-6">
             <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold)]">👩‍💼 Profissionais</p>

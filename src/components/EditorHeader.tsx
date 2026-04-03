@@ -25,7 +25,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
   return (
     <header className="relative z-20 flex h-[52px] flex-shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-surface)] px-3">
       <div className="flex items-center gap-[9px]">
-        <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-[linear-gradient(135deg,#f59e0b,#f97316)] text-[15px] font-extrabold text-black">∂</span>
+        <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-[linear-gradient(135deg,var(--accent),#f97316)] text-[15px] font-extrabold text-black">∂</span>
         <div className="flex flex-col">
           <span className="text-[13px] font-bold leading-none text-[var(--text-primary)]">Muneri</span>
           <span className="mono max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap text-[9px] text-[var(--text-muted)]">Markdown para Word com equações nativas</span>
@@ -38,13 +38,13 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         <PanelToggleButton active={sidePanel === 'chat'} label="IA" onClick={() => onTogglePanel('chat')} highlight />
 
         <div className="ml-1.5 flex items-center gap-1 border-l border-[var(--border)] pl-2">
-          <button aria-label="Desfazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
-          <button aria-label="Refazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
+          <button aria-label="Desfazer" className="press-feedback mn-btn mn-btn-icon text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
+          <button aria-label="Refazer" className="press-feedback mn-btn mn-btn-icon text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
         </div>
 
         <div className="ml-1.5 flex items-center gap-1.5 border-l border-[var(--border)] pl-2">
           <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">LaTeX → OMML</span>
-          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-teal)] shadow-[0_0_6px_var(--accent-teal)]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--green)] shadow-[0_0_6px_var(--green)]" />
         </div>
 
         <div className="relative ml-1.5 border-l border-[var(--border)] pl-2">
@@ -52,7 +52,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
             type="button"
             aria-label="Abrir informações da conta"
             onClick={() => setShowUserMenu((current) => !current)}
-            className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+            className="press-feedback mn-btn mn-btn-icon text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
           >
             <Settings className="h-4 w-4" />
           </button>
@@ -74,7 +74,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
 
               <Link
                 href="/planos"
-                className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+                className="mn-btn mt-3 block px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)]"
               >
                 Ver todos os planos
               </Link>
@@ -82,7 +82,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
               {profile?.role === 'admin' && (
                 <Link
                   href="/admin"
-                  className="mt-2 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+                  className="mn-btn mt-2 block px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)]"
                 >
                   Área administrativa
                 </Link>
@@ -91,7 +91,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
               <button
                 type="button"
                 onClick={() => signOut()}
-                className="mt-2 w-full rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                className="mn-btn mn-btn-danger mt-2 w-full px-2.5 py-2 text-xs font-semibold"
               >
                 Terminar sessão
               </button>
@@ -105,14 +105,14 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           type="button"
           aria-label={showMobileMenu ? 'Fechar menu principal' : 'Abrir menu principal'}
           onClick={() => setShowMobileMenu((current) => !current)}
-          className="press-feedback grid h-[34px] w-[34px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+          className="press-feedback mn-btn grid h-[34px] w-[34px] place-items-center p-0 text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
         >
           {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </button>
       </div>
 
       {showMobileMenu && (
-        <div className="absolute left-2 right-2 top-[58px] z-50 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-2xl md:hidden">
+        <div className="mn-anim-slide-right absolute left-2 right-2 top-[58px] z-50 rounded-lg border border-[var(--border)] bg-[var(--bg-overlay)] p-3 shadow-2xl md:hidden">
           <p className="mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Menu principal</p>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
@@ -122,8 +122,8 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           </div>
 
           <div className="mt-3 flex items-center gap-2">
-            <button aria-label="Desfazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
-            <button aria-label="Refazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
+            <button aria-label="Desfazer" className="press-feedback mn-btn mn-btn-icon text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
+            <button aria-label="Refazer" className="press-feedback mn-btn mn-btn-icon text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
           </div>
 
           <div className="mt-3 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2 text-xs">
@@ -141,7 +141,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           <Link
             href="/planos"
             onClick={() => setShowMobileMenu(false)}
-            className="mt-3 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+            className="mn-btn mt-3 block px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)]"
           >
             Ver todos os planos
           </Link>
@@ -150,7 +150,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
             <Link
               href="/admin"
               onClick={() => setShowMobileMenu(false)}
-              className="mt-2 block rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
+              className="mn-btn mt-2 block px-2.5 py-2 text-center text-xs font-semibold text-[var(--text-primary)]"
             >
               Área administrativa
             </Link>
@@ -159,7 +159,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           <button
             type="button"
             onClick={() => signOut()}
-            className="mt-2 w-full rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+            className="mn-btn mn-btn-danger mt-2 w-full px-2.5 py-2 text-xs font-semibold"
           >
             Terminar sessão
           </button>
@@ -176,8 +176,8 @@ function PanelToggleButton({ active, label, onClick, highlight = false }: { acti
         'press-feedback mono rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors',
         highlight
           ? active
-            ? 'border-transparent bg-[var(--accent-amber)] text-black'
-            : 'border-transparent bg-[var(--accent-amber)] text-black hover:brightness-110'
+            ? 'border-transparent bg-[var(--accent)] text-black'
+            : 'border-transparent bg-[var(--accent)] text-black hover:brightness-110'
           : active
             ? 'border-[var(--border)] bg-[var(--bg-active)] text-[var(--text-primary)]'
             : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]',

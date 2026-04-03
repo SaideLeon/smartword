@@ -35,7 +35,7 @@ function LoginContent() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] px-4 text-[var(--text-primary)]" data-theme="dark">
-      <section className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+      <section className="mn-card w-full max-w-md shadow-2xl">
         <p className="mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Muneri</p>
         <h1 className="mt-1 text-2xl font-semibold">Entrar</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">Inicia sessão para continuar no editor.</p>
@@ -44,7 +44,7 @@ function LoginContent() {
           type="button"
           onClick={() => signInGoogle()}
           disabled={loading || submitting}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm transition hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mn-btn mn-btn-ghost mt-5 flex w-full items-center justify-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
           <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -81,7 +81,7 @@ function LoginContent() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
+              className="mn-input mt-1 text-sm"
               placeholder="teuemail@exemplo.com"
             />
           </label>
@@ -93,7 +93,7 @@ function LoginContent() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
+              className="mn-input mt-1 text-sm"
               placeholder="••••••••"
             />
           </label>
@@ -101,7 +101,7 @@ function LoginContent() {
           <button
             type="submit"
             disabled={loading || submitting}
-            className="w-full rounded-md bg-[var(--accent-amber)] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mn-btn mn-btn-accent w-full text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? 'A entrar...' : 'Entrar com email'}
           </button>

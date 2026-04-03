@@ -36,7 +36,7 @@ export function ExportButton({ onClick, loading, filename = 'document', includeC
 
   return (
     <button
-      className={`press-feedback flex items-center justify-center gap-2 rounded-[10px] border-none px-4 py-3 transition-all ${fullWidth ? 'w-full' : 'w-auto'} ${loading ? 'cursor-not-allowed bg-[var(--border-subtle)] opacity-50' : 'cursor-pointer bg-[linear-gradient(135deg,#f59e0b,#f97316)] text-black hover:-translate-y-px hover:brightness-110'}`}
+      className={`press-feedback mn-btn mn-btn-accent flex items-center justify-center gap-2 px-4 py-3 transition-all ${fullWidth ? 'w-full' : 'w-auto'} ${loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:-translate-y-px hover:brightness-110'}`}
       onClick={handleClick}
       disabled={loading}
     >
