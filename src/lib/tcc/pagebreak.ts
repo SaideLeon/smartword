@@ -65,13 +65,19 @@ export function getParentGroupNumber(title: string): string | null {
 
 export function getParentTitleFromOutline(outline: string, parentNum: string): string | null {
   for (const line of outline.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('##')) continue;
+
+    // Remove negrito/itálico do texto capturado (ex: "## **1. Título**")
+    const cleanLine = trimmed.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '');
+
     // Aceita: "## 1. Desenvolvimento Teórico" ou "## 1 Desenvolvimento Teórico"
-    const numMatch = line.match(/^##\s+(\d+)\.?\s+(.+)/);
+    const numMatch = cleanLine.match(/^##\s+(\d+)\.?\s+(.+)/);
     if (numMatch && numMatch[1] === parentNum) {
       return `${numMatch[1]}. ${numMatch[2].trim()}`;
     }
     // Aceita: "## III. Desenvolvimento" ou "## III Desenvolvimento"
-    const romanMatch = line.match(/^##\s+([IVXLCDM]+)\.?\s+(.+)/i);
+    const romanMatch = cleanLine.match(/^##\s+([IVXLCDM]+)\.?\s+(.+)/i);
     if (romanMatch && romanMatch[1].toUpperCase() === parentNum) {
       return `${romanMatch[1].toUpperCase()}. ${romanMatch[2].trim()}`;
     }
@@ -205,15 +211,20 @@ export function buildTccSectionMarkdown(opts: BuildTccSectionOptions): string {
   const isSub = isSubsection(section.title);
   const heading = isSub ? '###' : '##';
 
-  // Detecta se o conteúdo já começa com o próprio título
+  // Detecta se o conteúdo já começa com o próprio título.
+  // IMPORTANTE: a guarda `normalizedFirstLine !== ''` é obrigatória — sem ela,
+  // `normalizedTitle.includes('')` seria sempre true (qualquer string contém ''),
+  // fazendo body = section.content sem heading mesmo quando o AI não o incluiu.
   const firstLine = section.content.trimStart().split('\n')[0].trim();
   const headingText = firstLine.startsWith('#') ? firstLine.replace(/^#+\s*/, '') : '';
   const normalizedFirstLine = normalizeTitle(headingText);
   const normalizedTitle = normalizeTitle(section.title);
   const titleAlreadyPresent =
-    normalizedFirstLine === normalizedTitle ||
-    normalizedFirstLine.includes(normalizedTitle) ||
-    normalizedTitle.includes(normalizedFirstLine);
+    normalizedFirstLine !== '' && (
+      normalizedFirstLine === normalizedTitle ||
+      normalizedFirstLine.includes(normalizedTitle) ||
+      normalizedTitle.includes(normalizedFirstLine)
+    );
 
   const body = titleAlreadyPresent
     ? section.content
@@ -271,10 +282,13 @@ export function buildReconstructedTccContent(
     const headingText = firstLine.startsWith('#') ? firstLine.replace(/^#+\s*/, '') : '';
     const normalizedFirstLine = normalizeTitle(headingText);
     const normalizedTitle = normalizeTitle(section.title);
+    // Mesma guarda que em buildTccSectionMarkdown
     const titleAlreadyPresent =
-      normalizedFirstLine === normalizedTitle ||
-      normalizedFirstLine.includes(normalizedTitle) ||
-      normalizedTitle.includes(normalizedFirstLine);
+      normalizedFirstLine !== '' && (
+        normalizedFirstLine === normalizedTitle ||
+        normalizedFirstLine.includes(normalizedTitle) ||
+        normalizedTitle.includes(normalizedFirstLine)
+      );
 
     const body = titleAlreadyPresent
       ? section.content

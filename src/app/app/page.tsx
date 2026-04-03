@@ -95,8 +95,24 @@ export default function Home() {
 
         {sidePanel !== 'none' && sidePanel !== 'chat' && (
           <aside className={cn('z-20 flex min-w-0 flex-shrink-0 flex-col border-l border-[var(--border)] bg-[var(--bg-surface)]', isMobile ? 'absolute inset-0 animate-[slideUp_0.25s_ease] shadow-[0_-16px_40px_rgba(0,0,0,0.45)]' : 'relative w-[300px] animate-[slideIn_0.25s_ease]')}>
-            {sidePanel === 'tcc' && <TccPanel onInsert={handleInsert} onTopicChange={setFilenameFromTopic} onClose={closePanel} isMobile={isMobile} />}
-            {sidePanel === 'work' && <WorkPanel onInsert={handleInsert} onTopicChange={setFilenameFromTopic} onClose={closePanel} isMobile={isMobile} editorMarkdown={markdown} />}
+            {sidePanel === 'tcc' && (
+              <TccPanel
+                onInsert={handleInsert}
+                onTopicChange={setFilenameFromTopic}
+                onClose={closePanel}
+                isMobile={isMobile}
+                editorMarkdown={markdown}
+              />
+            )}
+            {sidePanel === 'work' && (
+              <WorkPanel
+                onInsert={handleInsert}
+                onTopicChange={setFilenameFromTopic}
+                onClose={closePanel}
+                isMobile={isMobile}
+                editorMarkdown={markdown}
+              />
+            )}
           </aside>
         )}
       </div>
