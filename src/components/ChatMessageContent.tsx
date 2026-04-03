@@ -1,9 +1,357 @@
 'use client';
 
-import { Fragment, useMemo, type ElementType, type ReactNode } from 'react';
-import temml from 'temml';
-import { parseToAST } from '@/lib/docx/parser';
-import type { DocumentNode, InlineNode } from '@/lib/docx/types';
+/**
+ * ChatMessageContent
+ *
+ * Renderiza mensagens com:
+ *  - LaTeX display:  $$…$$  ou  \[…\]  ou  ```math … ```  ou  ```latex … ```
+ *  - LaTeX inline:   $…$   ou  \(…\)
+ *  - Markdown leve: **bold**, *italic*, `code`, > blockquote, # headings, ---
+ *  - Blocos de código com syntax highlight mínimo
+ *  - Segurança: nunca usa dangerouslySetInnerHTML sem sanitização
+ */
+
+import { useEffect, useRef, type ReactNode } from 'react';
+
+// ── KaTeX loader (CDN fallback se não estiver instalado) ─────────────────────
+
+declare global {
+  interface Window {
+    katex?: {
+      renderToString: (tex: string, opts?: object) => string;
+    };
+  }
+}
+
+let katexLoaded = false;
+let katexLoading = false;
+const katexCallbacks: Array<() => void> = [];
+
+function loadKaTeX(cb: () => void) {
+  if (katexLoaded) { cb(); return; }
+  katexCallbacks.push(cb);
+  if (katexLoading) return;
+  katexLoading = true;
+
+  // CSS
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css';
+  document.head.appendChild(link);
+
+  // JS
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js';
+  script.onload = () => {
+    katexLoaded = true;
+    katexCallbacks.forEach(fn => fn());
+    katexCallbacks.length = 0;
+  };
+  document.head.appendChild(script);
+}
+
+// ── Renderiza LaTeX num elemento ─────────────────────────────────────────────
+
+function KatexBlock({ tex, display }: { tex: string; display: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const render = () => {
+      if (!ref.current || !window.katex) return;
+      try {
+        ref.current.innerHTML = window.katex.renderToString(tex, {
+          displayMode: display,
+          throwOnError: false,
+          strict: false,
+        });
+      } catch {
+        if (ref.current) ref.current.textContent = tex;
+      }
+    };
+    loadKaTeX(render);
+  }, [tex, display]);
+
+  return (
+    <span
+      ref={ref}
+      style={display ? {
+        display: 'block',
+        overflowX: 'auto',
+        padding: '14px 18px',
+        margin: '10px 0',
+        background: 'var(--math-bg, #1a1a1a)',
+        border: '1px solid var(--math-border, #2e2e2e)',
+        borderRadius: 8,
+        textAlign: 'center',
+        fontSize: '1.05em',
+      } : { display: 'inline' }}
+    >
+      {tex}
+    </span>
+  );
+}
+
+// ── Tokenizer ─────────────────────────────────────────────────────────────────
+
+type Token =
+  | { type: 'math-display'; value: string }
+  | { type: 'math-inline'; value: string }
+  | { type: 'code-block'; lang: string; value: string }
+  | { type: 'text'; value: string };
+
+function tokenize(raw: string): Token[] {
+  const tokens: Token[] = [];
+
+  // Regex por ordem de prioridade (mais específico primeiro)
+  const RE = new RegExp(
+    // 1. Bloco de código com linguagem math/latex → display math
+    '```(?:math|latex)\\n?([\\s\\S]*?)```' +
+    // 2. Bloco de código genérico
+    '|```(?:(\\w*)\\n)?([\\s\\S]*?)```' +
+    // 3. Display math: $$…$$
+    '|\\$\\$([\\s\\S]*?)\\$\\$' +
+    // 4. Display math: \[…\]
+    '|\\\\\\[([\\s\\S]*?)\\\\\\]' +
+    // 5. Inline math: \(…\)
+    '|\\\\\\(([\\s\\S]*?)\\\\\\)' +
+    // 6. Inline math: $…$ (não confundir com $$)
+    '|(?<!\\$)\\$(?!\\$)([^$\n]+?)(?<!\\$)\\$(?!\\$)',
+    'g',
+  );
+
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = RE.exec(raw)) !== null) {
+    if (m.index > last) {
+      tokens.push({ type: 'text', value: raw.slice(last, m.index) });
+    }
+
+    if (m[1] !== undefined) {
+      // math/latex code block → display math
+      tokens.push({ type: 'math-display', value: m[1].trim() });
+    } else if (m[3] !== undefined) {
+      // generic code block
+      tokens.push({ type: 'code-block', lang: m[2] ?? '', value: m[3] });
+    } else if (m[4] !== undefined) {
+      tokens.push({ type: 'math-display', value: m[4].trim() });
+    } else if (m[5] !== undefined) {
+      tokens.push({ type: 'math-display', value: m[5].trim() });
+    } else if (m[6] !== undefined) {
+      tokens.push({ type: 'math-inline', value: m[6].trim() });
+    } else if (m[7] !== undefined) {
+      tokens.push({ type: 'math-inline', value: m[7].trim() });
+    }
+
+    last = RE.lastIndex;
+  }
+
+  if (last < raw.length) {
+    tokens.push({ type: 'text', value: raw.slice(last) });
+  }
+
+  return tokens;
+}
+
+// ── Markdown leve para texto simples ─────────────────────────────────────────
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  // Processa: **bold**, *italic*, `code`
+  const parts: ReactNode[] = [];
+  const RE = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = RE.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[2]) parts.push(<strong key={key++} style={{ color: 'var(--chat-text, #f0f0f0)', fontWeight: 700 }}>{m[2]}</strong>);
+    else if (m[3]) parts.push(<em key={key++}>{m[3]}</em>);
+    else if (m[4]) parts.push(
+      <code key={key++} style={{
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '0.88em',
+        padding: '1px 5px',
+        borderRadius: 4,
+        background: 'var(--inline-code-bg, #2a2a2a)',
+        border: '1px solid var(--chat-border, #2f2f2f)',
+        color: 'var(--chat-accent, #f59e0b)',
+      }}>{m[4]}</code>
+    );
+    last = RE.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function renderTextBlock(raw: string): ReactNode {
+  const lines = raw.split('\n');
+  const nodes: ReactNode[] = [];
+  let key = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Heading
+    const hMatch = line.match(/^(#{1,4})\s+(.+)/);
+    if (hMatch) {
+      const level = hMatch[1].length;
+      const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+      const sizes = ['1.15em', '1.05em', '0.98em', '0.93em'];
+      nodes.push(
+        <Tag key={key++} style={{
+          fontSize: sizes[level - 1],
+          fontWeight: 700,
+          color: 'var(--chat-text, #f0f0f0)',
+          margin: '14px 0 6px',
+          lineHeight: 1.3,
+          letterSpacing: '-0.01em',
+        }}>
+          {renderInlineMarkdown(hMatch[2])}
+        </Tag>
+      );
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) {
+      nodes.push(<hr key={key++} style={{ border: 'none', borderTop: '1px solid var(--chat-border, #2f2f2f)', margin: '12px 0' }} />);
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith('> ')) {
+      nodes.push(
+        <blockquote key={key++} style={{
+          borderLeft: '3px solid var(--chat-accent, #f59e0b)',
+          paddingLeft: 10,
+          margin: '6px 0',
+          color: 'var(--chat-text-muted, #b5b5b5)',
+          fontStyle: 'italic',
+          fontSize: '0.93em',
+        }}>
+          {renderInlineMarkdown(line.slice(2))}
+        </blockquote>
+      );
+      continue;
+    }
+
+    // Lista com bullet
+    if (/^[-*•]\s/.test(line)) {
+      nodes.push(
+        <li key={key++} style={{
+          listStyle: 'none',
+          paddingLeft: 14,
+          position: 'relative',
+          margin: '3px 0',
+          lineHeight: 1.6,
+          color: 'var(--chat-text, #f0f0f0)',
+        }}>
+          <span style={{
+            position: 'absolute',
+            left: 0,
+            color: 'var(--chat-accent, #f59e0b)',
+            fontSize: '0.7em',
+            top: '0.35em',
+          }}>◆</span>
+          {renderInlineMarkdown(line.replace(/^[-*•]\s/, ''))}
+        </li>
+      );
+      continue;
+    }
+
+    // Lista numerada
+    const numMatch = line.match(/^(\d+)\.\s+(.+)/);
+    if (numMatch) {
+      nodes.push(
+        <li key={key++} style={{
+          listStyle: 'none',
+          paddingLeft: 22,
+          position: 'relative',
+          margin: '3px 0',
+          lineHeight: 1.6,
+          color: 'var(--chat-text, #f0f0f0)',
+        }}>
+          <span style={{
+            position: 'absolute',
+            left: 0,
+            color: 'var(--chat-accent, #f59e0b)',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.8em',
+            top: '0.15em',
+          }}>{numMatch[1]}.</span>
+          {renderInlineMarkdown(numMatch[2])}
+        </li>
+      );
+      continue;
+    }
+
+    // Linha vazia → espaço
+    if (line.trim() === '') {
+      if (nodes.length > 0) nodes.push(<div key={key++} style={{ height: 6 }} />);
+      continue;
+    }
+
+    // Parágrafo normal
+    nodes.push(
+      <p key={key++} style={{
+        margin: '3px 0',
+        lineHeight: 1.7,
+        color: 'var(--chat-text, #f0f0f0)',
+      }}>
+        {renderInlineMarkdown(line)}
+      </p>
+    );
+  }
+
+  return <>{nodes}</>;
+}
+
+// ── Bloco de código com header ────────────────────────────────────────────────
+
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  return (
+    <div style={{
+      margin: '10px 0',
+      borderRadius: 8,
+      overflow: 'hidden',
+      border: '1px solid var(--chat-border, #2f2f2f)',
+    }}>
+      {lang && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '5px 12px',
+          background: 'var(--code-header-bg, #252525)',
+          borderBottom: '1px solid var(--chat-border, #2f2f2f)',
+        }}>
+          <span style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            color: 'var(--chat-accent, #f59e0b)',
+            textTransform: 'uppercase',
+          }}>{lang}</span>
+        </div>
+      )}
+      <pre style={{
+        margin: 0,
+        padding: '12px 14px',
+        overflowX: 'auto',
+        background: 'var(--code-bg, #181818)',
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '0.84em',
+        lineHeight: 1.6,
+        color: 'var(--code-text, #d4d4d4)',
+      }}>
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 
 interface Props {
   content: string;
@@ -11,219 +359,31 @@ interface Props {
 }
 
 export function ChatMessageContent({ content, role }: Props) {
-  const documentNodes = useMemo(() => parseToAST(content), [content]);
+  const tokens = tokenize(content);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.8rem',
-        color: role === 'user' ? '#e4ddd5' : '#d8d0c7',
-        fontFamily: role === 'user' ? "'Georgia', serif" : "'Courier New', monospace",
-        fontSize: '12px',
-        lineHeight: 1.75,
-      }}
-    >
-      {documentNodes.length > 0
-        ? documentNodes.map((node, index) => <BlockNodeView key={index} node={node} role={role} />)
-        : <ParagraphFallback content={content} />}
+    <div style={{
+      fontFamily: role === 'user'
+        ? 'JetBrains Mono, monospace'
+        : 'system-ui, -apple-system, sans-serif',
+      fontSize: role === 'user' ? '0.88em' : '0.9em',
+      lineHeight: 1.65,
+      color: 'var(--chat-text, #f0f0f0)',
+    }}>
+      {tokens.map((token, i) => {
+        switch (token.type) {
+          case 'math-display':
+            return <KatexBlock key={i} tex={token.value} display={true} />;
+          case 'math-inline':
+            return <KatexBlock key={i} tex={token.value} display={false} />;
+          case 'code-block':
+            return <CodeBlock key={i} lang={token.lang} code={token.value} />;
+          case 'text':
+            return <span key={i}>{renderTextBlock(token.value)}</span>;
+          default:
+            return null;
+        }
+      })}
     </div>
-  );
-}
-
-function BlockNodeView({ node, role }: { node: DocumentNode; role: 'user' | 'assistant' }) {
-  switch (node.type) {
-    case 'paragraph':
-      return <p style={{ margin: 0 }}>{renderInlineNodes(node.children, role)}</p>;
-    case 'heading': {
-      const sizeMap: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
-        1: '1.2rem',
-        2: '1.05rem',
-        3: '0.98rem',
-        4: '0.92rem',
-        5: '0.88rem',
-        6: '0.84rem',
-      };
-
-      const HeadingTag = `h${node.level}` as ElementType;
-
-      return (
-        <HeadingTag
-          style={{
-            margin: 0,
-            fontSize: sizeMap[node.level],
-            lineHeight: 1.35,
-            color: '#f0e7dc',
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            fontFamily: "'Georgia', serif",
-          }}
-        >
-          {renderInlineNodes(node.children, role)}
-        </HeadingTag>
-      );
-    }
-    case 'list': {
-      const ListTag = (node.ordered ? 'ol' : 'ul') as 'ol' | 'ul';
-
-      return (
-        <ListTag
-          style={{
-            margin: 0,
-            paddingLeft: '1.25rem',
-            display: 'grid',
-            gap: '0.45rem',
-          }}
-        >
-          {node.items.map((item, index) => (
-            <li key={index} style={{ paddingLeft: '0.15rem' }}>
-              <div style={{ display: 'grid', gap: '0.45rem' }}>
-                {item.map((child, childIndex) => (
-                  <BlockNodeView key={childIndex} node={child} role={role} />
-                ))}
-              </div>
-            </li>
-          ))}
-        </ListTag>
-      );
-    }
-    case 'blockquote':
-      return (
-        <blockquote
-          style={{
-            margin: 0,
-            padding: '0.75rem 0.9rem',
-            borderLeft: '3px solid #c9a96e55',
-            background: '#171411',
-            borderRadius: '0 8px 8px 0',
-            display: 'grid',
-            gap: '0.55rem',
-            color: '#cfc6bc',
-          }}
-        >
-          {node.children.map((child, index) => (
-            <BlockNodeView key={index} node={child} role={role} />
-          ))}
-        </blockquote>
-      );
-    case 'math_block':
-      return <MathBlock latex={node.latex} displayMode />;
-    default:
-      return null;
-  }
-}
-
-function ParagraphFallback({ content }: { content: string }) {
-  return (
-    <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-      {content}
-    </p>
-  );
-}
-
-function renderInlineNodes(nodes: InlineNode[], role: 'user' | 'assistant'): ReactNode {
-  return nodes.map((node, index) => {
-    const key = `${node.type}-${index}`;
-
-    switch (node.type) {
-      case 'text':
-        return <Fragment key={key}>{node.value}</Fragment>;
-      case 'strong':
-        return <strong key={key} style={{ color: '#f2eadf', fontWeight: 700 }}>{renderInlineNodes(node.children, role)}</strong>;
-      case 'emphasis':
-        return <em key={key} style={{ color: '#d8be90' }}>{renderInlineNodes(node.children, role)}</em>;
-      case 'inline_code':
-        return (
-          <code
-            key={key}
-            style={{
-              background: '#191613',
-              border: '1px solid #2d2721',
-              borderRadius: '5px',
-              padding: '0.12rem 0.4rem',
-              color: '#d8be90',
-              fontSize: '0.95em',
-              fontFamily: "'Courier New', monospace",
-            }}
-          >
-            {node.value}
-          </code>
-        );
-      case 'link':
-        return (
-          <a
-            key={key}
-            href={node.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#d8be90', textDecoration: 'underline', textUnderlineOffset: '0.2em' }}
-          >
-            {renderInlineNodes(node.children, role)}
-          </a>
-        );
-      case 'math_inline':
-        return <MathBlock key={key} latex={node.latex} displayMode={false} inlineRole={role} />;
-      default:
-        return null;
-    }
-  });
-}
-
-function MathBlock({
-  latex,
-  displayMode,
-  inlineRole,
-}: {
-  latex: string;
-  displayMode: boolean;
-  inlineRole?: 'user' | 'assistant';
-}) {
-  const mathMarkup = useMemo(() => {
-    try {
-      return temml.renderToString(latex, {
-        displayMode,
-        throwOnError: false,
-        strict: false,
-      });
-    } catch {
-      return null;
-    }
-  }, [displayMode, latex]);
-
-  if (!mathMarkup) {
-    return (
-      <code
-        style={{
-          display: displayMode ? 'block' : 'inline-block',
-          whiteSpace: 'pre-wrap',
-          background: '#161311',
-          border: '1px solid #3a2d24',
-          borderRadius: '6px',
-          padding: displayMode ? '0.75rem 0.9rem' : '0.1rem 0.4rem',
-          color: '#e4b87f',
-          fontFamily: "'Courier New', monospace",
-        }}
-      >
-        {latex}
-      </code>
-    );
-  }
-
-  return (
-    <span
-      style={{
-        display: displayMode ? 'block' : 'inline-flex',
-        width: displayMode ? '100%' : 'auto',
-        overflowX: displayMode ? 'auto' : 'visible',
-        padding: displayMode ? '0.9rem 1rem' : '0 0.18rem',
-        borderRadius: '8px',
-        border: displayMode ? '1px solid #2a2520' : 'none',
-        background: displayMode ? '#15120f' : 'transparent',
-        color: inlineRole === 'user' ? '#efe6da' : '#f3eadc',
-        alignItems: 'center',
-      }}
-      dangerouslySetInnerHTML={{ __html: mathMarkup }}
-    />
   );
 }
