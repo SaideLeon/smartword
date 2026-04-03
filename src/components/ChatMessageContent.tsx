@@ -205,6 +205,18 @@ function parseTableRow(line: string): string[] {
   return cleaned.split('|').map((cell) => cell.trim());
 }
 
+function normalizeTableRow(line: string): string {
+  const trimmed = line.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.startsWith('|') ? trimmed : `| ${trimmed}`;
+}
+
+function isLikelyCompleteTableRow(line: string, expectedCells: number): boolean {
+  const normalized = normalizeTableRow(line);
+  const cells = parseTableRow(normalized);
+  return normalized.endsWith('|') && cells.length >= expectedCells;
+}
+
 function parseTableAlign(sepCell: string): TableAlign {
   const cell = sepCell.trim();
   const left = cell.startsWith(':');
@@ -254,6 +266,7 @@ function parseBlocks(raw: string): ParsedBlock[] {
     const headers = parseTableRow(line);
     const sep = parseTableRow(next);
     const aligns = sep.map(parseTableAlign);
+    const expectedCells = Math.max(headers.length, 1);
 
     const rows: string[][] = [];
     i += 2;
@@ -262,7 +275,19 @@ function parseBlocks(raw: string): ParsedBlock[] {
       const rowLine = lines[i];
       if (!rowLine.trim()) break;
       if (!rowLine.includes('|')) break;
-      rows.push(parseTableRow(rowLine));
+
+      let mergedRow = normalizeTableRow(rowLine);
+      while (
+        i + 1 < lines.length &&
+        !isLikelyCompleteTableRow(mergedRow, expectedCells)
+      ) {
+        const continuation = lines[i + 1];
+        if (!continuation.trim()) break;
+        mergedRow = `${mergedRow} ${continuation.trim()}`;
+        i += 1;
+      }
+
+      rows.push(parseTableRow(mergedRow));
       i += 1;
     }
 
