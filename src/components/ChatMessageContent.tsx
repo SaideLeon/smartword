@@ -414,7 +414,7 @@ function RenderTable({ headers, aligns, rows }: Omit<TableBlock, 'type'>) {
             {headers.map((header, index) => (
               <th key={`th-${index}`} style={{
                 textAlign: aligns[index] ?? 'left',
-                padding: '10px 12px',
+                padding: '14px 14px',
                 color: 'var(--ac-primary, #f59e0b)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
@@ -445,11 +445,12 @@ function RenderTable({ headers, aligns, rows }: Omit<TableBlock, 'type'>) {
               {headers.map((_, colIndex) => (
                 <td key={`td-${rowIndex}-${colIndex}`} style={{
                   textAlign: aligns[colIndex] ?? 'left',
-                  padding: '9px 12px',
+                  padding: '13px 14px',
                   borderTop: '1px solid var(--ac-border, rgba(255,255,255,0.08))',
                   borderRight: colIndex < headers.length - 1 ? '1px solid var(--ac-border, rgba(255,255,255,0.08))' : 'none',
                   color: 'var(--chat-text, #f0f0f0)',
                   fontSize: '0.9em',
+                  lineHeight: 1.65,
                 }}>
                   {renderInlineMarkdown(row[colIndex] ?? '')}
                 </td>
