@@ -42,19 +42,20 @@ export interface TccSession {
 
 /**
  * Decide se é necessário comprimir o contexto antes de desenvolver uma secção.
- * Threshold: quando há 3 ou mais secções desenvolvidas que não estão no resumo.
+ * Threshold: sempre que exista pelo menos 1 secção antiga para resumir,
+ * preservando apenas a secção imediatamente anterior em texto completo.
  */
 export interface CompressionDecision {
   shouldCompress: boolean;
   developedButUncompressed: TccSection[];
   compressedSections: TccSection[];      // já no resumo (só o título disponível)
-  recentSections: TccSection[];          // as 2 mais recentes, sempre completas
+  recentSections: TccSection[];          // apenas a mais recente, sempre completa
 }
 
 /**
  * Contexto optimizado enviado à IA para desenvolvimento de uma secção.
  * Em vez do conteúdo completo de todas as secções anteriores,
- * usa o resumo comprimido + as 2 secções mais recentes completas.
+ * usa o resumo comprimido + a secção mais recente completa.
  */
 export interface OptimisedContext {
   outline: string;
