@@ -3,8 +3,7 @@
 
 import { createClient } from '@/lib/supabase';
 import type { TccSession, TccSection, CompressionDecision, OptimisedContext } from './types';
-
-const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
+import { groqFetch } from '@/lib/groq-resilient';
 
 // ── Constantes de controlo ────────────────────────────────────────────────────
 
@@ -114,18 +113,9 @@ async function generateCompressionSummary(
   sectionsToCompress: TccSection[],
   existingSummary: string | null,
 ): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error('GROQ_API_KEY não configurada');
-
   const prompt = buildCompressionPrompt(topic, outline, sectionsToCompress, existingSummary);
 
-  const response = await fetch(GROQ_BASE, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const response = await groqFetch(() => ({
       model: 'openai/gpt-oss-120b',
       messages: [
         { role: 'system', content: prompt },
@@ -134,13 +124,7 @@ async function generateCompressionSummary(
       stream:      false,
       max_tokens:  600,
       temperature: 0.2,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Erro na API de compressão: ${err}`);
-  }
+    }));
 
   const data = await response.json();
   const summary = data.choices?.[0]?.message?.content ?? '';
