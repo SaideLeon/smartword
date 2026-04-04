@@ -1,5 +1,6 @@
 // lib/tcc/types.ts  (versão actualizada — substitui o ficheiro original)
 import type { CoverData } from '@/lib/docx/cover-types';
+import type { ContextType } from '@/lib/tcc/context-detector';
 
 export type TccSectionStatus = 'pending' | 'developed' | 'inserted';
 
@@ -31,6 +32,7 @@ export interface TccSession {
   summary_covers_up_to: number | null;   // índice da última secção resumida
   summary_updated_at:   string | null;   // quando foi gerado
   total_tokens_estimate: number;         // estimativa acumulada de tokens
+  context_type?: ContextType;
   research_keywords: string[] | null;
   research_brief: string | null;
   research_generated_at: string | null;

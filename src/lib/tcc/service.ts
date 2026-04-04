@@ -5,6 +5,7 @@
 import { createClient, requireUserId } from '@/lib/supabase';
 import type { TccSession, TccSection } from './types';
 import type { CoverData } from '@/lib/docx/cover-types';
+import type { ContextType } from '@/lib/tcc/context-detector';
 
 // ─── Criar nova sessão ────────────────────────────────────────────────────────
 export async function createSession(topic: string): Promise<TccSession> {
@@ -100,6 +101,21 @@ export async function saveTccResearchBrief(
       research_brief:         brief,
       research_generated_at:  new Date().toISOString(),
     })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
+// ─── Guardar tipo de contextualização detectado ─────────────────────────────
+export async function saveContextType(
+  id: string,
+  contextType: ContextType,
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('tcc_sessions')
+    .update({ context_type: contextType })
     .eq('id', id);
 
   if (error) throw new Error(error.message);
