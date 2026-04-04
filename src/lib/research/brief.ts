@@ -1,4 +1,5 @@
 import { groqFetch } from '@/lib/groq-resilient';
+import { buildContextInstruction, type ContextType } from '@/lib/tcc/context-detector';
 
 export interface ResearchBrief {
   keywords: string[];
@@ -81,9 +82,16 @@ function parseKeywords(text: string): string[] {
   return Array.from(new Set(candidates)).slice(0, 12);
 }
 
-export async function generateResearchBrief(topic: string, outline: string): Promise<ResearchBrief> {
+export async function generateResearchBrief(
+  topic: string,
+  outline: string,
+  contextType: ContextType = 'comparative',
+): Promise<ResearchBrief> {
+  const contextInstruction = buildContextInstruction(contextType);
   const basePrompt = (outlineExcerpt: string) => `Atua como um agente de pesquisa académica.
 TEMA: "${topic}"
+${contextInstruction}
+
 ESBOÇO APROVADO:
 ${outlineExcerpt}
 
@@ -125,6 +133,7 @@ Regras críticas:
   // O modelo pesquisa na web e gera a ficha a partir das fontes encontradas.
   const compoundPrompt = `Atua como um agente de pesquisa académica.
 TEMA: "${topic}"
+${contextInstruction}
 
 Tarefa obrigatória:
 1) Usa pesquisa web para recolher fontes e dados recentes sobre o tema.
