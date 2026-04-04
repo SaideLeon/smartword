@@ -120,54 +120,72 @@ Regras críticas:
 - Sempre que possível, indicar data da fonte e contexto temporal dos dados.
 - Se houver lacunas ou conflito entre fontes, declarar explicitamente.`;
 
-  const toolOutlineBudgets = [4_000, 2_500, 1_500, 900];
-  for (let i = 0; i < toolOutlineBudgets.length; i++) {
-    const outlineForPrompt = compactOutline(outline, toolOutlineBudgets[i]);
-    const prompt = basePrompt(outlineForPrompt);
+  // ── Tentativa 1: groq/compound com web search ──────────────────────────────
+  // Envia APENAS o tópico (sem outline) para evitar erros 413 no compound model.
+  // O modelo pesquisa na web e gera a ficha a partir das fontes encontradas.
+  const compoundPrompt = `Atua como um agente de pesquisa académica.
+TEMA: "${topic}"
 
-    const toolBody = {
-      model: 'groq/compound',
-      messages: [
-        {
-          role: 'system',
-          content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.2,
-      max_tokens: i === 0 ? 1200 : 900,
-      stream: false,
-      compound_custom: {
-        tools: {
-          enabled_tools: ['web_search', 'visit_website'],
-        },
+Tarefa obrigatória:
+1) Usa pesquisa web para recolher fontes e dados recentes sobre o tema.
+2) Entrega uma FICHA TÉCNICA reutilizável para escrever um trabalho académico.
+
+Formato de resposta obrigatório (Markdown):
+## PALAVRAS-CHAVE
+- palavra 1
+- palavra 2
+
+## FICHA TÉCNICA DE PESQUISA
+- Tema delimitado
+- Principais achados com dados/contexto verificável
+- Definições-chave (conceitos e termos técnicos)
+- Autores/obras de referência (autor + contribuição)
+- Fontes recomendadas (nome + link)
+- Limites e lacunas
+
+## REFERÊNCIAS BIBLIOGRÁFICAS SUGERIDAS
+- [Autor, ano] Título — link directo
+
+## DIRETRIZ DE USO
+Como usar esta ficha para manter coerência nas secções do trabalho.
+
+Regras: não inventar factos, indicar fonte explícita, declarar lacunas.`;
+
+  const toolBody = {
+    model: 'groq/compound',
+    messages: [
+      {
+        role: 'system',
+        content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
       },
-    };
+      { role: 'user', content: compoundPrompt },
+    ],
+    temperature: 0.2,
+    max_tokens: 900,
+    stream: false,
+    compound_custom: {
+      tools: {
+        enabled_tools: ['web_search', 'visit_website'],
+      },
+    },
+  };
 
-    try {
-      const payload = await requestBrief(toolBody);
-      const brief = payload.choices?.[0]?.message?.content?.trim();
-      if (!brief) throw new Error('Resposta vazia na pesquisa com ferramentas');
-      const keywords = parseKeywords(brief);
-      return { keywords, brief };
-    } catch (toolError) {
-      if (isRequestTooLargeError(toolError) && i < toolOutlineBudgets.length - 1) {
-        console.warn('[research] 413 no modo com web tools; a reduzir prompt e tentar novamente.', {
-          attempt: i + 1,
-          nextOutlineBudget: toolOutlineBudgets[i + 1],
-        });
-        continue;
-      }
-      console.warn('[research] Falha no modo com web tools, a usar fallback sem tools.', toolError);
-      break;
-    }
+  try {
+    const payload = await requestBrief(toolBody);
+    const brief = payload.choices?.[0]?.message?.content?.trim();
+    if (!brief) throw new Error('Resposta vazia na pesquisa com ferramentas');
+    const keywords = parseKeywords(brief);
+    return { keywords, brief };
+  } catch (toolError) {
+    console.warn('[research] Falha no modo com web tools, a usar fallback sem tools.', toolError);
   }
 
+  // ── Tentativa 2: LLM sem tools (com outline resumido) ─────────────────────
   const fallbackOutlineBudgets = [1_500, 900, 600];
   for (let i = 0; i < fallbackOutlineBudgets.length; i++) {
     const outlineForPrompt = compactOutline(outline, fallbackOutlineBudgets[i]);
     const plainFallbackBody = {
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages: [
         {
           role: 'system',
@@ -199,5 +217,6 @@ Regras críticas:
     }
   }
 
+  // ── Fallback final: ficha heurística local (sem chamadas externas) ─────────
   return buildHeuristicBrief(topic, outline);
 }

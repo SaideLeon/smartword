@@ -6,6 +6,8 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { groqJSON } from '@/lib/groq-resilient';
 
 // ── JSON Schema da tool ───────────────────────────────────────────────────────
+// IMPORTANTE: não usar "nullable: true" — o Groq rejeita null nos parâmetros.
+// Campos opcionais são simplesmente omitidos do array "required".
 
 const COVER_TOOL = {
   type: 'function',
@@ -22,18 +24,16 @@ const COVER_TOOL = {
         },
         delegation: {
           type: 'string',
-          description: 'Delegação ou localização',
-          nullable: true,
+          description: 'Delegação ou localização (opcional)',
         },
         logoBase64: {
           type: 'string',
-          description: 'Imagem do logotipo em base64 ou data URL',
-          nullable: true,
+          description: 'Imagem do logotipo em base64 ou data URL (opcional)',
         },
         logoMediaType: {
           type: 'string',
           enum: ['image/png', 'image/jpeg'],
-          nullable: true,
+          description: 'Tipo MIME do logotipo (opcional)',
         },
         course: {
           type: 'string',
@@ -49,8 +49,7 @@ const COVER_TOOL = {
         },
         group: {
           type: 'string',
-          description: 'Identificação do grupo',
-          nullable: true,
+          description: 'Identificação do grupo (opcional)',
         },
         members: {
           type: 'array',
@@ -102,11 +101,11 @@ Pergunta ao utilizador de forma clara e directa se deseja incluir capa e contrac
 
 REGRAS ABSOLUTAS:
 1. Faz APENAS esta pergunta — nada mais na primeira mensagem
-2. Se o utilizador responder SIM / quiser capa: chama a tool criar_capa IMEDIATAMENTE. Não peças NENHUM dado via chat — apenas via tool.
+2. Se o utilizador responder SIM / quiser capa: chama a tool criar_capa IMEDIATAMENTE. Não peças NENHUM dado via chat — apenas via tool. Passa strings vazias ("") nos campos obrigatórios e omite os campos opcionais.
 3. Se o utilizador responder NÃO / não quiser capa: responde de forma curta e positiva, sem chamar nenhuma tool
 4. Nunca inventas dados de capa — são sempre fornecidos pelo utilizador através do formulário
 5. Responde sempre em português europeu
-6. Quando o utilizador confirmar capa, deves chamar criar_capa com valores placeholder vazios — o sistema substituirá pelos dados reais do formulário`;
+6. Quando o utilizador confirmar capa, chama criar_capa com strings vazias nos campos obrigatórios e omite completamente os campos opcionais (delegation, logoBase64, logoMediaType, group)`;
 }
 
 export async function POST(req: Request) {

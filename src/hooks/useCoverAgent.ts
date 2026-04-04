@@ -29,6 +29,8 @@ interface CoverAgentContext {
 }
 
 // ── JSON Schema da tool ───────────────────────────────────────────────────────
+// IMPORTANTE: não usar "nullable: true" — o Groq rejeita null nos parâmetros.
+// Campos opcionais são simplesmente omitidos do array "required".
 
 const COVER_TOOL = {
   type: 'function' as const,
@@ -40,13 +42,13 @@ const COVER_TOOL = {
       type: 'object',
       properties: {
         institution:    { type: 'string', description: 'Nome completo da instituição' },
-        delegation:     { type: 'string', description: 'Delegação ou localização', nullable: true },
-        logoBase64:     { type: 'string', description: 'Imagem do logotipo em base64 ou data URL', nullable: true },
-        logoMediaType:  { type: 'string', enum: ['image/png', 'image/jpeg'], nullable: true },
+        delegation:     { type: 'string', description: 'Delegação ou localização (opcional)' },
+        logoBase64:     { type: 'string', description: 'Imagem do logotipo em base64 ou data URL (opcional)' },
+        logoMediaType:  { type: 'string', enum: ['image/png', 'image/jpeg'], description: 'Tipo MIME do logotipo (opcional)' },
         course:         { type: 'string', description: 'Nome do curso' },
         subject:        { type: 'string', description: 'Disciplina ou módulo' },
         theme:          { type: 'string', description: 'Tema do trabalho' },
-        group:          { type: 'string', description: 'Identificação do grupo', nullable: true },
+        group:          { type: 'string', description: 'Identificação do grupo (opcional)' },
         members:        { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Lista de membros do grupo' },
         teacher:        { type: 'string', description: 'Nome do docente/orientador' },
         city:           { type: 'string', description: 'Cidade' },
@@ -56,28 +58,6 @@ const COVER_TOOL = {
     },
   },
 };
-
-// ── Prompt do agente ──────────────────────────────────────────────────────────
-
-function buildAgentSystemPrompt(topic: string, outline: string): string {
-  return `És um assistente académico especializado em trabalhos escolares do ensino secundário/médio em Moçambique.
-
-O utilizador acabou de aprovar o esboço de um trabalho sobre: "${topic}"
-
-ESBOÇO APROVADO:
-${outline.slice(0, 800)}${outline.length > 800 ? '…' : ''}
-
-A TUA ÚNICA TAREFA AGORA:
-Pergunta ao utilizador de forma clara e directa:
-"Deseja incluir capa e contracapa no trabalho, ou prefere iniciar directamente pela Introdução?"
-
-REGRAS ABSOLUTAS:
-- Faz APENAS esta pergunta — nenhuma outra
-- Se o utilizador responder SIM à capa: chama a tool criar_capa IMEDIATAMENTE (não peças dados via chat)
-- Se o utilizador responder NÃO à capa: responde "Entendido. Podes desenvolver as secções directamente." e não chames nenhuma tool
-- Nunca pedes dados de capa via chat — apenas via tool
-- Responde em português europeu`;
-}
 
 // ── Geração de abstract ───────────────────────────────────────────────────────
 
@@ -136,9 +116,6 @@ export function useCoverAgent() {
   });
 
   // ── Restaurar dados de capa de uma sessão anterior ────────────────────────
-  //
-  // Chamado pelo WorkPanel quando se retoma uma sessão que já tinha capa gerada.
-  // Salta todo o fluxo do agente e restaura directamente o estado final.
 
   const restoreCoverData = useCallback((coverData: CoverData) => {
     setState({
@@ -239,9 +216,6 @@ export function useCoverAgent() {
   }, []);
 
   // ── Receber dados do formulário de capa e gerar abstract ──────────────────
-  //
-  // Retorna o CoverData final (com abstract incluído) para que o chamador
-  // possa persistir os dados no Supabase.
 
   const submitCoverData = useCallback(async (
     coverData: CoverData,
