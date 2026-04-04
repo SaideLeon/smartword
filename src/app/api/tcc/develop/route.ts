@@ -18,6 +18,22 @@ const SECTIONS_THAT_ALLOW_CLOSING = new Set([
   'referências e bibliografia',
 ]);
 
+const PRE_TEXTUAL_SECTION_KEYWORDS = [
+  'introducao',
+  'introdução',
+  'resumo',
+  'abstract',
+  'dedicatoria',
+  'dedicatória',
+  'agradecimentos',
+  'epigrafe',
+  'epígrafe',
+  'lista de abreviaturas',
+  'lista de siglas',
+  'lista de figuras',
+  'lista de tabelas',
+];
+
 function sectionAllowsClosing(title: string): boolean {
   return SECTIONS_THAT_ALLOW_CLOSING.has(title.toLowerCase().trim());
 }
@@ -54,6 +70,10 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
   return cleaned;
 }
 
+function isPreTextualSection(normalizedName: string): boolean {
+  return PRE_TEXTUAL_SECTION_KEYWORDS.some((keyword) => normalizedName.includes(keyword));
+}
+
 function getSectionInstruction(normalizedName: string, isSubsection: boolean): string {
   if (isSubsection) {
     return `Desenvolve esta subsecção com profundidade universitária e rigor científico. Deve:
@@ -71,9 +91,10 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - Contextualizar o tema com relevância científica e académica
 - Delimitar o problema de investigação de forma clara
 - Apresentar objectivo geral e orientação analítica do trabalho
-- Resumir a estrutura dos capítulos de forma breve e lógica
+- Resumir a estrutura dos capítulos de forma breve, coesa e lógica
 - Incluir citações no corpo do texto em APA (7.ª edição)
-- Manter entre 300 e 600 palavras
+- Manter entre 250 e 400 palavras (máximo 1 página)
+- Ser directa: sem detalhamento excessivo, pois os pormenores pertencem ao desenvolvimento
 - NÃO antecipar discussão conclusiva`;
   }
 
@@ -159,6 +180,13 @@ function buildSystemPrompt(
   const isSubsection = /^\d+\.\d+/.test(currentSection.title);
   const normalizedName = normalizeTitle(currentSection.title);
   const specificInstruction = getSectionInstruction(normalizedName, isSubsection);
+  const preTextualLimitInstruction = isPreTextualSection(normalizedName)
+    ? `
+LIMITE OBRIGATÓRIO DE EXTENSÃO PARA ELEMENTOS PRÉ-TEXTUAIS:
+- Esta secção é pré-textual e NÃO pode ultrapassar 1 página equivalente.
+- Mantém o texto coeso, objectivo e sintético, sem detalhamento extensivo.
+- Evita aprofundamento analítico: reserva os detalhes para as secções de desenvolvimento.`
+    : '';
 
   const antiClosingInstruction = !sectionAllowsClosing(currentSection.title)
     ? `
@@ -202,6 +230,7 @@ Desenvolve APENAS o conteúdo interno da secção: "${currentSection.title}"
 
 Instrução específica para esta secção:
 ${specificInstruction}
+${preTextualLimitInstruction}
 ${antiClosingInstruction}
 
 REGRAS DE ESCRITA — OBRIGATÓRIAS
