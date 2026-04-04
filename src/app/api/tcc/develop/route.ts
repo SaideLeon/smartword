@@ -247,6 +247,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payload inválido: sessionId e sectionIndex são obrigatórios' }, { status: 400 });
     }
 
+    const parsedSectionIndex = sectionIndex;
+
     let session = await getSession(sessionId);
     if (!session) {
       console.error('[api/tcc/develop] Sessão não encontrada', { sessionId, sectionIndex });
@@ -257,7 +259,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Esboço ainda não aprovado' }, { status: 400 });
     }
 
-    const currentSection = session.sections.find(s => s.index === sectionIndex);
+    const currentSection = session.sections.find(s => s.index === parsedSectionIndex);
     if (!currentSection) {
       console.error('[api/tcc/develop] Secção não encontrada', {
         sessionId,
@@ -267,8 +269,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Secção não encontrada' }, { status: 404 });
     }
 
-    session = await compressContextIfNeeded(session, sectionIndex);
-    const optimised = buildOptimisedContext(session, sectionIndex);
+    session = await compressContextIfNeeded(session, parsedSectionIndex);
+    const optimised = buildOptimisedContext(session, parsedSectionIndex);
 
     const systemPrompt = buildSystemPrompt(
       session.topic,
@@ -323,7 +325,7 @@ export async function POST(req: Request) {
         if (sessionId && accumulated) {
           try {
             const cleaned = stripSpuriousBlocks(accumulated, currentSection.title);
-            await saveSectionContent(sessionId, sectionIndex, cleaned, session.sections);
+            await saveSectionContent(sessionId, parsedSectionIndex, cleaned, session.sections);
           } catch (e) {
             console.error('[api/tcc/develop] Erro ao guardar secção', {
               sessionId,
