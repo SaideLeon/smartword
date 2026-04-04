@@ -8,8 +8,8 @@ const GROQ_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
 // ── Constantes de controlo ────────────────────────────────────────────────────
 
-const COMPRESSION_THRESHOLD  = 3;
-const RECENT_SECTIONS_TO_KEEP = 2;
+const COMPRESSION_THRESHOLD = 1;
+const RECENT_SECTIONS_TO_KEEP = 1;
 
 // ── Decisão de compressão ────────────────────────────────────────────────────
 
