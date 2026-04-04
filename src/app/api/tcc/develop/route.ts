@@ -230,24 +230,47 @@ export async function POST(req: Request) {
   const limited = enforceRateLimit(req, { scope: 'tcc:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
+  let sessionId: string | null = null;
+  let sectionIndex: number | null = null;
+
   try {
-    const { sessionId, sectionIndex } = await req.json();
+    const payload = await req.json();
+    sessionId = payload?.sessionId ?? null;
+    sectionIndex = typeof payload?.sectionIndex === 'number' ? payload.sectionIndex : null;
+
+    if (!sessionId || sectionIndex === null) {
+      console.error('[api/tcc/develop] Payload inválido', {
+        sessionId,
+        sectionIndex,
+        payloadKeys: payload && typeof payload === 'object' ? Object.keys(payload as Record<string, unknown>) : [],
+      });
+      return NextResponse.json({ error: 'Payload inválido: sessionId e sectionIndex são obrigatórios' }, { status: 400 });
+    }
+
+    const parsedSectionIndex = sectionIndex;
 
     let session = await getSession(sessionId);
     if (!session) {
+      console.error('[api/tcc/develop] Sessão não encontrada', { sessionId, sectionIndex });
       return NextResponse.json({ error: 'Sessão não encontrada' }, { status: 404 });
     }
     if (!session.outline_approved) {
+      console.error('[api/tcc/develop] Esboço não aprovado', { sessionId, sectionIndex });
       return NextResponse.json({ error: 'Esboço ainda não aprovado' }, { status: 400 });
     }
 
-    const currentSection = session.sections.find(s => s.index === sectionIndex);
+    const currentSection = session.sections.find(s => s.index === parsedSectionIndex);
     if (!currentSection) {
+      console.error('[api/tcc/develop] Secção não encontrada', {
+        sessionId,
+        sectionIndex,
+        availableSectionIndexes: session.sections.map(s => s.index),
+      });
       return NextResponse.json({ error: 'Secção não encontrada' }, { status: 404 });
     }
 
-    session = await compressContextIfNeeded(session, sectionIndex);
-    const optimised = buildOptimisedContext(session, sectionIndex);
+    session = await compressContextIfNeeded(session, parsedSectionIndex);
+    const optimised = buildOptimisedContext(session, parsedSectionIndex);
 
     const systemPrompt = buildSystemPrompt(
       session.topic,
@@ -302,9 +325,14 @@ export async function POST(req: Request) {
         if (sessionId && accumulated) {
           try {
             const cleaned = stripSpuriousBlocks(accumulated, currentSection.title);
-            await saveSectionContent(sessionId, sectionIndex, cleaned, session.sections);
+            await saveSectionContent(sessionId, parsedSectionIndex, cleaned, session.sections);
           } catch (e) {
-            console.error('Erro ao guardar secção:', e);
+            console.error('[api/tcc/develop] Erro ao guardar secção', {
+              sessionId,
+              sectionIndex,
+              sectionTitle: currentSection.title,
+              error: e,
+            });
           }
         }
       },
@@ -319,7 +347,15 @@ export async function POST(req: Request) {
         'X-Summary-Covers-Up-To': String(session.summary_covers_up_to ?? -1),
       },
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e : new Error(String(e));
+    console.error('[api/tcc/develop] Erro inesperado', {
+      sessionId,
+      sectionIndex,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
+    });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
