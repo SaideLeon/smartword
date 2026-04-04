@@ -1,4 +1,4 @@
-// app/api/tcc/develop/route.ts
+// src/app/api/tcc/develop/route.ts
 
 import { NextResponse } from 'next/server';
 import { getSession, saveSectionContent } from '@/lib/tcc/service';
@@ -6,6 +6,11 @@ import { compressContextIfNeeded, buildOptimisedContext } from '@/lib/tcc/contex
 import type { TccSection } from '@/lib/tcc/types';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { groqFetch } from '@/lib/groq-resilient';
+import { buildContextInstruction, type ContextType } from '@/lib/tcc/context-detector';
+
+// ---------------------------------------------------------------------------
+// Constantes de classificação de secções
+// ---------------------------------------------------------------------------
 
 const SECTIONS_THAT_ALLOW_CLOSING = new Set([
   'conclusão',
@@ -34,6 +39,32 @@ const PRE_TEXTUAL_SECTION_KEYWORDS = [
   'lista de tabelas',
 ];
 
+// Subsecções que pertencem à Introdução — devem ter extensão muito reduzida
+// para evitar que a introdução acabe a ocupar 3–4 páginas.
+const INTRO_SUBSECTION_KEYWORDS = [
+  'contextualizacao',
+  'contextualização',
+  'contexto',
+  'problema de pesquisa',
+  'problema de investigacao',
+  'problema de investigação',
+  'justificativa',
+  'justificacao',
+  'justificação',
+  'relevancia',
+  'relevância',
+  'delimitacao',
+  'delimitação',
+  'pergunta de investigacao',
+  'pergunta de investigação',
+  'hipotese',
+  'hipótese',
+];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function sectionAllowsClosing(title: string): boolean {
   return SECTIONS_THAT_ALLOW_CLOSING.has(title.toLowerCase().trim());
 }
@@ -50,9 +81,30 @@ function normalizeTitle(title: string): string {
     .trim();
 }
 
-const SPURIOUS_HEADING_PATTERN = /^#{1,3}\s*(conclus[aã]o|consider[aã]es\s+finais|refere?ncias?(\s+bibliogr[aá]ficas?)?|bibliography|notas?\s+finais?|síntese|synthesis)\s*$/im;
-const SPURIOUS_CLOSING_PHRASES = /\n+(em\s+(suma|conclus[aã]o|síntese)|portanto,\s+conclui-se|por\s+fim,\s+(pode|é\s+poss[ií]vel)|conclui-se\s+(assim|que|portanto)|desta\s+(forma|maneira|feita),\s+(conclui|verifica|observa)-se)[^]*/i;
-const SPURIOUS_REFERENCE_BLOCK = /\n+(#{1,3}\s*refere?ncias?[^\n]*\n+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][^.\n]{2,60}\.\s*\(\d{4}\)[^\n]*\n){2,}[^]*/;
+function isPreTextualSection(normalizedName: string): boolean {
+  return PRE_TEXTUAL_SECTION_KEYWORDS.some(k => normalizedName.includes(k));
+}
+
+function isIntroSubsection(title: string, normalizedName: string): boolean {
+  // Detecta subsecções numéricas da introdução (1.1, 1.2, etc.)
+  // combinadas com palavras-chave típicas de introdução.
+  const isNumberedSubsection = /^1\.\d/.test(title.trim());
+  const hasIntroKeyword = INTRO_SUBSECTION_KEYWORDS.some(k => normalizedName.includes(k));
+  return isNumberedSubsection && hasIntroKeyword;
+}
+
+// ---------------------------------------------------------------------------
+// Remoção de blocos espúrios (conclusões antecipadas, referências, etc.)
+// ---------------------------------------------------------------------------
+
+const SPURIOUS_HEADING_PATTERN =
+  /^#{1,3}\s*(conclus[aã]o|consider[aã]es\s+finais|refere?ncias?(\s+bibliogr[aá]ficas?)?|bibliography|notas?\s+finais?|síntese|synthesis)\s*$/im;
+
+const SPURIOUS_CLOSING_PHRASES =
+  /\n+(em\s+(suma|conclus[aã]o|síntese)|portanto,\s+conclui-se|por\s+fim,\s+(pode|é\s+poss[ií]vel)|conclui-se\s+(assim|que|portanto)|desta\s+(forma|maneira|feita),\s+(conclui|verifica|observa)-se)[^]*/i;
+
+const SPURIOUS_REFERENCE_BLOCK =
+  /\n+(#{1,3}\s*refere?ncias?[^\n]*\n+)?([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][^.\n]{2,60}\.\s*\(\d{4}\)[^\n]*\n){2,}[^]*/;
 
 function stripSpuriousBlocks(content: string, sectionTitle: string): string {
   if (sectionAllowsClosing(sectionTitle)) return content;
@@ -60,7 +112,7 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
   let cleaned = content;
 
   const headingMatch = SPURIOUS_HEADING_PATTERN.exec(cleaned);
-  if (headingMatch && headingMatch.index !== undefined) {
+  if (headingMatch?.index !== undefined) {
     cleaned = cleaned.slice(0, headingMatch.index).trimEnd();
   }
 
@@ -70,11 +122,42 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
   return cleaned;
 }
 
-function isPreTextualSection(normalizedName: string): boolean {
-  return PRE_TEXTUAL_SECTION_KEYWORDS.some((keyword) => normalizedName.includes(keyword));
-}
+// ---------------------------------------------------------------------------
+// Instrução específica por secção
+// ---------------------------------------------------------------------------
 
-function getSectionInstruction(normalizedName: string, isSubsection: boolean): string {
+function getSectionInstruction(
+  normalizedName: string,
+  originalTitle: string,
+  isSubsection: boolean,
+): string {
+  // ── Subsecções da Introdução ──────────────────────────────────────────────
+  // A introdução deve ser sintética. Cada subsecção (1.1, 1.2...) é limitada
+  // a 80–120 palavras para que a introdução total não ultrapasse 1 página.
+  if (isIntroSubsection(originalTitle, normalizedName)) {
+    const specificGuidance: Record<string, string> = {
+      contextuali: 'Apresenta o tema com enquadramento geral. Sem estatísticas densas — estas pertencem ao desenvolvimento.',
+      'problema de pesquisa': 'Delimita o problema de investigação de forma directa e clara. Uma ou duas frases de enquadramento teórico mínimo.',
+      'problema de investigac': 'Delimita o problema de investigação de forma directa e clara.',
+      justifica: 'Justifica brevemente a relevância do estudo. Sem aprofundamento — reserva-o para o desenvolvimento.',
+      relevanc: 'Indica a relevância do tema de forma concisa. Não repitas a contextualização.',
+    };
+
+    const guidance = Object.entries(specificGuidance).find(([key]) =>
+      normalizedName.includes(key),
+    )?.[1] ?? 'Desenvolve este ponto introdutório de forma breve e coesa.';
+
+    return `Esta é uma subsecção da Introdução. Regras estritas:
+- MÁXIMO 120 palavras — qualquer extensão além disto é um erro
+- Tom: geral, contextualizador, sem dados quantitativos precisos
+- SEM exemplos práticos — pertencem ao Desenvolvimento
+- SEM teoria aprofundada — pertence ao Desenvolvimento  
+- SEM estatísticas detalhadas — pertencem ao Desenvolvimento
+- Orientação específica: ${guidance}
+- Termina de forma que o leitor queira avançar para o desenvolvimento`;
+  }
+
+  // ── Subsecções genéricas ──────────────────────────────────────────────────
   if (isSubsection) {
     return `Desenvolve esta subsecção com profundidade universitária e rigor científico. Deve:
 - Explicar o conceito central com precisão técnica e enquadramento teórico
@@ -86,16 +169,23 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - NÃO incluir conclusão nem lista final de referências nesta secção`;
   }
 
-  if (normalizedName === 'introducao' || normalizedName === 'introdução') {
-    return `Escreve uma introdução académica de nível universitário para TCC. Deve:
-- Contextualizar o tema com relevância científica e académica
-- Delimitar o problema de investigação de forma clara
-- Apresentar objectivo geral e orientação analítica do trabalho
-- Resumir a estrutura dos capítulos de forma breve, coesa e lógica
-- Incluir citações no corpo do texto em APA (7.ª edição)
-- Manter entre 250 e 400 palavras (máximo 1 página)
-- Ser directa: sem detalhamento excessivo, pois os pormenores pertencem ao desenvolvimento
-- NÃO antecipar discussão conclusiva`;
+  // ── Introdução principal ──────────────────────────────────────────────────
+  if (normalizedName === 'introducao' || normalizedName === 'introducao') {
+    return `Escreve uma introdução académica de nível universitário para TCC. Estrutura obrigatória em 3 parágrafos:
+
+**§1 — Enquadramento geral (40–60 palavras)**
+Situa o tema no debate académico mais amplo. Tom: geral e contextualizador.
+SEM dados quantitativos precisos — esses pertencem ao desenvolvimento.
+
+**§2 — Problema e objectivos (60–80 palavras)**
+Delimita o problema de investigação e enuncia o objectivo geral.
+Uma frase de enquadramento teórico mínimo é suficiente.
+
+**§3 — Estrutura do trabalho (40–60 palavras)**
+Descreve brevemente como o trabalho está organizado secção a secção.
+
+Total: máximo 200 palavras. SEM exemplos práticos. SEM estatísticas detalhadas.
+Directa e coesa — os detalhes pertencem ao desenvolvimento.`;
   }
 
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
@@ -109,7 +199,7 @@ Estrutura obrigatória:
 - Lista de 3 a 5 bullets, cada um com uma acção mensurável em infinitivo
 
 Regras:
-- Manter entre 300 e 600 palavras
+- Manter entre 150 e 300 palavras
 - Linguagem académica precisa, sem metodologia detalhada
 - Quando houver citação contextual, manter APA (7.ª edição) no corpo do texto
 - NÃO incluir conclusão nem lista final de referências`;
@@ -152,6 +242,10 @@ Regras:
   return `Desenvolve a secção com rigor universitário, coerência argumentativa e base em fontes académicas. Usa citações no corpo do texto em APA (7.ª edição), mantém entre 300 e 600 palavras, e não incluas conclusão nem lista final de referências.`;
 }
 
+// ---------------------------------------------------------------------------
+// Construção do system prompt
+// ---------------------------------------------------------------------------
+
 function buildSystemPrompt(
   topic: string,
   outline: string,
@@ -160,6 +254,7 @@ function buildSystemPrompt(
   recentSectionsContent: string,
   currentSection: TccSection,
   compressionActive: boolean,
+  contextType: ContextType,
 ): string {
   const historicalContext = compressionActive && contextSummary
     ? `\n[CONTEXTO HISTÓRICO COMPRIMIDO]\n${contextSummary}\n`
@@ -177,9 +272,14 @@ function buildSystemPrompt(
     ? `\n[FICHA DE PESQUISA]\n${researchBrief}\n`
     : '\n[FICHA DE PESQUISA]\n(não disponível)\n';
 
-  const isSubsection = /^\d+\.\d+/.test(currentSection.title);
+  const isSubsection   = /^\d+\.\d+/.test(currentSection.title);
   const normalizedName = normalizeTitle(currentSection.title);
-  const specificInstruction = getSectionInstruction(normalizedName, isSubsection);
+  const specificInstruction = getSectionInstruction(
+    normalizedName,
+    currentSection.title,
+    isSubsection,
+  );
+
   const preTextualLimitInstruction = isPreTextualSection(normalizedName)
     ? `
 LIMITE OBRIGATÓRIO DE EXTENSÃO PARA ELEMENTOS PRÉ-TEXTUAIS:
@@ -198,6 +298,10 @@ PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
 O trabalho tem secções próprias para Conclusão e Referências — não as antecipes aqui.`
     : '';
 
+  // Instrução de contextualização geográfica calculada uma vez em /approve
+  // e injectada aqui de forma consistente em todos os develops.
+  const contextInstruction = buildContextInstruction(contextType);
+
   return `IDENTIDADE E PAPEL
 ==================
 És um especialista académico para TCC de nível universitário.
@@ -212,17 +316,8 @@ ${topic}
 [ESBOÇO APROVADO]
 ${outline}
 ${historicalContext}${recentContext}${contextNote}${researchContext}
-REGRAS DE ADEQUAÇÃO AO CONTEXTO MOÇAMBICANO
-===========================================
-Aplica contexto moçambicano APENAS quando:
-- O tema é de natureza social, económica, histórica, geográfica ou cívica
-- O exemplo moçambicano clarifica o conceito melhor do que um exemplo genérico
-- O esboço ou a ficha de pesquisa já referenciam dados ou contexto moçambicano
 
-NÃO forces contexto moçambicano quando:
-- O tema é universal e abstracto (ex: Matemática, Física, Química, Filosofia geral, Literatura clássica)
-- A menção seria artificial ou reduziria a qualidade académica do texto
-- O autor não pediu explicitamente esse ângulo
+${contextInstruction}
 
 INSTRUÇÃO DA TAREFA ACTUAL
 ==========================
@@ -242,7 +337,6 @@ REGRAS DE ESCRITA — OBRIGATÓRIAS
 - Usa a ficha de pesquisa como base factual — não inventes dados nem autores
 - Usa citações APA no corpo do texto em todas as secções de desenvolvimento
 - Usa Markdown (negrito, listas, ### para sub-títulos)
-- Extensão: entre 300 e 600 palavras
 - Não repitas conteúdo já presente no contexto histórico ou recente
 - NÃO faças nova pesquisa — toda a informação está no contexto acima
 
@@ -255,6 +349,10 @@ PROIBIÇÕES ABSOLUTAS (excepto Conclusão e Referências)
 O trabalho tem secções próprias para Conclusão e Referências — não as antecipes aqui.`.trim();
 }
 
+// ---------------------------------------------------------------------------
+// Handler principal
+// ---------------------------------------------------------------------------
+
 export async function POST(req: Request) {
   const limited = enforceRateLimit(req, { scope: 'tcc:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
@@ -264,16 +362,21 @@ export async function POST(req: Request) {
 
   try {
     const payload = await req.json();
-    sessionId = payload?.sessionId ?? null;
+    sessionId    = payload?.sessionId ?? null;
     sectionIndex = typeof payload?.sectionIndex === 'number' ? payload.sectionIndex : null;
 
     if (!sessionId || sectionIndex === null) {
       console.error('[api/tcc/develop] Payload inválido', {
         sessionId,
         sectionIndex,
-        payloadKeys: payload && typeof payload === 'object' ? Object.keys(payload as Record<string, unknown>) : [],
+        payloadKeys: payload && typeof payload === 'object'
+          ? Object.keys(payload as Record<string, unknown>)
+          : [],
       });
-      return NextResponse.json({ error: 'Payload inválido: sessionId e sectionIndex são obrigatórios' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Payload inválido: sessionId e sectionIndex são obrigatórios' },
+        { status: 400 },
+      );
     }
 
     const parsedSectionIndex = sectionIndex;
@@ -301,6 +404,10 @@ export async function POST(req: Request) {
     session = await compressContextIfNeeded(session, parsedSectionIndex);
     const optimised = buildOptimisedContext(session, parsedSectionIndex);
 
+    // context_type persistido em approve; usa 'comparative' como fallback seguro
+    // caso a sessão tenha sido criada antes desta migração.
+    const contextType: ContextType = (session.context_type as ContextType) ?? 'comparative';
+
     const systemPrompt = buildSystemPrompt(
       session.topic,
       optimised.outline,
@@ -309,6 +416,7 @@ export async function POST(req: Request) {
       optimised.recentSectionsContent,
       currentSection,
       optimised.compressionActive,
+      contextType,
     );
 
     const response = await groqFetch((_key, _attempt) => ({
@@ -330,7 +438,7 @@ export async function POST(req: Request) {
 
     const transformStream = new TransformStream({
       transform(chunk, controller) {
-        const text = new TextDecoder().decode(chunk);
+        const text  = new TextDecoder().decode(chunk);
         const lines = text.split('\n');
 
         for (const line of lines) {
@@ -339,7 +447,7 @@ export async function POST(req: Request) {
           if (data === '[DONE]') continue;
 
           try {
-            const json = JSON.parse(data);
+            const json  = JSON.parse(data);
             const delta = json.choices?.[0]?.delta?.content ?? '';
             if (delta) accumulated += delta;
           } catch {
@@ -369,11 +477,12 @@ export async function POST(req: Request) {
 
     return new NextResponse(response.body!.pipeThrough(transformStream), {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Context-Compressed': compressionWasActive ? 'true' : 'false',
-        'X-Summary-Covers-Up-To': String(session.summary_covers_up_to ?? -1),
+        'Content-Type':              'text/event-stream',
+        'Cache-Control':             'no-cache',
+        'Connection':                'keep-alive',
+        'X-Context-Compressed':      compressionWasActive ? 'true' : 'false',
+        'X-Summary-Covers-Up-To':    String(session.summary_covers_up_to ?? -1),
+        'X-Context-Type':            contextType,
       },
     });
   } catch (e: unknown) {
@@ -382,8 +491,8 @@ export async function POST(req: Request) {
       sessionId,
       sectionIndex,
       message: error.message,
-      stack: error.stack,
-      cause: error.cause,
+      stack:   error.stack,
+      cause:   error.cause,
     });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
