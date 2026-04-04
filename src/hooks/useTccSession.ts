@@ -75,6 +75,7 @@ export function useTccSession(): UseTccSession {
   const [activeSectionIdx, setActiveSectionIdx] = useState<number | null>(null);
   const [error, setError]             = useState<string | null>(null);
   const [recentSessions, setRecentSessions] = useState<UseTccSession['recentSessions']>([]);
+  const [regeneratedSections, setRegeneratedSections] = useState<Set<number>>(new Set());
   const [compressionStatus, setCompressionStatus] = useState<CompressionStatus>({
     active:         false,
     justCompressed: false,
@@ -105,6 +106,7 @@ export function useTccSession(): UseTccSession {
     setStreamingText('');
     setActiveSectionIdx(null);
     setError(null);
+    setRegeneratedSections(new Set());
     setCompressionStatus({ active: false, justCompressed: false, coveredUpTo: null, summaryLength: 0 });
   }, []);
 
@@ -242,6 +244,7 @@ export function useTccSession(): UseTccSession {
   // ── Desenvolver secção (com compressão automática integrada) ─────────────────
   const developSection = useCallback(async (index: number) => {
     if (!session) return;
+    const wasInsertedBeforeDevelop = session.sections.find(s => s.index === index)?.status === 'inserted';
     setError(null);
     setActiveSectionIdx(index);
     setStreamingText('');
@@ -309,6 +312,13 @@ export function useTccSession(): UseTccSession {
         return updated;
       });
 
+      setRegeneratedSections(prevRegenerated => {
+        const next = new Set(prevRegenerated);
+        if (wasInsertedBeforeDevelop) next.add(index);
+        else next.delete(index);
+        return next;
+      });
+
       setStep('section_ready');
     } catch (e: any) {
       if (e.name !== 'AbortError') { setError(e.message); setStep('outline_approved'); }
@@ -343,9 +353,8 @@ export function useTccSession(): UseTccSession {
     const isFirstInEditor = !options?.editorMarkdown?.trim();
     const currentOutline = session.outline_approved ?? session.outline_draft ?? '';
 
-    // Detecta regeneração: secção que já estava inserida e foi regenerada
-    const wasInserted = sec.status === 'inserted';
-    const shouldResetEditor = wasInserted && !!options?.onReplace;
+    // Detecta regeneração: secção já inserida anteriormente e desenvolvida novamente
+    const shouldResetEditor = regeneratedSections.has(index) && !!options?.onReplace;
 
     if (shouldResetEditor && options?.onReplace) {
       // Regeneração: reconstrói todo o conteúdo do editor com as secções actuais
@@ -374,6 +383,11 @@ export function useTccSession(): UseTccSession {
           );
           options.onReplace(organizedContent);
           setSession(refreshed);
+          setRegeneratedSections(prev => {
+            const next = new Set(prev);
+            next.delete(index);
+            return next;
+          });
           setStep('outline_approved');
           setActiveSectionIdx(null);
           return;
@@ -415,9 +429,15 @@ export function useTccSession(): UseTccSession {
       };
     });
 
+    setRegeneratedSections(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+
     setStep('outline_approved');
     setActiveSectionIdx(null);
-  }, [session]);
+  }, [regeneratedSections, session]);
 
   return {
     step, session, outline, streamingText, activeSectionIdx, error, recentSessions,
