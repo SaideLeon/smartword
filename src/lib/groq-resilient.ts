@@ -7,6 +7,17 @@ interface KeyEntry {
   cooldownUntil: number;
 }
 
+function normaliseKey(raw: string): string {
+  const trimmed = raw.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 class GroqKeyManager {
   private keys: KeyEntry[] = [];
   private currentIndex = 0;
@@ -19,10 +30,10 @@ class GroqKeyManager {
     const collected: string[] = [];
 
     const raw = process.env.GROQ_API_KEY ?? '';
-    collected.push(...raw.split(',').map(k => k.trim()).filter(Boolean));
+    collected.push(...raw.split(',').map(normaliseKey).filter(Boolean));
 
     for (let i = 1; i <= 20; i++) {
-      const k = process.env[`GROQ_API_KEY_${i}`]?.trim();
+      const k = normaliseKey(process.env[`GROQ_API_KEY_${i}`] ?? '');
       if (k) collected.push(k);
     }
 
