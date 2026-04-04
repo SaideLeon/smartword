@@ -1,90 +1,80 @@
 // src/app/api/cover/agent/route.ts
-// Agente Groq com tool calling para decidir se gera capa/contracapa.
+// Agente Gemini com tool calling para decidir se gera capa/contracapa.
 
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { groqJSON } from '@/lib/groq-resilient';
 
-// ── JSON Schema da tool ───────────────────────────────────────────────────────
-// IMPORTANTE: não usar "nullable: true" — o Groq rejeita null nos parâmetros.
-// Campos opcionais são simplesmente omitidos do array "required".
-
-const COVER_TOOL = {
-  type: 'function',
-  function: {
-    name: 'criar_capa',
-    description:
-      'Coleta dados do utilizador para gerar capa e contracapa de um trabalho académico. Chama esta tool APENAS quando o utilizador confirmar que quer capa e contracapa.',
-    parameters: {
-      type: 'object',
-      properties: {
-        institution: {
-          type: 'string',
-          description: 'Nome completo da instituição',
-        },
-        delegation: {
-          type: 'string',
-          description: 'Delegação ou localização (opcional)',
-        },
-        logoBase64: {
-          type: 'string',
-          description: 'Imagem do logotipo em base64 ou data URL (opcional)',
-        },
-        logoMediaType: {
-          type: 'string',
-          enum: ['image/png', 'image/jpeg'],
-          description: 'Tipo MIME do logotipo (opcional)',
-        },
-        course: {
-          type: 'string',
-          description: 'Nome do curso',
-        },
-        subject: {
-          type: 'string',
-          description: 'Disciplina ou módulo',
-        },
-        theme: {
-          type: 'string',
-          description: 'Tema do trabalho',
-        },
-        group: {
-          type: 'string',
-          description: 'Identificação do grupo (opcional)',
-        },
-        members: {
-          type: 'array',
-          items: { type: 'string' },
-          minItems: 1,
-          description: 'Lista de membros do grupo',
-        },
-        teacher: {
-          type: 'string',
-          description: 'Nome do docente/orientador',
-        },
-        city: {
-          type: 'string',
-          description: 'Cidade',
-        },
-        date: {
-          type: 'string',
-          description: 'Data formatada',
-        },
+const COVER_TOOL_DECLARATION = {
+  name: 'criar_capa',
+  description:
+    'Coleta dados do utilizador para gerar capa e contracapa de um trabalho académico. Chama esta tool APENAS quando o utilizador confirmar que quer capa e contracapa.',
+  parameters: {
+    type: 'object',
+    properties: {
+      institution: {
+        type: 'string',
+        description: 'Nome completo da instituição',
       },
-      required: [
-        'institution',
-        'course',
-        'subject',
-        'theme',
-        'members',
-        'teacher',
-        'city',
-        'date',
-      ],
+      delegation: {
+        type: 'string',
+        description: 'Delegação ou localização (opcional)',
+      },
+      logoBase64: {
+        type: 'string',
+        description: 'Imagem do logotipo em base64 ou data URL (opcional)',
+      },
+      logoMediaType: {
+        type: 'string',
+        enum: ['image/png', 'image/jpeg'],
+        description: 'Tipo MIME do logotipo (opcional)',
+      },
+      course: {
+        type: 'string',
+        description: 'Nome do curso',
+      },
+      subject: {
+        type: 'string',
+        description: 'Disciplina ou módulo',
+      },
+      theme: {
+        type: 'string',
+        description: 'Tema do trabalho',
+      },
+      group: {
+        type: 'string',
+        description: 'Identificação do grupo (opcional)',
+      },
+      members: {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 1,
+        description: 'Lista de membros do grupo',
+      },
+      teacher: {
+        type: 'string',
+        description: 'Nome do docente/orientador',
+      },
+      city: {
+        type: 'string',
+        description: 'Cidade',
+      },
+      date: {
+        type: 'string',
+        description: 'Data formatada',
+      },
     },
+    required: [
+      'institution',
+      'course',
+      'subject',
+      'theme',
+      'members',
+      'teacher',
+      'city',
+      'date',
+    ],
   },
 };
-
-// ── System prompt ─────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(topic: string, outline: string): string {
   const outlineExcerpt = outline.slice(0, 600) + (outline.length > 600 ? '…' : '');
@@ -108,6 +98,39 @@ REGRAS ABSOLUTAS:
 6. Quando o utilizador confirmar capa, chama criar_capa com strings vazias nos campos obrigatórios e omite completamente os campos opcionais (delegation, logoBase64, logoMediaType, group)`;
 }
 
+function toGeminiContents(messages: Array<{ role: 'user' | 'assistant'; content: string }>) {
+  return messages
+    .filter((m) => m?.content)
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+}
+
+function toLegacyResponse(text: string, functionCalls: Array<{ name: string; args?: unknown }>) {
+  const toolCalls = functionCalls.map((fc, index) => ({
+    id: `call_${index + 1}`,
+    type: 'function',
+    function: {
+      name: fc.name,
+      arguments: JSON.stringify(fc.args ?? {}),
+    },
+  }));
+
+  return {
+    choices: [
+      {
+        message: {
+          role: 'assistant',
+          content: text,
+          tool_calls: toolCalls,
+        },
+        finish_reason: toolCalls.length > 0 ? 'tool_calls' : 'stop',
+      },
+    ],
+  };
+}
+
 export async function POST(req: Request) {
   const limited = enforceRateLimit(req, {
     scope: 'cover:agent',
@@ -127,6 +150,14 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'topic é obrigatório' },
         { status: 400 },
+      );
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'GEMINI_API_KEY não configurada.' },
+        { status: 500 },
       );
     }
 
@@ -153,41 +184,51 @@ export async function POST(req: Request) {
       lastUserPreview: String(lastUserMessage).slice(0, 120),
     });
 
-    const systemPrompt = buildSystemPrompt(topic, normalizedOutline);
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}` ,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: buildSystemPrompt(topic, normalizedOutline) }] },
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 512,
+          },
+          tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],
+          contents: toGeminiContents(messageList),
+        }),
+      },
+    );
 
-    const data = await groqJSON((_key, _attempt) => ({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messageList,
-        ],
-        tools: [COVER_TOOL],
-        tool_choice: 'auto',
-        stream: false,
-        max_tokens: 512,
-        temperature: 0.3,
-      }));
+    const result = await response.json();
+    if (!response.ok) {
+      const message = result?.error?.message ?? 'Erro ao chamar Gemini.';
+      throw new Error(message);
+    }
 
-    const choice = (data as any)?.choices?.[0];
-    const toolCalls = choice?.message?.tool_calls ?? [];
-    const toolNames = toolCalls
-      .map((tc: any) => tc?.function?.name)
-      .filter(Boolean);
+    const candidate = result?.candidates?.[0];
+    const text = candidate?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join('\n') ?? '';
+    const parts = candidate?.content?.parts ?? [];
+    const functionCalls = parts
+      .map((part: any) => part?.functionCall)
+      .filter((fc: any) => Boolean(fc?.name));
+
+    const toolNames = functionCalls.map((fc: any) => fc.name);
     const hasCreateCover = toolNames.includes('criar_capa');
-    const assistantPreview = String(choice?.message?.content ?? '').slice(0, 180);
 
     console.info('[cover:agent] response', {
       mode,
       phase,
-      finishReason: choice?.finish_reason ?? null,
-      hasToolCalls: toolCalls.length > 0,
+      finishReason: candidate?.finishReason ?? null,
+      hasToolCalls: functionCalls.length > 0,
       toolNames,
       hasCreateCover,
-      assistantPreview,
+      assistantPreview: String(text).slice(0, 180),
       modalExpected: hasCreateCover,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(toLegacyResponse(text, functionCalls));
   } catch (e: any) {
     console.error('[cover:agent] error', {
       message: e?.message ?? 'Erro desconhecido',
