@@ -10,6 +10,7 @@ import { AudioInputButton } from '@/components/AudioInputButton';
 import type { TccSection } from '@/lib/tcc/types';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { tccTheme as C } from '@/lib/theme';
+import { buildReconstructedTccContent } from '@/lib/tcc/pagebreak';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -44,6 +45,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
   const [agentInput, setAgentInput] = useState('');
   const [agentSending, setAgentSending] = useState(false);
+  const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
@@ -62,6 +64,19 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    if (!resumeRestoreSessionId || !session || session.id !== resumeRestoreSessionId) return;
+
+    const completedSections = session.sections.filter(
+      s => s.status !== 'pending' && s.content.trim(),
+    );
+    const currentOutline = session.outline_approved ?? session.outline_draft ?? '';
+    const editorContent = buildReconstructedTccContent(completedSections, currentOutline);
+
+    setContent(editorContent);
+    setResumeRestoreSessionId(null);
+  }, [resumeRestoreSessionId, session, setContent]);
 
   useEffect(() => {
     if (coverAgent.step === 'done_with_cover' && coverAgent.coverData) {
@@ -278,7 +293,15 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                 {recentSessions.length === 0 && <p className="font-mono text-[11px] text-[var(--panel-text-faint)]">Nenhuma sessão anterior encontrada.</p>}
                 {recentSessions.map((s) => (
                   <div key={s.id} className="flex items-center gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-2 py-2">
-                    <button onClick={() => { onTopicChange(s.topic); resumeSession(s.id); }} className="flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)]">
+                    <button
+                      onClick={() => {
+                        onTopicChange(s.topic);
+                        setContent('');
+                        setResumeRestoreSessionId(s.id);
+                        resumeSession(s.id);
+                      }}
+                      className="flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)]"
+                    >
                       <div className="min-w-0">
                         <div className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
                         <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
