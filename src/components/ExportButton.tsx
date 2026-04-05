@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ProcessingBars } from '@/components/ProcessingBars';
 
 interface Props {
   onClick: () => void;
@@ -40,6 +41,7 @@ export function ExportButton({ onClick, loading, filename = 'document', includeC
       onClick={handleClick}
       disabled={loading}
     >
+      {loading && <ProcessingBars height={14} />}
       <span className="mono text-[12px] font-bold">{loading ? 'A gerar…' : recentlyExported ? exportedLabel : idleLabel}</span>
     </button>
   );
