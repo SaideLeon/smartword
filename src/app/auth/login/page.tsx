@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useThemeMode } from '@/hooks/useThemeMode';
 import { ProcessingBars } from '@/components/ProcessingBars';
 
 function LoginContent() {
@@ -11,10 +13,17 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('next') || '/app';
 
+  const { themeMode, toggleThemeMode } = useThemeMode();
   const { isLoggedIn, signInGoogle, signInEmail, loading, error } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const themeVars =
+    themeMode === 'dark'
+      ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--gold:#d4b37b] [--gold2:#c9a96e] [--muted:#c8bfb4] [--faint:#8a7d6e] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--navBg:#0f0e0d] [--heroRight:#090908]'
+      : '[--ink:#0f0e0d] [--parchment:#f5f0e8] [--gold:#c9a96e] [--gold2:#8b6914] [--muted:#6b6254] [--faint:#c4b8a4] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--navBg:#f5f0e8] [--heroRight:#1e1a14]';
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -35,104 +44,146 @@ function LoginContent() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] px-4 text-[var(--text-primary)]" data-theme="dark">
-      <section className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 shadow-2xl">
-        <p className="mono text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Muneri</p>
-        <h1 className="mt-1 text-2xl font-semibold">Entrar</h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">Inicia sessão para continuar no editor.</p>
+    <main className={`${themeVars} flex min-h-screen flex-col bg-[var(--parchment)] text-[var(--ink)]`}>
+
+      {/* Cabeçalho mínimo */}
+      <header className="flex items-center justify-between border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-5 py-3 backdrop-blur md:px-12">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="grid h-7 w-7 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-mono text-sm font-bold text-black">
+            ∂
+          </div>
+          <span className="font-serif text-lg italic text-[var(--gold2)]">Muneri</span>
+        </Link>
 
         <button
           type="button"
-          onClick={() => signInGoogle()}
-          disabled={loading || submitting}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-4 py-2 text-sm transition hover:bg-[var(--bg-card-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={toggleThemeMode}
+          className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+          aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
         >
-          {loading || submitting ? (
-            <>
-              <ProcessingBars height={14} />
-              A autenticar...
-            </>
-          ) : (
-            <>
-              <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.29h6.44a5.5 5.5 0 0 1-2.39 3.61v3h3.86c2.26-2.08 3.58-5.15 3.58-8.63Z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.86-3A7.2 7.2 0 0 1 12 19.31a7.16 7.16 0 0 1-6.7-4.94H1.31v3.09A12 12 0 0 0 12 24Z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.3 14.37A7.2 7.2 0 0 1 4.92 12c0-.82.14-1.62.38-2.37V6.54H1.31A12 12 0 0 0 0 12c0 1.94.46 3.77 1.31 5.46l3.99-3.09Z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.69c1.76 0 3.35.61 4.6 1.81l3.45-3.45C17.95 1.09 15.24 0 12 0A12 12 0 0 0 1.31 6.54L5.3 9.63A7.16 7.16 0 0 1 12 4.69Z"
-                />
-              </svg>
-              Continuar com Google
-            </>
-          )}
+          {themeMode === 'dark' ? <><Sun size={11} /> Claro</> : <><Moon size={11} /> Escuro</>}
         </button>
+      </header>
 
-        <div className="mt-4 flex items-center gap-3 text-xs uppercase tracking-[0.08em] text-[var(--text-muted)]">
-          <span className="h-px flex-1 bg-[var(--border)]" />
-          <span>ou</span>
-          <span className="h-px flex-1 bg-[var(--border)]" />
-        </div>
+      {/* Conteúdo centrado */}
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
+        <section className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-7 shadow-2xl">
 
-        <form className="mt-5 space-y-3" onSubmit={onSubmit}>
-          <label className="block text-sm">
-            Email
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
-              placeholder="teuemail@exemplo.com"
-            />
-          </label>
+          {/* Cabeçalho do card */}
+          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">
+            Muneri · Acesso
+          </p>
+          <h1 className="mt-2 font-serif text-[1.9rem] leading-[1.2]">
+            Entrar na <em className="text-[var(--gold2)]">plataforma.</em>
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+            Inicia sessão para continuar no editor de trabalhos académicos.
+          </p>
 
-          <label className="block text-sm">
-            Palavra-passe
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-amber)]"
-              placeholder="••••••••"
-            />
-          </label>
-
+          {/* Google OAuth */}
           <button
-            type="submit"
+            type="button"
+            onClick={() => signInGoogle()}
             disabled={loading || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-[var(--accent-amber)] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded border border-[var(--border)] bg-transparent px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? (
+            {loading || submitting ? (
               <>
-                <ProcessingBars height={14} />
-                A entrar...
+                <ProcessingBars height={13} />
+                A autenticar…
               </>
-            ) : 'Entrar com email'}
+            ) : (
+              <>
+                <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.29h6.44a5.5 5.5 0 0 1-2.39 3.61v3h3.86c2.26-2.08 3.58-5.15 3.58-8.63Z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.86-3A7.2 7.2 0 0 1 12 19.31a7.16 7.16 0 0 1-6.7-4.94H1.31v3.09A12 12 0 0 0 12 24Z" />
+                  <path fill="#FBBC05" d="M5.3 14.37A7.2 7.2 0 0 1 4.92 12c0-.82.14-1.62.38-2.37V6.54H1.31A12 12 0 0 0 0 12c0 1.94.46 3.77 1.31 5.46l3.99-3.09Z" />
+                  <path fill="#EA4335" d="M12 4.69c1.76 0 3.35.61 4.6 1.81l3.45-3.45C17.95 1.09 15.24 0 12 0A12 12 0 0 0 1.31 6.54L5.3 9.63A7.16 7.16 0 0 1 12 4.69Z" />
+                </svg>
+                Continuar com Google
+              </>
+            )}
           </button>
-        </form>
 
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+          {/* Divisor */}
+          <div className="mt-5 flex items-center gap-3">
+            <span className="h-px flex-1 bg-[var(--border)]" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">ou</span>
+            <span className="h-px flex-1 bg-[var(--border)]" />
+          </div>
 
-        <p className="mt-5 text-center text-sm text-[var(--text-muted)]">
-          Não tem conta?{' '}
-          <Link href="/auth/signup" className="underline underline-offset-2 hover:text-[var(--text-primary)]">Inscreva-se</Link>
-        </p>
+          {/* Formulário email/senha */}
+          <form className="mt-5 space-y-4" onSubmit={onSubmit}>
+            <div>
+              <label className="block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">
+                Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="teuemail@exemplo.com"
+                className="mt-1.5 w-full rounded border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-sm text-[var(--ink)] placeholder-[var(--faint)] outline-none transition focus:border-[var(--gold2)]"
+              />
+            </div>
 
-        <p className="mt-2 text-center text-sm text-[var(--text-muted)]">
-          <Link href="/" className="underline underline-offset-2 hover:text-[var(--text-primary)]">Voltar para a página inicial</Link>
-        </p>
-      </section>
+            <div>
+              <label className="block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">
+                Palavra-passe
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="mt-1.5 w-full rounded border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-sm text-[var(--ink)] placeholder-[var(--faint)] outline-none transition focus:border-[var(--gold2)]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || submitting}
+              className="flex w-full items-center justify-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-4 py-2.5 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--parchment)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <ProcessingBars height={13} />
+                  A entrar…
+                </>
+              ) : 'Entrar com email'}
+            </button>
+          </form>
+
+          {/* Feedback de erro */}
+          {error && (
+            <div className="mt-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-400">
+              {error}
+            </div>
+          )}
+
+          {/* Links */}
+          <div className="mt-6 space-y-2 text-center font-mono text-[11px] text-[var(--faint)]">
+            <p>
+              Não tem conta?{' '}
+              <Link href="/auth/signup" className="text-[var(--muted)] underline underline-offset-2 hover:text-[var(--gold2)]">
+                Inscreva-se
+              </Link>
+            </p>
+            <p>
+              <Link href="/" className="underline underline-offset-2 hover:text-[var(--gold2)]">
+                Voltar para a página inicial
+              </Link>
+            </p>
+          </div>
+        </section>
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-[var(--border)] px-5 py-5 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)] md:px-12">
+        Muneri · Gerador automático de trabalhos académicos · 2026
+      </footer>
     </main>
   );
 }
