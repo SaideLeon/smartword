@@ -197,7 +197,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
   const modalStyle: CSSProperties = isMobile
     ? {
         ...cssVars,
-        maxHeight: 'calc(100dvh - 208px - env(safe-area-inset-bottom, 16px))',
+        maxHeight: 'calc(100dvh - 48px - env(safe-area-inset-bottom, 16px))',
       }
     : {
         ...cssVars,
