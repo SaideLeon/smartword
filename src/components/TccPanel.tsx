@@ -7,6 +7,7 @@ import { useEditorActions } from '@/hooks/useEditorStore';
 import { ContextCompressionBadge } from '@/components/ContextCompressionBadge';
 import { CoverFormModal } from '@/components/CoverFormModal';
 import { AudioInputButton } from '@/components/AudioInputButton';
+import { ProcessingBars } from '@/components/ProcessingBars';
 import type { TccSection } from '@/lib/tcc/types';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { tccTheme as C } from '@/lib/theme';
@@ -47,8 +48,10 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const [agentSending, setAgentSending] = useState(false);
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
+  const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,6 +67,24 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    if (!processingButtonId) return;
+
+    const shouldClear =
+      (processingButtonId === 'start-new' && step === 'new_or_resume') ||
+      (processingButtonId === 'toggle-sessions') ||
+      (processingButtonId.startsWith('resume-session-') && !!session) ||
+      (processingButtonId === 'submit-topic' && step === 'generating_outline') ||
+      (processingButtonId === 'approve-outline' && step !== 'review_outline') ||
+      (processingButtonId === 'regenerate-outline' && step === 'generating_outline') ||
+      (processingButtonId.startsWith('develop-section-') && step === 'developing') ||
+      (processingButtonId.startsWith('insert-section-') && step === 'outline_approved') ||
+      (processingButtonId === 'back-to-outline' && step === 'outline_approved') ||
+      (processingButtonId === 'reset-tcc' && step === 'idle');
+
+    if (shouldClear) setProcessingButtonId(null);
+  }, [processingButtonId, session, step]);
 
   useEffect(() => {
     if (!resumeRestoreSessionId || !session || session.id !== resumeRestoreSessionId) return;
@@ -132,12 +153,14 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const handleTopicSubmit = () => {
     const topic = topicInput.trim();
     if (!topic) return;
+    setProcessingButtonId('submit-topic');
     onTopicChange(topic);
     submitTopic(topic);
   };
 
   const handleApproveOutline = async () => {
     if (isApprovingOutline) return;
+    setProcessingButtonId('approve-outline');
     setIsApprovingOutline(true);
     try {
       await approveOutline(outlineEdit);
@@ -225,6 +248,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
 
   const handleInsertSection = useCallback((sectionIndex: number) => {
     if (!session) return;
+    setProcessingButtonId(`insert-section-${sectionIndex}`);
     insertSection(sectionIndex, onInsert, {
       editorMarkdown,
       onReplace: setContent,
@@ -255,7 +279,17 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
           </div>
           <div className="flex items-center gap-2">
             {session && (
-              <button onClick={handleResetSession} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)]" title="Nova sessão" aria-label="Iniciar nova sessão de TCC">↩</button>
+              <button
+                onClick={() => {
+                  setProcessingButtonId('reset-tcc');
+                  handleResetSession();
+                }}
+                className={`rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-muted)] ${isProcessing('reset-tcc') ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
+                title="Nova sessão"
+                aria-label="Iniciar nova sessão de TCC"
+              >
+                {isProcessing('reset-tcc') ? '⋯' : '↩'}
+              </button>
             )}
             <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-text-faint)]" title="Fechar" aria-label="Fechar painel do modo TCC">×</button>
           </div>
@@ -284,8 +318,8 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
               <span className="text-[11px] text-[var(--panel-text-faint)]">Compressão de contexto automática — sem limites de janela.</span>
             </p>
             <div className="flex flex-col gap-2.5">
-              <Btn onClick={() => { startNew(); setShowSessions(false); }} color={C.accent}>✦ Iniciar novo TCC</Btn>
-              <Btn onClick={() => setShowSessions((v) => !v)} color={C.muted} outline ariaLabel={showSessions ? 'Ocultar lista de sessões anteriores de TCC' : 'Mostrar lista de sessões anteriores de TCC'} ariaExpanded={showSessions} ariaControls={sessionsRegionId}>↩ Retomar sessão anterior</Btn>
+              <Btn onClick={() => { setProcessingButtonId('start-new'); startNew(); setShowSessions(false); }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar novo TCC</Btn>
+              <Btn onClick={() => { setProcessingButtonId('toggle-sessions'); setShowSessions((v) => !v); }} color={C.muted} outline processing={isProcessing('toggle-sessions')} ariaLabel={showSessions ? 'Ocultar lista de sessões anteriores de TCC' : 'Mostrar lista de sessões anteriores de TCC'} ariaExpanded={showSessions} ariaControls={sessionsRegionId}>↩ Retomar sessão anterior</Btn>
             </div>
 
             {showSessions && (
@@ -295,12 +329,13 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                   <div key={s.id} className="flex items-center gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-2 py-2">
                     <button
                       onClick={() => {
+                        setProcessingButtonId(`resume-session-${s.id}`);
                         onTopicChange(s.topic);
                         setContent('');
                         setResumeRestoreSessionId(s.id);
                         resumeSession(s.id);
                       }}
-                      className="flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)]"
+                      className={`flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                     >
                       <div className="min-w-0">
                         <div className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
@@ -313,11 +348,11 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                     <button
                       onClick={() => handleDeleteSession(s.id)}
                       disabled={deletingSessionId === s.id}
-                      className="rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-7 min-w-12 items-center justify-center rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
                       title="Excluir sessão"
                       aria-label={`Excluir sessão ${s.topic}`}
                     >
-                      {deletingSessionId === s.id ? '...' : 'Excluir'}
+                      {deletingSessionId === s.id ? <ProcessingBars height={12} barColor="#fca5a5" /> : 'Excluir'}
                     </button>
                   </div>
                 ))}
@@ -330,7 +365,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
           <TopicInput value={topicInput} onChange={setTopicInput} onSubmit={handleTopicSubmit} />
         )}
 
-        {step === 'generating_outline' && <div><Label>A gerar esboço estrutural…</Label><StreamBox text={streamingText} /></div>}
+        {step === 'generating_outline' && <div><Label>A gerar esboço estrutural…</Label><StreamBox text={streamingText} showProcessing={!streamingText.trim()} /></div>}
 
         {step === 'review_outline' && (
           <div className="flex flex-col gap-3">
@@ -360,7 +395,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                   </span>
                 ) : '✓ Aprovar esboço'}
               </Btn>
-              <Btn onClick={() => requestNewOutline(outlineSuggestions)} color={C.muted} outline flex disabled={isApprovingOutline}>↻ Regenerar com sugestões</Btn>
+              <Btn onClick={() => { setProcessingButtonId('regenerate-outline'); requestNewOutline(outlineSuggestions); }} color={C.muted} outline flex disabled={isApprovingOutline} processing={isProcessing('regenerate-outline')}>↻ Regenerar com sugestões</Btn>
             </div>
           </div>
         )}
@@ -468,20 +503,27 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                     {sec.status !== 'pending' && (
                       <button
                         onClick={() => handleInsertSection(sec.index)}
-                        className="flex h-7 w-7 items-center justify-center rounded border border-[color:var(--panel-gold)]/30 font-mono text-[13px] text-[var(--panel-gold)]"
+                        className={`flex h-7 ${isProcessing(`insert-section-${sec.index}`) ? 'px-2.5' : 'w-7'} items-center justify-center rounded border border-[color:var(--panel-gold)]/30 font-mono text-[13px] text-[var(--panel-gold)]`}
                         title="Inserir no editor"
                         aria-label={`Inserir secção ${sec.title} no editor`}
                       >
-                        ↓
+                        {isProcessing(`insert-section-${sec.index}`) ? (
+                          <ProcessingBars height={14} barClassName="opacity-90" />
+                        ) : '↓'}
                       </button>
                     )}
                     <button
-                      onClick={() => developSection(sec.index)}
-                      className="flex h-7 w-7 items-center justify-center rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)]"
+                      onClick={() => {
+                        setProcessingButtonId(`develop-section-${sec.index}`);
+                        developSection(sec.index);
+                      }}
+                      className={`flex h-7 ${isProcessing(`develop-section-${sec.index}`) ? 'px-2.5' : 'w-7'} items-center justify-center rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)]`}
                       title={sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'}
                       aria-label={sec.status === 'pending' ? `Desenvolver secção ${sec.title}` : `Reescrever secção ${sec.title}`}
                     >
-                      {sec.status === 'pending' ? '✦' : '↻'}
+                      {isProcessing(`develop-section-${sec.index}`) ? (
+                        <ProcessingBars height={14} />
+                      ) : sec.status === 'pending' ? '✦' : '↻'}
                     </button>
                   </div>
                 </div>
@@ -506,7 +548,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
                 ✦ Contexto comprimido automaticamente para optimizar a janela de tokens
               </div>
             )}
-            <StreamBox text={streamingText} />
+            <StreamBox text={streamingText} showProcessing={!streamingText.trim()} />
           </div>
         )}
 
@@ -517,8 +559,8 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
               {streamingText}
             </div>
             <div className="flex gap-2">
-              <Btn onClick={() => handleInsertSection(activeSectionIdx)} color={C.accent} flex>↓ Inserir no editor</Btn>
-              <Btn onClick={backToOutline} color={C.muted} outline flex>← Voltar</Btn>
+              <Btn onClick={() => handleInsertSection(activeSectionIdx)} color={C.accent} flex processing={isProcessing(`insert-section-${activeSectionIdx}`)}>↓ Inserir no editor</Btn>
+              <Btn onClick={() => { setProcessingButtonId('back-to-outline'); backToOutline(); }} color={C.muted} outline flex processing={isProcessing('back-to-outline')}>← Voltar</Btn>
             </div>
           </div>
         )}
@@ -556,29 +598,38 @@ function TopicInput({ value, onChange, onSubmit }: { value: string; onChange: (v
   );
 }
 
-function StreamBox({ text }: { text: string }) {
-  return <div className="mt-2 max-h-[380px] overflow-y-auto whitespace-pre-wrap rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.7] text-[var(--panel-text)]">{text || <span className="text-[var(--panel-text-faint)]">▋</span>}</div>;
+function StreamBox({ text, showProcessing = false }: { text: string; showProcessing?: boolean }) {
+  return (
+    <div className="mt-2 max-h-[380px] overflow-y-auto whitespace-pre-wrap rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.7] text-[var(--panel-text)]">
+      {text || (showProcessing ? <ProcessingBars className="h-6" /> : <span className="text-[var(--panel-text-faint)]">▋</span>)}
+    </div>
+  );
 }
 
 function Label({ children }: { children: ReactNode }) {
   return <p className="m-0 font-mono text-[11px] leading-[1.55] tracking-[0.02em] text-[var(--panel-text-dim)]">{children}</p>;
 }
 
-function Btn({ onClick, color, children, outline, flex, disabled, ariaLabel, ariaExpanded, ariaControls }: { onClick: () => void; color: string; children: ReactNode; outline?: boolean; flex?: boolean; disabled?: boolean; ariaLabel?: string; ariaExpanded?: boolean; ariaControls?: string }) {
+function Btn({ onClick, color, children, outline, flex, disabled, ariaLabel, ariaExpanded, ariaControls, processing }: { onClick: () => void; color: string; children: ReactNode; outline?: boolean; flex?: boolean; disabled?: boolean; ariaLabel?: string; ariaExpanded?: boolean; ariaControls?: string; processing?: boolean }) {
   const [hov, setHov] = useState(false);
   return (
     <button
-      className={`press-feedback rounded border px-[14px] py-2 font-mono text-xs tracking-[0.04em] transition-all ${flex ? 'flex-1' : ''}`}
+      className={`press-feedback rounded border px-[14px] py-2 font-mono text-xs tracking-[0.04em] transition-all ${flex ? 'flex-1' : ''} ${processing ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || processing}
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ background: outline ? 'transparent' : hov ? color : `${color}cc`, borderColor: `${color}${outline ? '88' : '00'}`, color: outline ? color : '#131313', opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      style={{ background: outline ? 'transparent' : hov ? color : `${color}cc`, borderColor: `${color}${outline ? '88' : '00'}`, color: outline ? color : '#131313', opacity: disabled || processing ? 0.4 : 1, cursor: disabled || processing ? 'not-allowed' : 'pointer' }}
     >
-      {children}
+      {processing ? (
+        <span className="inline-flex items-center gap-2">
+          <ProcessingBars height={14} />
+          A processar...
+        </span>
+      ) : children}
     </button>
   );
 }
