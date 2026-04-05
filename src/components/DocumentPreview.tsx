@@ -254,10 +254,10 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
   }, [markdown, pages.length]);
 
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-base)]">
-      <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-3 py-2">
-        <h3 className="mono text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">Canvas A4</h3>
-        <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Paginação automática</span>
+    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--border)] bg-[var(--parchment)]">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-3 py-2">
+        <h3 className="font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Canvas A4</h3>
+        <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted)]">Paginação automática</span>
       </header>
 
       <div ref={previewScrollRef} className="no-scrollbar flex-1 overflow-y-auto p-4">
