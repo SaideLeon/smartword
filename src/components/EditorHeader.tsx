@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
 import type { ThemeMode } from '@/hooks/useThemeMode';
 
 interface Props {
-  sidePanel: 'none' | 'work' | 'tcc' | 'chat';
+  sidePanel: 'none' | 'work' | 'tcc';
   canUndo: boolean;
   canRedo: boolean;
-  onTogglePanel: (panel: 'work' | 'tcc' | 'chat') => void;
+  onTogglePanel: (panel: 'work' | 'tcc') => void;
   onUndo: () => void;
   onRedo: () => void;
   themeMode: ThemeMode;
@@ -47,7 +47,6 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         {/* Painéis */}
         <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => onTogglePanel('work')} />
         <PanelToggleButton active={sidePanel === 'tcc'}  label="TCC"      onClick={() => onTogglePanel('tcc')} />
-        <PanelToggleButton active={sidePanel === 'chat'} label="IA"       onClick={() => onTogglePanel('chat')} highlight />
 
         {/* Undo / Redo */}
         <div className="ml-1.5 flex items-center gap-1 border-l border-[var(--border)] pl-2">
@@ -142,10 +141,9 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         <div className="absolute left-2 right-2 top-[58px] z-50 rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-3 shadow-2xl md:hidden">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Menu principal</p>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => { onTogglePanel('work'); setShowMobileMenu(false); }} />
             <PanelToggleButton active={sidePanel === 'tcc'}  label="TCC"      onClick={() => { onTogglePanel('tcc');  setShowMobileMenu(false); }} />
-            <PanelToggleButton active={sidePanel === 'chat'} label="IA"       onClick={() => { onTogglePanel('chat'); setShowMobileMenu(false); }} highlight />
           </div>
 
           <div className="mt-3 flex items-center gap-2">
