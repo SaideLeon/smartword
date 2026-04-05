@@ -8,6 +8,7 @@ import { useThemeMode } from '@/hooks/useThemeMode';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
+import ChatPanel from '@/components/ChatPanel';
 import { EditorHeader } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
@@ -67,29 +68,35 @@ export default function Home() {
         )}
 
         {/* ── Área principal ── */}
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
-          <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pt-2 pb-0">
-            <EditorFileToolbar
-              filename={filename}
-              onFilenameChange={setFilename}
-              onImportFile={importTextFile}
-              showAdvanced={showEditor}
-              onToggleAdvanced={() => setShowEditor((current) => !current)}
-            />
-
-            <div className={cn('grid min-h-0 flex-1 gap-2', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
-              {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
-              <DocumentPreview
-                markdown={previewMarkdown}
-                originalMarkdown={markdown}
-                isMobile={isMobile}
+        {sidePanel === 'chat' ? (
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
+            <ChatPanel />
+          </section>
+        ) : (
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pt-2 pb-0">
+              <EditorFileToolbar
+                filename={filename}
+                onFilenameChange={setFilename}
+                onImportFile={importTextFile}
+                showAdvanced={showEditor}
+                onToggleAdvanced={() => setShowEditor((current) => !current)}
               />
+
+              <div className={cn('grid min-h-0 flex-1 gap-2', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
+                {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
+                <DocumentPreview
+                  markdown={previewMarkdown}
+                  originalMarkdown={markdown}
+                  isMobile={isMobile}
+                />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* ── Painel lateral — TCC e Trabalho inline ── */}
-        {sidePanel !== 'none' && (
+        {sidePanel !== 'none' && sidePanel !== 'chat' && (
           <aside
             className={cn(
               'z-20 flex min-h-0 min-w-0 flex-shrink-0 flex-col overflow-hidden',
