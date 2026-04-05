@@ -221,7 +221,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
         style={modalStyle}
         className={`fixed z-[71] bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-2xl flex flex-col ${
           isMobile
-            ? 'inset-x-2 bottom-2 rounded-xl overflow-hidden'
+            ? 'inset-x-2 bottom-20 rounded-xl overflow-hidden'
             : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[560px] rounded-xl overflow-hidden'
         }`}
       >
