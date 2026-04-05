@@ -8,7 +8,7 @@ import { useThemeMode } from '@/hooks/useThemeMode';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
-import { AiChatDrawer } from '@/components/AiChatDrawer';
+import { AiChat } from '@/components/AiChat';
 import { EditorHeader } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
@@ -74,10 +74,9 @@ export default function Home() {
           </aside>
         )}
 
-        {/* ── Área principal — sem barra "EDITOR PRINCIPAL" separada ── */}
+        {/* ── Área principal ── */}
         <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
           <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pt-2 pb-0">
-            {/* Toolbar compacto: ∂ + filename + importar + avançado — tudo numa linha */}
             <EditorFileToolbar
               filename={filename}
               onFilenameChange={setFilename}
@@ -86,7 +85,6 @@ export default function Home() {
               onToggleAdvanced={() => setShowEditor((current) => !current)}
             />
 
-            {/* Canvas + editor lado a lado (quando avançado) */}
             <div className={cn('grid min-h-0 flex-1 gap-2', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
               {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
               <DocumentPreview
@@ -98,13 +96,17 @@ export default function Home() {
           </div>
         </section>
 
-        {sidePanel !== 'none' && sidePanel !== 'chat' && (
+        {/* ── Painel lateral (TCC, Trabalho, Chat) — todos inline ── */}
+        {sidePanel !== 'none' && (
           <aside
             className={cn(
               'z-20 flex min-w-0 flex-shrink-0 flex-col border-l border-[var(--border)] bg-[var(--parchment)]',
               isMobile
                 ? 'absolute inset-0 animate-[slideUp_0.25s_ease] shadow-[0_-16px_40px_rgba(0,0,0,0.45)]'
-                : 'relative w-[300px] animate-[slideIn_0.25s_ease]',
+                : cn(
+                    'relative animate-[slideIn_0.25s_ease]',
+                    sidePanel === 'chat' ? 'w-[400px]' : 'w-[300px]',
+                  ),
             )}
           >
             {sidePanel === 'tcc' && (
@@ -125,6 +127,14 @@ export default function Home() {
                 editorMarkdown={markdown}
               />
             )}
+            {sidePanel === 'chat' && (
+              <AiChat
+                onInsert={handleInsert}
+                onReplace={handleReplace}
+                onClose={closePanel}
+                isMobile={isMobile}
+              />
+            )}
           </aside>
         )}
       </div>
@@ -136,14 +146,6 @@ export default function Home() {
         includeCover={includeCover}
         isMobile={isMobile}
         onExport={exportDocx}
-      />
-
-      <AiChatDrawer
-        open={sidePanel === 'chat'}
-        onClose={closePanel}
-        onInsert={handleInsert}
-        onReplace={handleReplace}
-        isMobile={isMobile}
       />
 
       <style>{`
