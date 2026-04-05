@@ -130,9 +130,9 @@ function headerBlock(data: CoverData): Paragraph[] {
 
 function metadataBlock(data: CoverData): Paragraph[] {
   return [
-    centeredLine([{ text: 'Curso: ' }, { text: data.course, bold: true }], 120),
-    centeredLine([{ text: 'Disciplina: ' }, { text: data.subject, bold: true }], 120),
-    centeredLine([{ text: 'Tema: ' }, { text: data.theme, bold: true }], 0),
+    centeredLine([{ text: data.course, bold: true }], 120),
+    centeredLine([{ text: data.subject, bold: true }], 120),
+    centeredLine([{ text: data.theme, bold: true }], 0),
   ];
 }
 

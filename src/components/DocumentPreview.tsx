@@ -182,6 +182,8 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
   );
 
   const measureRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const previousMarkdownRef = useRef(markdown);
   const [nodeHeights, setNodeHeights] = useState<Record<number, number>>({});
   const [measureTick, setMeasureTick] = useState(0);
 
@@ -233,6 +235,24 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
     [documentNodes, nodeHeights, pageBodyHeight],
   );
 
+  useEffect(() => {
+    const previous = previousMarkdownRef.current;
+    const grewByAppend = markdown.length > previous.length && markdown.startsWith(previous);
+    previousMarkdownRef.current = markdown;
+
+    if (!grewByAppend) return;
+
+    const container = previewScrollRef.current;
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth',
+      });
+    });
+  }, [markdown, pages.length]);
+
   return (
     <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-base)]">
       <header className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-3 py-2">
@@ -240,7 +260,7 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
         <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Paginação automática</span>
       </header>
 
-      <div className="no-scrollbar flex-1 overflow-y-auto p-4">
+      <div ref={previewScrollRef} className="no-scrollbar flex-1 overflow-y-auto p-4">
         <div className="grid gap-4">
         {pages.map((page, index) => (
           <Fragment key={page.key}>

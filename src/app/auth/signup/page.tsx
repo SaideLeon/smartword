@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { ProcessingBars } from '@/components/ProcessingBars';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -104,9 +105,14 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading || submitting}
-            className="w-full rounded-md bg-[var(--accent-amber)] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-[var(--accent-amber)] px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'A criar conta...' : 'Criar conta'}
+            {submitting ? (
+              <>
+                <ProcessingBars height={14} />
+                A criar conta...
+              </>
+            ) : 'Criar conta'}
           </button>
         </form>
 

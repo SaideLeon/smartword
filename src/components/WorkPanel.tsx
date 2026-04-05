@@ -43,6 +43,7 @@ import { useCoverAgent } from '@/hooks/useCoverAgent';
 import { useEditorActions } from '@/hooks/useEditorStore';
 import { CoverFormModal } from '@/components/CoverFormModal';
 import { AudioInputButton } from '@/components/AudioInputButton';
+import { ProcessingBars } from '@/components/ProcessingBars';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
 import type { WorkSection } from '@/lib/work/types';
@@ -518,7 +519,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 title="Novo trabalho"
                 aria-label="Iniciar novo trabalho"
               >
-                {isProcessing('reset-work') ? 'A processar...' : '↩'}
+                {isProcessing('reset-work') ? <ProcessingBars height={14} /> : '↩'}
               </button>
             )}
             <button onClick={onClose} className="rounded px-1.5 py-0.5 text-lg leading-none text-[var(--panel-text-faint)]" title="Fechar" aria-label="Fechar painel">×</button>
@@ -568,18 +569,24 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                           <div className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
                           <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
                         </div>
-                        <span className="ml-2 rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
-                          {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
-                        </span>
+                        {isProcessing(`resume-session-${s.id}`) ? (
+                          <span className="ml-2 rounded border border-current px-1.5 py-0.5">
+                            <ProcessingBars height={12} barClassName="opacity-90" />
+                          </span>
+                        ) : (
+                          <span className="ml-2 rounded border border-current px-1.5 py-0.5 font-mono text-[10px] text-[var(--panel-muted)]">
+                            {s.status === 'completed' ? 'Concluído' : s.status === 'in_progress' ? 'Em curso' : s.status === 'outline_approved' ? 'Aprovado' : 'Esboço'}
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={() => handleDeleteSession(s.id)}
                         disabled={deletingSessionId === s.id}
-                        className="rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex min-h-7 min-w-12 items-center justify-center rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
                         title="Excluir trabalho"
                         aria-label={`Excluir trabalho ${s.topic}`}
                       >
-                        {deletingSessionId === s.id ? '...' : 'Excluir'}
+                        {deletingSessionId === s.id ? <ProcessingBars height={12} barColor="#fca5a5" /> : 'Excluir'}
                       </button>
                     </div>
                   ))}
@@ -647,7 +654,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {step === 'generating_outline' && (
             <div>
               <Label>A gerar esboço orientador…</Label>
-              <StreamBox text={streamingText} />
+              <StreamBox text={streamingText} showProcessing={!streamingText.trim()} />
             </div>
           )}
 
@@ -828,7 +835,9 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                           title={isInserted ? 'Já inserido' : 'Inserir no editor'}
                           aria-label={isInserted ? `${sec.title} já inserida` : `Inserir ${sec.title}`}
                         >
-                          {isProcessing(`insert-section-${sec.index}`) ? 'A processar...' : isInserted ? '✓' : '↓'}
+                          {isProcessing(`insert-section-${sec.index}`)
+                            ? <ProcessingBars height={14} barClassName="opacity-90" />
+                            : isInserted ? '✓' : '↓'}
                         </button>
                       )}
                       <button
@@ -848,7 +857,9 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                         title={isDeveloping ? 'A desenvolver…' : sec.status === 'pending' ? 'Desenvolver' : 'Reescrever'}
                         aria-label={sec.status === 'pending' ? `Desenvolver ${sec.title}` : `Reescrever ${sec.title}`}
                       >
-                        {isProcessing(`develop-section-${sec.index}`) ? 'A processar...' : isDeveloping ? '⋯' : sec.status === 'pending' ? '✦' : '↻'}
+                        {isProcessing(`develop-section-${sec.index}`)
+                          ? <ProcessingBars height={14} />
+                          : isDeveloping ? '⋯' : sec.status === 'pending' ? '✦' : '↻'}
                       </button>
                     </div>
                   </div>
@@ -870,7 +881,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               {session && activeSectionIdx !== null && (
                 <Label>A desenvolver: <span className="text-[var(--panel-accent)]">{session.sections[activeSectionIdx]?.title}</span></Label>
               )}
-              <StreamBox text={streamingText} />
+              <StreamBox text={streamingText} showProcessing={!streamingText.trim()} />
             </div>
           )}
 
@@ -911,10 +922,10 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
-function StreamBox({ text }: { text: string }) {
+function StreamBox({ text, showProcessing = false }: { text: string; showProcessing?: boolean }) {
   return (
     <div className="mt-2 max-h-[380px] overflow-y-auto whitespace-pre-wrap rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-[11px] leading-[1.7] text-[var(--panel-text)]">
-      {text || <span className="text-[var(--panel-text-faint)]">▋</span>}
+      {text || (showProcessing ? <ProcessingBars className="h-6" /> : <span className="text-[var(--panel-text-faint)]">▋</span>)}
     </div>
   );
 }
@@ -946,7 +957,7 @@ function Btn({
     <button
       className={`press-feedback rounded border px-[14px] py-2 font-mono text-xs tracking-[0.04em] transition-all ${flex ? 'flex-1' : ''} ${processing ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || processing}
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
@@ -956,11 +967,16 @@ function Btn({
         background: outline ? 'transparent' : hov ? color : `${color}cc`,
         borderColor: `${color}${outline ? '88' : '00'}`,
         color: outline ? color : '#131313',
-        opacity: disabled ? 0.4 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled || processing ? 0.4 : 1,
+        cursor: disabled || processing ? 'not-allowed' : 'pointer',
       }}
     >
-      {processing ? 'A processar...' : children}
+      {processing ? (
+        <span className="inline-flex items-center gap-2">
+          <ProcessingBars height={14} />
+          A processar...
+        </span>
+      ) : children}
     </button>
   );
 }
