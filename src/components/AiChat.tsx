@@ -308,7 +308,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
   ];
 
   return (
-    <div className="ac-root flex h-full overflow-hidden">
+    <div className="ac-root flex min-h-0 flex-1 overflow-hidden">
 
       {/* ── Painel de histórico ─────────────────────────────────────────────── */}
       {showHistory && (
@@ -376,7 +376,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
       )}
 
       {/* ── Área de chat ──────────────────────────────────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col ac-chat-area">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col ac-chat-area">
 
         {/* Header */}
         <div className="ac-header flex shrink-0 items-center gap-2 px-3 py-2.5">
