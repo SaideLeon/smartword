@@ -29,7 +29,7 @@ interface CoverAgentContext {
 }
 
 // ── JSON Schema da tool ───────────────────────────────────────────────────────
-// IMPORTANTE: não usar "nullable: true" — o Groq rejeita null nos parâmetros.
+// IMPORTANTE: não usar "nullable: true" — manter schema simples para compatibilidade.
 // Campos opcionais são simplesmente omitidos do array "required".
 
 const COVER_TOOL = {

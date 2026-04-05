@@ -1,10 +1,18 @@
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateText } from '@/lib/gemini-resilient';
 import { buildContextInstruction, type ContextType } from '@/lib/tcc/context-detector';
 
 export interface ResearchBrief {
   keywords: string[];
   brief: string;
 }
+
+type BriefMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type BriefRequest = {
+  messages: BriefMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  model?: string;
+};
 
 function buildHeuristicBrief(topic: string, outline: string): ResearchBrief {
   const headings = outline
@@ -43,9 +51,14 @@ ${sectionGuidance}`;
   return { keywords, brief };
 }
 
-async function requestBrief(body: Record<string, unknown>): Promise<any> {
-  const response = await groqFetch(() => body);
-  return response.json();
+async function requestBrief(body: BriefRequest): Promise<any> {
+  const text = await geminiGenerateText({
+    model: body.model ?? 'gemini-3.1-flash-lite-preview',
+    messages: body.messages,
+    temperature: body.temperature ?? 0.2,
+    maxOutputTokens: body.max_tokens ?? 900,
+  });
+  return { choices: [{ message: { content: text } }] };
 }
 
 function isRequestTooLargeError(error: unknown): boolean {
@@ -128,73 +141,12 @@ Regras críticas:
 - Sempre que possível, indicar data da fonte e contexto temporal dos dados.
 - Se houver lacunas ou conflito entre fontes, declarar explicitamente.`;
 
-  // ── Tentativa 1: groq/compound com web search ──────────────────────────────
-  // Envia APENAS o tópico (sem outline) para evitar erros 413 no compound model.
-  // O modelo pesquisa na web e gera a ficha a partir das fontes encontradas.
-  const compoundPrompt = `Atua como um agente de pesquisa académica.
-TEMA: "${topic}"
-${contextInstruction}
-
-Tarefa obrigatória:
-1) Usa pesquisa web para recolher fontes e dados recentes sobre o tema.
-2) Entrega uma FICHA TÉCNICA reutilizável para escrever um trabalho académico.
-
-Formato de resposta obrigatório (Markdown):
-## PALAVRAS-CHAVE
-- palavra 1
-- palavra 2
-
-## FICHA TÉCNICA DE PESQUISA
-- Tema delimitado
-- Principais achados com dados/contexto verificável
-- Definições-chave (conceitos e termos técnicos)
-- Autores/obras de referência (autor + contribuição)
-- Fontes recomendadas (nome + link)
-- Limites e lacunas
-
-## REFERÊNCIAS BIBLIOGRÁFICAS SUGERIDAS
-- [Autor, ano] Título — link directo
-
-## DIRETRIZ DE USO
-Como usar esta ficha para manter coerência nas secções do trabalho.
-
-Regras: não inventar factos, indicar fonte explícita, declarar lacunas.`;
-
-  const toolBody = {
-    model: 'groq/compound',
-    messages: [
-      {
-        role: 'system',
-        content: 'És um investigador académico rigoroso. Produz resposta em português europeu.',
-      },
-      { role: 'user', content: compoundPrompt },
-    ],
-    temperature: 0.2,
-    max_tokens: 900,
-    stream: false,
-    compound_custom: {
-      tools: {
-        enabled_tools: ['web_search', 'visit_website'],
-      },
-    },
-  };
-
-  try {
-    const payload = await requestBrief(toolBody);
-    const brief = payload.choices?.[0]?.message?.content?.trim();
-    if (!brief) throw new Error('Resposta vazia na pesquisa com ferramentas');
-    const keywords = parseKeywords(brief);
-    return { keywords, brief };
-  } catch (toolError) {
-    console.warn('[research] Falha no modo com web tools, a usar fallback sem tools.', toolError);
-  }
-
-  // ── Tentativa 2: LLM sem tools (com outline resumido) ─────────────────────
+  // ── Geração via Gemini (sem Groq/tools) ───────────────────────────────────
   const fallbackOutlineBudgets = [1_500, 900, 600];
   for (let i = 0; i < fallbackOutlineBudgets.length; i++) {
     const outlineForPrompt = compactOutline(outline, fallbackOutlineBudgets[i]);
-    const plainFallbackBody = {
-      model: 'openai/gpt-oss-120b',
+    const plainFallbackBody: BriefRequest = {
+      model: 'gemini-3.1-flash-lite-preview',
       messages: [
         {
           role: 'system',
@@ -204,7 +156,6 @@ Regras: não inventar factos, indicar fonte explícita, declarar lacunas.`;
       ],
       temperature: 0.2,
       max_tokens: i === 0 ? 900 : 700,
-      stream: false,
     };
 
     try {
@@ -221,7 +172,7 @@ Regras: não inventar factos, indicar fonte explícita, declarar lacunas.`;
         });
         continue;
       }
-      console.warn('[research] Falha no fallback LLM; a usar ficha heurística local.', fallbackError);
+      console.warn('[research] Falha no Gemini; a usar ficha heurística local.', fallbackError);
       break;
     }
   }

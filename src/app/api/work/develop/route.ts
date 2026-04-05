@@ -5,7 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkResearchBrief, saveWorkSectionContent } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { generateResearchBrief } from '@/lib/research/brief';
 
 // ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
@@ -274,19 +274,18 @@ PROIBIÇÕES ABSOLUTAS (excepto Conclusão e Referências)
 ❌ NÃO fechas com parágrafo de encerramento — termina no último ponto de conteúdo
 O trabalho tem secções próprias para Conclusão e Referências — não as antecipes aqui.`.trim();
 
-    const response = await groqFetch((_key, _attempt) => ({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: `Desenvolve a secção "${section.title}". Escreve APENAS o conteúdo desta secção — sem conclusão, sem lista de referências no final, sem frases de encerramento, sem marcadores de pagebreak. Respeita rigorosamente o limite de palavras indicado.`,
-          },
-        ],
-        stream: true,
-        max_tokens: 1500,
-        temperature: 0.5,
-      }));
+    const stream = await geminiGenerateTextStreamSSE({
+      model: 'gemini-3.1-flash-lite-preview',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Desenvolve a secção "${section.title}". Escreve APENAS o conteúdo desta secção — sem conclusão, sem lista de referências no final, sem frases de encerramento, sem marcadores de pagebreak. Respeita rigorosamente o limite de palavras indicado.`,
+        },
+      ],
+      maxOutputTokens: 1500,
+      temperature: 0.5,
+    });
 
     let accumulated = '';
 
@@ -321,7 +320,7 @@ O trabalho tem secções próprias para Conclusão e Referências — não as an
       },
     });
 
-    return new NextResponse(response.body!.pipeThrough(transformStream), {
+    return new NextResponse(stream.pipeThrough(transformStream), {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

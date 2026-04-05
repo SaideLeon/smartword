@@ -19,7 +19,8 @@ Editor académico em **Markdown** com exportação para **.docx** e conversão d
 - Next.js 15 + React 19
 - TypeScript
 - `docx`, `temml`, `mathml2omml`
-- Integrações de IA com Groq + Gemini SDK (`@google/genai`) no agente de capa
+- Integrações de IA com Gemini SDK (`@google/genai`) para chat e geração escolar
+- Groq dedicado apenas para transcrição de áudio
 - Supabase (sessões/contexto)
 
 ## Requisitos
@@ -38,7 +39,7 @@ NEXT_PUBLIC_SUPABASE_URL="https://<project>.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="<sua_chave_anon>"
 ```
 
-> Observação: `GEMINI_API_KEY` é usada pelo agente de capa (`/api/cover/agent`) via SDK Gemini no modelo `gemini-3.1-flash-lite-preview`, e aceita uma ou várias chaves separadas por vírgula; `GROQ_API_KEY` continua a ser usada pelos restantes fluxos de IA.
+> Observação: `GEMINI_API_KEY` é usada nos fluxos de geração escolar e chat (incluindo capa, TCC e trabalhos) via SDK Gemini no modelo `gemini-3.1-flash-lite-preview`, e aceita uma ou várias chaves separadas por vírgula. `GROQ_API_KEY` fica reservada apenas para transcrição de áudio (`/api/transcribe`).
 
 ## Executar localmente
 

@@ -107,6 +107,24 @@ function toGeminiContents(messages: Array<{ role: 'user' | 'assistant'; content:
     }));
 }
 
+function buildGeminiContents(
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  topic: string,
+  outline: string,
+) {
+  const contents = toGeminiContents(messages);
+  if (contents.length > 0) return contents;
+
+  return [
+    {
+      role: 'user' as const,
+      parts: [{
+        text: `Contexto do trabalho: tema "${topic}". Esboço aprovado: ${outline.slice(0, 600)}. Inicia a conversa conforme as instruções do sistema.`,
+      }],
+    },
+  ];
+}
+
 function toLegacyResponse(text: string, functionCalls: Array<{ name: string; args?: unknown }>) {
   const toolCalls = functionCalls.map((fc, index) => ({
     id: `call_${index + 1}`,
@@ -230,7 +248,7 @@ export async function POST(req: Request) {
       try {
         result = await ai.models.generateContent({
           model: 'gemini-3.1-flash-lite-preview',
-          contents: toGeminiContents(messageList),
+          contents: buildGeminiContents(messageList, String(topic), normalizedOutline),
           config: {
             systemInstruction: buildSystemPrompt(topic, normalizedOutline),
             temperature: 0.3,

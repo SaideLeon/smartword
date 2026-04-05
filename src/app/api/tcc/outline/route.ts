@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { saveOutlineDraft } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 
 const OUTLINE_SYSTEM = `És um especialista em metodologia académica e orientação de TCC (Trabalho de Conclusão de Curso).
 Geras esboços estruturados, completos e academicamente sólidos em português europeu.
@@ -39,16 +39,15 @@ export async function POST(req: Request) {
       ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${cleanedSuggestions}\n\nAplica estas sugestões com prioridade e regenera o esboço completo.`
       : '';
 
-    const response = await groqFetch((_key, _attempt) => ({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: OUTLINE_SYSTEM },
-          { role: 'user', content: `Gera um esboço detalhado para um TCC sobre o seguinte tópico:\n\n"${topic}"${suggestionBlock}` },
-        ],
-        stream: true,
-        max_tokens: 2048,
-        temperature: 0.4,
-      }));
+    const stream = await geminiGenerateTextStreamSSE({
+      model: 'gemini-3.1-flash-lite-preview',
+      messages: [
+        { role: 'system', content: OUTLINE_SYSTEM },
+        { role: 'user', content: `Gera um esboço detalhado para um TCC sobre o seguinte tópico:\n\n"${topic}"${suggestionBlock}` },
+      ],
+      maxOutputTokens: 2048,
+      temperature: 0.4,
+    });
 
     // Acumula o texto completo para guardar no Supabase após o stream
     let accumulated = '';
@@ -84,7 +83,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return new NextResponse(response.body!.pipeThrough(transformStream), {
+    return new NextResponse(stream.pipeThrough(transformStream), {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
