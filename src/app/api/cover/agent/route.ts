@@ -2,7 +2,7 @@
 // Agente Gemini com tool calling para decidir se gera capa/contracapa.
 
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
 const COVER_TOOL_DECLARATION = {
@@ -10,57 +10,56 @@ const COVER_TOOL_DECLARATION = {
   description:
     'Coleta dados do utilizador para gerar capa e contracapa de um trabalho académico. Chama esta tool APENAS quando o utilizador confirmar que quer capa e contracapa.',
   parameters: {
-    type: 'object',
+    type: Type.OBJECT,
     properties: {
       institution: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Nome completo da instituição',
       },
       delegation: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Delegação ou localização (opcional)',
       },
       logoBase64: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Imagem do logotipo em base64 ou data URL (opcional)',
       },
       logoMediaType: {
-        type: 'string',
+        type: Type.STRING,
         enum: ['image/png', 'image/jpeg'],
         description: 'Tipo MIME do logotipo (opcional)',
       },
       course: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Nome do curso',
       },
       subject: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Disciplina ou módulo',
       },
       theme: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Tema do trabalho',
       },
       group: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Identificação do grupo (opcional)',
       },
       members: {
-        type: 'array',
-        items: { type: 'string' },
-        minItems: 1,
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
         description: 'Lista de membros do grupo',
       },
       teacher: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Nome do docente/orientador',
       },
       city: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Cidade',
       },
       date: {
-        type: 'string',
+        type: Type.STRING,
         description: 'Data formatada',
       },
     },
