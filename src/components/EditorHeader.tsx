@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Menu, Settings, X } from 'lucide-react';
+import { Menu, Moon, Settings, Sun, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import type { ThemeMode } from '@/hooks/useThemeMode';
 
 interface Props {
   sidePanel: 'none' | 'work' | 'tcc' | 'chat';
@@ -13,9 +14,11 @@ interface Props {
   onTogglePanel: (panel: 'work' | 'tcc' | 'chat') => void;
   onUndo: () => void;
   onRedo: () => void;
+  themeMode: ThemeMode;
+  onToggleTheme: () => void;
 }
 
-export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo }: Props) {
+export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo, themeMode, onToggleTheme }: Props) {
   const { user, profile, plan, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -43,6 +46,14 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         </div>
 
         <div className="ml-1.5 flex items-center gap-1.5 border-l border-[var(--border)] pl-2">
+          <button
+            type="button"
+            aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+            onClick={onToggleTheme}
+            className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+          >
+            {themeMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
           <span className="mono text-[9px] uppercase tracking-[0.08em] text-[var(--text-muted)]">LaTeX → OMML</span>
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-teal)] shadow-[0_0_6px_var(--accent-teal)]" />
         </div>
@@ -124,6 +135,14 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           <div className="mt-3 flex items-center gap-2">
             <button aria-label="Desfazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canUndo} onClick={onUndo}>↶</button>
             <button aria-label="Refazer" className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] disabled:opacity-40" disabled={!canRedo} onClick={onRedo}>↷</button>
+            <button
+              type="button"
+              aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+              onClick={onToggleTheme}
+              className="press-feedback grid h-[30px] w-[30px] place-items-center rounded-md border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+            >
+              {themeMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
           </div>
 
           <div className="mt-3 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2 text-xs">
