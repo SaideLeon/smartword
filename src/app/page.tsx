@@ -96,11 +96,15 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Painel lateral (TCC, Trabalho, Chat) — todos inline ── */}
+        {/* ── Painel lateral — TCC, Trabalho e Chat todos inline ──
+            CRÍTICO: min-h-0 + overflow-hidden no aside impedem que qualquer
+            conteúdo interno (barra de acções do chat, secções longas do TCC)
+            quebre a altura do flex row pai durante atualizações de estado.     */}
         {sidePanel !== 'none' && (
           <aside
             className={cn(
-              'z-20 flex min-w-0 flex-shrink-0 flex-col border-l border-[var(--border)] bg-[var(--parchment)]',
+              'z-20 flex min-h-0 min-w-0 flex-shrink-0 flex-col overflow-hidden',
+              'border-l border-[var(--border)] bg-[var(--parchment)]',
               isMobile
                 ? 'absolute inset-0 animate-[slideUp_0.25s_ease] shadow-[0_-16px_40px_rgba(0,0,0,0.45)]'
                 : cn(
