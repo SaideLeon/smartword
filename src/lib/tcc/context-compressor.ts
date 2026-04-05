@@ -3,7 +3,7 @@
 
 import { createClient } from '@/lib/supabase';
 import type { TccSession, TccSection, CompressionDecision, OptimisedContext } from './types';
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateText } from '@/lib/gemini-resilient';
 
 // ── Constantes de controlo ────────────────────────────────────────────────────
 
@@ -115,19 +115,15 @@ async function generateCompressionSummary(
 ): Promise<string> {
   const prompt = buildCompressionPrompt(topic, outline, sectionsToCompress, existingSummary);
 
-  const response = await groqFetch(() => ({
-      model: 'openai/gpt-oss-120b',
-      messages: [
-        { role: 'system', content: prompt },
-        { role: 'user', content: 'Gera o resumo de contexto agora.' },
-      ],
-      stream:      false,
-      max_tokens:  600,
-      temperature: 0.2,
-    }));
-
-  const data = await response.json();
-  const summary = data.choices?.[0]?.message?.content ?? '';
+  const summary = await geminiGenerateText({
+    model: 'gemini-3.1-flash-lite-preview',
+    messages: [
+      { role: 'system', content: prompt },
+      { role: 'user', content: 'Gera o resumo de contexto agora.' },
+    ],
+    maxOutputTokens: 600,
+    temperature: 0.2,
+  });
 
   if (!summary.trim()) throw new Error('Resumo gerado está vazio');
 
