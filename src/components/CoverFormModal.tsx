@@ -198,6 +198,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
     ? {
         ...cssVars,
         maxHeight: 'calc(100dvh - 8px - env(safe-area-inset-bottom, 16px))',
+        marginBottom: '200px',
       }
     : {
         ...cssVars,
