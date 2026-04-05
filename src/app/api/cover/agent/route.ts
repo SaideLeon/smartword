@@ -131,6 +131,31 @@ function toLegacyResponse(text: string, functionCalls: Array<{ name: string; arg
   };
 }
 
+function collectGeminiKeys(): string[] {
+  const keys: string[] = [];
+
+  const base = process.env.GEMINI_API_KEY ?? '';
+  if (base) {
+    keys.push(...base.split(',').map((v) => v.trim()).filter(Boolean));
+  }
+
+  const plural = process.env.GEMINI_API_KEYS ?? '';
+  if (plural) {
+    keys.push(...plural.split(',').map((v) => v.trim()).filter(Boolean));
+  }
+
+  for (let i = 1; i <= 10; i++) {
+    const candidate = process.env[`GEMINI_API_KEY_${i}`]?.trim();
+    if (candidate) keys.push(candidate);
+  }
+
+  return Array.from(new Set(keys));
+}
+
+function canRetryWithNextKey(status: number | null): boolean {
+  return status === 429 || (status !== null && status >= 500);
+}
+
 export async function POST(req: Request) {
   const limited = enforceRateLimit(req, {
     scope: 'cover:agent',
@@ -153,8 +178,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
+    const apiKeys = collectGeminiKeys();
+    if (apiKeys.length === 0) {
       return NextResponse.json(
         { error: 'GEMINI_API_KEY não configurada.' },
         { status: 500 },
@@ -184,27 +209,50 @@ export async function POST(req: Request) {
       lastUserPreview: String(lastUserMessage).slice(0, 120),
     });
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}` ,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: buildSystemPrompt(topic, normalizedOutline) }] },
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 512,
-          },
-          tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],
-          contents: toGeminiContents(messageList),
-        }),
+    const payload = {
+      systemInstruction: { parts: [{ text: buildSystemPrompt(topic, normalizedOutline) }] },
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 512,
       },
-    );
+      tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],
+      contents: toGeminiContents(messageList),
+    };
 
-    const result = await response.json();
-    if (!response.ok) {
-      const message = result?.error?.message ?? 'Erro ao chamar Gemini.';
-      throw new Error(message);
+    let result: any = null;
+    let lastErrorMessage = 'Erro ao chamar Gemini.';
+
+    for (let i = 0; i < apiKeys.length; i++) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeys[i]}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const json = await response.json();
+      if (response.ok) {
+        result = json;
+        break;
+      }
+
+      lastErrorMessage = json?.error?.message ?? `Erro Gemini (status ${response.status}).`;
+      if (i < apiKeys.length - 1 && canRetryWithNextKey(response.status)) {
+        console.warn('[cover:agent] gemini_retry_next_key', {
+          status: response.status,
+          keyIndex: i + 1,
+          totalKeys: apiKeys.length,
+        });
+        continue;
+      }
+
+      throw new Error(lastErrorMessage);
+    }
+
+    if (!result) {
+      throw new Error(lastErrorMessage);
     }
 
     const candidate = result?.candidates?.[0];

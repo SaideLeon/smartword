@@ -38,7 +38,7 @@ NEXT_PUBLIC_SUPABASE_URL="https://<project>.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="<sua_chave_anon>"
 ```
 
-> Observação: `GEMINI_API_KEY` é usada pelo agente de capa (`/api/cover/agent`) e `GROQ_API_KEY` continua a ser usada pelos restantes fluxos de IA.
+> Observação: `GEMINI_API_KEY` é usada pelo agente de capa (`/api/cover/agent`) e aceita uma ou várias chaves separadas por vírgula; `GROQ_API_KEY` continua a ser usada pelos restantes fluxos de IA.
 
 ## Executar localmente
 
