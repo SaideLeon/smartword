@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
 import type { ThemeMode } from '@/hooks/useThemeMode';
 
 interface Props {
-  sidePanel: 'none' | 'work' | 'tcc';
+  sidePanel: 'none' | 'work' | 'tcc' | 'chat';
   canUndo: boolean;
   canRedo: boolean;
-  onTogglePanel: (panel: 'work' | 'tcc') => void;
+  onTogglePanel: (panel: 'work' | 'tcc' | 'chat') => void;
   onUndo: () => void;
   onRedo: () => void;
   themeMode: ThemeMode;
@@ -47,6 +47,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
         {/* Painéis */}
         <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => onTogglePanel('work')} />
         <PanelToggleButton active={sidePanel === 'tcc'}  label="TCC"      onClick={() => onTogglePanel('tcc')} />
+        <PanelToggleButton active={sidePanel === 'chat'} label="Chat" onClick={() => onTogglePanel('chat')} />
 
         {/* Undo / Redo */}
         <div className="ml-1.5 flex items-center gap-1 border-l border-[var(--border)] pl-2">
@@ -144,6 +145,7 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           <div className="mt-3 grid grid-cols-2 gap-2">
             <PanelToggleButton active={sidePanel === 'work'} label="Trabalho" onClick={() => { onTogglePanel('work'); setShowMobileMenu(false); }} />
             <PanelToggleButton active={sidePanel === 'tcc'}  label="TCC"      onClick={() => { onTogglePanel('tcc');  setShowMobileMenu(false); }} />
+            <PanelToggleButton active={sidePanel === 'chat'} label="Chat"     onClick={() => { onTogglePanel('chat'); setShowMobileMenu(false); }} />
           </div>
 
           <div className="mt-3 flex items-center gap-2">

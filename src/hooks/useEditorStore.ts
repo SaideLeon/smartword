@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { CoverData } from '@/lib/docx/cover-types';
 
-export type SidePanel = 'none' | 'tcc' | 'work';
+export type SidePanel = 'none' | 'tcc' | 'work' | 'chat';
 
 const HISTORY_LIMIT = 100;
 const DEFAULT_MARKDOWN = `# Matemática — Equações do 2.º Grau e Logaritmos

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { ChatMessageContent } from "@/components/ChatMessageContent";
+import { AudioInputButton } from "@/components/AudioInputButton";
 
 // ─── Paleta de syntax highlighting ───────────────────────────────────────────
 const TOKEN_COLORS = {
@@ -427,7 +429,7 @@ function MessageBubble({ msg, isStreaming }) {
             {msg.content}
           </span>
         ) : (
-          <MarkdownContent content={msg.content} isStreaming={isStreaming} />
+          <ChatMessageContent content={msg.content} streaming={isStreaming} />
         )}
       </div>
     </div>
@@ -499,6 +501,11 @@ export default function MuneroChatPanel() {
       setCopiedIdx(idx);
       setTimeout(() => setCopiedIdx(null), 1800);
     });
+  }, []);
+
+  const handleTranscription = useCallback((text) => {
+    setInput(prev => prev ? `${prev} ${text}` : text);
+    setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
   const send = useCallback(async () => {
@@ -751,6 +758,12 @@ export default function MuneroChatPanel() {
 
           {/* Input */}
           <div className="mc-input-area">
+            <AudioInputButton
+              onTranscription={handleTranscription}
+              disabled={streaming}
+              className="h-[38px] border-[#2a2520] bg-[#0f0e0d] text-[#8a7d6e] hover:border-[#c9a96e] hover:text-[#c9a96e]"
+              title="Ditado por voz"
+            />
             <textarea
               ref={inputRef}
               className="mc-textarea"
