@@ -147,10 +147,10 @@ export default function LandingPage() {
       </section>
 
       {/* ── COMO FUNCIONA ── */}
-      <section className="bg-[var(--ink)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
+      <section className="bg-[var(--heroRight)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
         <div className="mx-auto w-full max-w-7xl">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#3a3530]">Como funciona</p>
-          <h2 className="font-serif text-2xl text-[#e8e2d9] sm:text-3xl md:text-4xl lg:text-5xl">
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Como funciona</p>
+          <h2 className="font-serif text-2xl text-[var(--parchment)] sm:text-3xl md:text-4xl lg:text-5xl">
             Do zero ao trabalho pronto em <em className="text-[var(--gold)]">quatro passos simples.</em>
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
@@ -162,8 +162,8 @@ export default function LandingPage() {
             ].map(([num, title, desc]) => (
               <div key={num} className="space-y-3">
                 <div className="grid h-12 w-12 place-items-center rounded-full border border-[#3a3530] bg-[#1a1714] font-mono text-xs text-[var(--gold)]">{num}</div>
-                <h3 className="font-serif text-lg text-[#e8e2d9]">{title}</h3>
-                <p className="text-sm leading-relaxed text-[#8a7d6e]">{desc}</p>
+                <h3 className="font-serif text-lg text-[var(--parchment)]">{title}</h3>
+                <p className="text-sm leading-relaxed text-[var(--muted)]">{desc}</p>
               </div>
             ))}
           </div>
