@@ -2,6 +2,7 @@
 // Agente Gemini com tool calling para decidir se gera capa/contracapa.
 
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
 const COVER_TOOL_DECLARATION = {
@@ -156,6 +157,19 @@ function canRetryWithNextKey(status: number | null): boolean {
   return status === 429 || (status !== null && status >= 500);
 }
 
+function extractStatusFromError(error: unknown): number | null {
+  const candidate = error as { status?: unknown; cause?: { status?: unknown } };
+  const directStatus = typeof candidate?.status === 'number' ? candidate.status : null;
+  if (directStatus !== null) return directStatus;
+
+  const causeStatus = typeof candidate?.cause?.status === 'number' ? candidate.cause.status : null;
+  if (causeStatus !== null) return causeStatus;
+
+  const message = (error as { message?: string })?.message ?? '';
+  const statusMatch = message.match(/\b(\d{3})\b/);
+  return statusMatch ? Number(statusMatch[1]) : null;
+}
+
 export async function POST(req: Request) {
   const limited = enforceRateLimit(req, {
     scope: 'cover:agent',
@@ -209,46 +223,38 @@ export async function POST(req: Request) {
       lastUserPreview: String(lastUserMessage).slice(0, 120),
     });
 
-    const payload = {
-      systemInstruction: { parts: [{ text: buildSystemPrompt(topic, normalizedOutline) }] },
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 512,
-      },
-      tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],
-      contents: toGeminiContents(messageList),
-    };
-
     let result: any = null;
     let lastErrorMessage = 'Erro ao chamar Gemini.';
 
     for (let i = 0; i < apiKeys.length; i++) {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKeys[i]}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-      );
-
-      const json = await response.json();
-      if (response.ok) {
-        result = json;
-        break;
-      }
-
-      lastErrorMessage = json?.error?.message ?? `Erro Gemini (status ${response.status}).`;
-      if (i < apiKeys.length - 1 && canRetryWithNextKey(response.status)) {
-        console.warn('[cover:agent] gemini_retry_next_key', {
-          status: response.status,
-          keyIndex: i + 1,
-          totalKeys: apiKeys.length,
+      const ai = new GoogleGenAI({ apiKey: apiKeys[i] });
+      try {
+        result = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite-preview',
+          contents: toGeminiContents(messageList),
+          config: {
+            systemInstruction: buildSystemPrompt(topic, normalizedOutline),
+            temperature: 0.3,
+            maxOutputTokens: 512,
+            tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],
+          },
         });
-        continue;
-      }
+        break;
+      } catch (error: any) {
+        const status = extractStatusFromError(error);
+        lastErrorMessage = error?.message ?? `Erro Gemini (status ${status ?? 'desconhecido'}).`;
 
-      throw new Error(lastErrorMessage);
+        if (i < apiKeys.length - 1 && canRetryWithNextKey(status)) {
+          console.warn('[cover:agent] gemini_retry_next_key', {
+            status,
+            keyIndex: i + 1,
+            totalKeys: apiKeys.length,
+          });
+          continue;
+        }
+
+        throw new Error(lastErrorMessage);
+      }
     }
 
     if (!result) {
@@ -256,11 +262,15 @@ export async function POST(req: Request) {
     }
 
     const candidate = result?.candidates?.[0];
-    const text = candidate?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join('\n') ?? '';
+    const text = result?.text ?? candidate?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join('\n') ?? '';
     const parts = candidate?.content?.parts ?? [];
-    const functionCalls = parts
+    const fromParts = parts
       .map((part: any) => part?.functionCall)
       .filter((fc: any) => Boolean(fc?.name));
+    const fromResponse = Array.isArray(result?.functionCalls)
+      ? result.functionCalls.filter((fc: any) => Boolean(fc?.name))
+      : [];
+    const functionCalls = fromResponse.length > 0 ? fromResponse : fromParts;
 
     const toolNames = functionCalls.map((fc: any) => fc.name);
     const hasCreateCover = toolNames.includes('criar_capa');
