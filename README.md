@@ -1,7 +1,3 @@
-<div align="center">
-  <img width="1200" height="475" alt="Muneri Banner" src="https://muneri.vercel.app" />
-</div>
-
 # Muneri
 
 Editor académico em **Markdown** com exportação para **.docx** e conversão de equações **LaTeX → OMML** (equações editáveis no Word).
