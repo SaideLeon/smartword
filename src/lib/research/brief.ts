@@ -6,6 +6,14 @@ export interface ResearchBrief {
   brief: string;
 }
 
+type BriefMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type BriefRequest = {
+  messages: BriefMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  model?: string;
+};
+
 function buildHeuristicBrief(topic: string, outline: string): ResearchBrief {
   const headings = outline
     .split('\n')
@@ -43,12 +51,7 @@ ${sectionGuidance}`;
   return { keywords, brief };
 }
 
-async function requestBrief(body: {
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-  temperature?: number;
-  max_tokens?: number;
-  model?: string;
-}): Promise<any> {
+async function requestBrief(body: BriefRequest): Promise<any> {
   const text = await geminiGenerateText({
     model: body.model ?? 'gemini-3.1-flash-lite-preview',
     messages: body.messages,
@@ -142,7 +145,7 @@ Regras críticas:
   const fallbackOutlineBudgets = [1_500, 900, 600];
   for (let i = 0; i < fallbackOutlineBudgets.length; i++) {
     const outlineForPrompt = compactOutline(outline, fallbackOutlineBudgets[i]);
-    const plainFallbackBody = {
+    const plainFallbackBody: BriefRequest = {
       model: 'gemini-3.1-flash-lite-preview',
       messages: [
         {
@@ -153,7 +156,6 @@ Regras críticas:
       ],
       temperature: 0.2,
       max_tokens: i === 0 ? 900 : 700,
-      stream: false,
     };
 
     try {
