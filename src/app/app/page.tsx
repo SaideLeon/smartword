@@ -8,7 +8,6 @@ import { useThemeMode } from '@/hooks/useThemeMode';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
-import { AiChatDrawer } from '@/components/AiChatDrawer';
 import { EditorHeader } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
@@ -33,13 +32,6 @@ export default function Home() {
   const handleInsert = useCallback(
     (text: string) => {
       setMarkdown((prev) => (prev ? `${prev}\n\n${text}` : text));
-    },
-    [setMarkdown],
-  );
-
-  const handleReplace = useCallback(
-    (text: string) => {
-      setMarkdown(text);
     },
     [setMarkdown],
   );
@@ -107,7 +99,7 @@ export default function Home() {
           </div>
         </section>
 
-        {sidePanel !== 'none' && sidePanel !== 'chat' && (
+        {sidePanel !== 'none' && (
           <aside
             className={cn(
               'z-20 flex min-w-0 flex-shrink-0 flex-col border-l border-[var(--border)] bg-[var(--parchment)]',
@@ -145,14 +137,6 @@ export default function Home() {
         includeCover={includeCover}
         isMobile={isMobile}
         onExport={exportDocx}
-      />
-
-      <AiChatDrawer
-        open={sidePanel === 'chat'}
-        onClose={closePanel}
-        onInsert={handleInsert}
-        onReplace={handleReplace}
-        isMobile={isMobile}
       />
 
       <style>{`

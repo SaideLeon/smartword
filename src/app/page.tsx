@@ -8,7 +8,6 @@ import { useThemeMode } from '@/hooks/useThemeMode';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
-import { AiChat } from '@/components/AiChat';
 import { EditorHeader } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
@@ -33,13 +32,6 @@ export default function Home() {
   const handleInsert = useCallback(
     (text: string) => {
       setMarkdown((prev) => (prev ? `${prev}\n\n${text}` : text));
-    },
-    [setMarkdown],
-  );
-
-  const handleReplace = useCallback(
-    (text: string) => {
-      setMarkdown(text);
     },
     [setMarkdown],
   );
@@ -96,10 +88,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Painel lateral — TCC, Trabalho e Chat todos inline ──
-            CRÍTICO: min-h-0 + overflow-hidden no aside impedem que qualquer
-            conteúdo interno (barra de acções do chat, secções longas do TCC)
-            quebre a altura do flex row pai durante atualizações de estado.     */}
+        {/* ── Painel lateral — TCC e Trabalho inline ── */}
         {sidePanel !== 'none' && (
           <aside
             className={cn(
@@ -107,10 +96,7 @@ export default function Home() {
               'border-l border-[var(--border)] bg-[var(--parchment)]',
               isMobile
                 ? 'absolute inset-0 animate-[slideUp_0.25s_ease] shadow-[0_-16px_40px_rgba(0,0,0,0.45)]'
-                : cn(
-                    'relative animate-[slideIn_0.25s_ease]',
-                    sidePanel === 'chat' ? 'w-[400px]' : 'w-[300px]',
-                  ),
+                : 'relative w-[300px] animate-[slideIn_0.25s_ease]',
             )}
           >
             {sidePanel === 'tcc' && (
@@ -129,14 +115,6 @@ export default function Home() {
                 onClose={closePanel}
                 isMobile={isMobile}
                 editorMarkdown={markdown}
-              />
-            )}
-            {sidePanel === 'chat' && (
-              <AiChat
-                onInsert={handleInsert}
-                onReplace={handleReplace}
-                onClose={closePanel}
-                isMobile={isMobile}
               />
             )}
           </aside>
