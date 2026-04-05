@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  BookOpen, FileText, Building2, Clock, Users, Download,
+  GraduationCap, Library, Briefcase, ThumbsUp, Sun, Moon,
+  ChevronRight, ArrowDown,
+} from 'lucide-react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
 function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light'; onToggleTheme: () => void }) {
@@ -15,13 +20,15 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
             <button
               type="button"
               onClick={onToggleTheme}
-              className="rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+              className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
               aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
             >
-              {themeMode === 'dark' ? '☀ Claro' : '🌙 Escuro'}
+              {themeMode === 'dark'
+                ? <><Sun size={11} /> Claro</>
+                : <><Moon size={11} /> Escuro</>}
             </button>
-            <a href="/app" className="rounded bg-[var(--ink)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
-              ↓ Abrir
+            <a href="/app" className="flex items-center gap-1 rounded bg-[var(--ink)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
+              <ArrowDown size={11} /> Abrir
             </a>
           </div>
         </div>
@@ -37,13 +44,15 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
           <button
             type="button"
             onClick={onToggleTheme}
-            className="rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+            className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
             aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
           >
-            {themeMode === 'dark' ? '☀ Claro' : '🌙 Escuro'}
+            {themeMode === 'dark'
+              ? <><Sun size={12} /> Claro</>
+              : <><Moon size={12} /> Escuro</>}
           </button>
-          <a href="/app" className="rounded bg-[var(--ink)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
-            ↓ Abrir app
+          <a href="/app" className="flex items-center gap-1.5 rounded bg-[var(--ink)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
+            <ArrowDown size={12} /> Abrir app
           </a>
         </div>
 
@@ -58,6 +67,15 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
     </nav>
   );
 }
+
+const features: [React.ReactNode, string, string][] = [
+  [<BookOpen size={22} strokeWidth={1.5} />, 'Modelo pronto', 'Trabalho com estrutura académica completa e organizada.'],
+  [<FileText size={22} strokeWidth={1.5} />, 'Capa e contracapa', 'Preencha os seus dados e o sistema monta tudo no formato certo.'],
+  [<Building2 size={22} strokeWidth={1.5} />, 'Logotipo da instituição', 'Adicione facilmente o logotipo da universidade ou escola.'],
+  [<Clock size={22} strokeWidth={1.5} />, 'Mais rapidez', 'Faça em minutos o que normalmente levaria horas para formatar.'],
+  [<Users size={22} strokeWidth={1.5} />, 'Feito para iniciantes', 'Não precisa conhecer regras técnicas de edição para usar.'],
+  [<Download size={22} strokeWidth={1.5} />, 'Arquivo pronto', 'Baixe em Word e faça ajustes finais, se quiser.'],
+];
 
 export default function LandingPage() {
   const { themeMode, toggleThemeMode } = useThemeMode();
@@ -91,11 +109,11 @@ export default function LandingPage() {
             <div className="text-[var(--green)] opacity-80">✓ Documento final organizado — pronto para o Word</div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <a href="/app" className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-6 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow-lg sm:px-7">
-              ↓ Criar meu trabalho grátis
+            <a href="/app" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-6 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow-lg sm:px-7">
+              <ArrowDown size={13} /> Criar meu trabalho grátis
             </a>
-            <a href="#features" className="border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]">
-              Ver funcionalidades →
+            <a href="#features" className="flex items-center gap-1 border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]">
+              Ver funcionalidades <ChevronRight size={12} />
             </a>
           </div>
         </div>
@@ -129,16 +147,9 @@ export default function LandingPage() {
         </h2>
 
         <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-2 md:grid-cols-3">
-          {[
-            ['📘', 'Modelo pronto', 'Trabalho com estrutura académica completa e organizada.'],
-            ['🧾', 'Capa e contracapa', 'Preencha os seus dados e o sistema monta tudo no formato certo.'],
-            ['🏛️', 'Logotipo da instituição', 'Adicione facilmente o logotipo da universidade ou escola.'],
-            ['⏱️', 'Mais rapidez', 'Faça em minutos o que normalmente levaria horas para formatar.'],
-            ['🤝', 'Feito para iniciantes', 'Não precisa conhecer regras técnicas de edição para usar.'],
-            ['⬇️', 'Arquivo pronto', 'Baixe em Word e faça ajustes finais, se quiser.'],
-          ].map(([icon, title, desc]) => (
-            <article key={title} className="space-y-2 bg-[var(--parchment)] p-6 sm:p-8">
-              <div className="text-2xl">{icon}</div>
+          {features.map(([icon, title, desc]) => (
+            <article key={title} className="space-y-3 bg-[var(--parchment)] p-6 sm:p-8">
+              <div className="text-[var(--gold2)]">{icon}</div>
               <h3 className="font-serif text-xl sm:text-2xl">{title}</h3>
               <p className="text-sm leading-relaxed text-[var(--muted)]">{desc}</p>
             </article>
@@ -147,10 +158,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── COMO FUNCIONA ── */}
+      {/* NOTE: --heroRight is always dark (#090908 / #1e1a14), so we use fixed
+          light colours here instead of CSS vars that invert with the theme. */}
       <section className="bg-[var(--heroRight)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
         <div className="mx-auto w-full max-w-7xl">
           <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Como funciona</p>
-          <h2 className="font-serif text-2xl text-[var(--parchment)] sm:text-3xl md:text-4xl lg:text-5xl">
+          <h2 className="font-serif text-2xl text-[#f1e8da] sm:text-3xl md:text-4xl lg:text-5xl">
             Do zero ao trabalho pronto em <em className="text-[var(--gold)]">quatro passos simples.</em>
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
@@ -162,8 +175,9 @@ export default function LandingPage() {
             ].map(([num, title, desc]) => (
               <div key={num} className="space-y-3">
                 <div className="grid h-12 w-12 place-items-center rounded-full border border-[#3a3530] bg-[#1a1714] font-mono text-xs text-[var(--gold)]">{num}</div>
-                <h3 className="font-serif text-lg text-[var(--parchment)]">{title}</h3>
-                <p className="text-sm leading-relaxed text-[var(--muted)]">{desc}</p>
+                {/* Fixed light colour — this section background is always dark */}
+                <h3 className="font-serif text-lg text-[#f1e8da]">{title}</h3>
+                <p className="text-sm leading-relaxed text-[#c8bfb4]">{desc}</p>
               </div>
             ))}
           </div>
@@ -203,22 +217,30 @@ export default function LandingPage() {
 
         <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
           <article className="rounded-xl border border-[#1e2a1e] bg-[#0b0d0b] p-5 sm:p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#6a9e5f]">🎓 Universitários</p>
+            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[#6a9e5f]">
+              <GraduationCap size={14} strokeWidth={1.5} /> Universitários
+            </p>
             <h3 className="mt-3 font-serif text-xl text-[#d0dcc8] sm:text-2xl">TCC e trabalhos académicos com padrão profissional.</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#4a6644]">Perfeito para quem precisa entregar com qualidade, mesmo sem saber formatar.</p>
           </article>
           <article className="rounded-xl border border-[#1a2a1a] bg-[#0a0d0a] p-5 sm:p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#5a9e8f]">📚 Ensino médio</p>
+            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[#5a9e8f]">
+              <Library size={14} strokeWidth={1.5} /> Ensino médio
+            </p>
             <h3 className="mt-3 font-serif text-xl text-[#c8dcd6] sm:text-2xl">Trabalhos escolares bem organizados e fáceis de montar.</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#3a6e60]">Ajuda você a estruturar tudo com linguagem clara e formato correto.</p>
           </article>
           <article className="rounded-xl border border-[#2a2520] bg-[#0d0c0b] p-5 sm:p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold)]">👩‍💼 Profissionais</p>
+            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold)]">
+              <Briefcase size={14} strokeWidth={1.5} /> Profissionais
+            </p>
             <h3 className="mt-3 font-serif text-xl text-[#d8d0c7] sm:text-2xl">Relatórios e documentos formais prontos para apresentação.</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#5a5248]">Economize tempo e mantenha um padrão visual organizado.</p>
           </article>
           <article className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-5 sm:p-6">
-            <p className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)]">🙌 Iniciantes</p>
+            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)]">
+              <ThumbsUp size={14} strokeWidth={1.5} /> Iniciantes
+            </p>
             <h3 className="mt-3 font-serif text-xl sm:text-2xl">Você não precisa saber nada técnico para começar.</h3>
             <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Basta preencher informações simples e deixar o sistema fazer o resto.</p>
           </article>
@@ -235,8 +257,8 @@ export default function LandingPage() {
           Grátis. Simples. Feito para quem quer terminar o trabalho com tranquilidade.
         </p>
         <div className="mt-8 flex justify-center">
-          <a href="/app" className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--ink)] sm:px-8 sm:py-[14px]">
-            ↓ Começar agora — é grátis
+          <a href="/app" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--ink)] sm:px-8 sm:py-[14px]">
+            <ArrowDown size={14} /> Começar agora — é grátis
           </a>
         </div>
         <p className="mt-8 font-mono text-[10px] tracking-[0.08em] text-[var(--faint)]">Muneri · Trabalhos acadêmicos automáticos · Quelimane, Moçambique</p>
