@@ -526,35 +526,51 @@ export default function MuneroChatPanel() {
     setMessages(prev => [...prev, { role: "assistant", content: "", timestamp: Date.now() }]);
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: "És um assistente académico do Muneri — plataforma para estudantes moçambicanos. Respondes em português europeu. Usa Markdown nas respostas: **negrito**, *itálico*, `código inline`, blocos ```linguagem ... ```, listas, tabelas, headings. Para código usa SEMPRE blocos com a linguagem correcta (```python, ```typescript, ```javascript, ```sql, etc.).",
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
         signal: ctrl.signal,
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const fullContent = data.content?.map(b => b.type === "text" ? b.text : "").join("") ?? "";
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
-      // Simula streaming caractere a caractere, respeitando blocos de código inteiros
-      const chunks = fullContent.split(/(?<=\n)/);
-      let displayed = "";
-      for (let ci = 0; ci < chunks.length; ci++) {
-        if (ctrl.signal.aborted) break;
-        displayed += chunks[ci];
-        const snap = displayed;
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: snap, timestamp: Date.now() };
-          return updated;
-        });
-        await new Promise(r => setTimeout(r, 20));
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+
+          try {
+            const json = JSON.parse(data);
+            const delta = json.choices?.[0]?.delta?.content ?? "";
+            if (!delta) continue;
+
+            fullContent += delta;
+            const snapshot = fullContent;
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", content: snapshot, timestamp: Date.now() };
+              return updated;
+            });
+          } catch {
+            // ignora chunks inválidos de SSE
+          }
+        }
       }
 
       const finalMsgs = [...newMessages, { role: "assistant", content: fullContent, timestamp: Date.now() }];
