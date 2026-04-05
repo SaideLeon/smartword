@@ -582,11 +582,11 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                       <button
                         onClick={() => handleDeleteSession(s.id)}
                         disabled={deletingSessionId === s.id}
-                        className="rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex min-h-7 min-w-12 items-center justify-center rounded border border-red-900/60 px-2 py-1 font-mono text-[10px] text-red-300 transition-colors hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
                         title="Excluir trabalho"
                         aria-label={`Excluir trabalho ${s.topic}`}
                       >
-                        {deletingSessionId === s.id ? '...' : 'Excluir'}
+                        {deletingSessionId === s.id ? <ProcessingBars height={12} barColor="#fca5a5" /> : 'Excluir'}
                       </button>
                     </div>
                   ))}
