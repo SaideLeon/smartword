@@ -5,7 +5,7 @@ import { getSession, saveSectionContent } from '@/lib/tcc/service';
 import { compressContextIfNeeded, buildOptimisedContext } from '@/lib/tcc/context-compressor';
 import type { TccSection } from '@/lib/tcc/types';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { buildContextInstruction, type ContextType } from '@/lib/tcc/context-detector';
 
 // ---------------------------------------------------------------------------
@@ -419,8 +419,8 @@ export async function POST(req: Request) {
       contextType,
     );
 
-    const response = await groqFetch((_key, _attempt) => ({
-      model: 'openai/gpt-oss-120b',
+    const stream = await geminiGenerateTextStreamSSE({
+      model: 'gemini-3.1-flash-lite-preview',
       messages: [
         { role: 'system', content: systemPrompt },
         {
@@ -428,10 +428,9 @@ export async function POST(req: Request) {
           content: `Desenvolve a secção "${currentSection.title}" do TCC. Escreve APENAS o conteúdo desta secção, sem conclusão nem lista de referências no final. Respeita rigorosamente os limites e instruções da secção.`,
         },
       ],
-      stream: true,
-      max_tokens: 2048,
+      maxOutputTokens: 2048,
       temperature: 0.5,
-    }));
+    });
 
     let accumulated = '';
     const compressionWasActive = optimised.compressionActive;
@@ -475,7 +474,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return new NextResponse(response.body!.pipeThrough(transformStream), {
+    return new NextResponse(stream.pipeThrough(transformStream), {
       headers: {
         'Content-Type':              'text/event-stream',
         'Cache-Control':             'no-cache',

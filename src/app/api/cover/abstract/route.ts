@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 
 const SYSTEM = `És um especialista em redacção académica do ensino secundário/médio em Moçambique.
 Gera um resumo (abstract) conciso e académico para a contracapa de um trabalho escolar.
@@ -44,18 +44,17 @@ export async function POST(req: Request) {
         ? `Gera um resumo para a contracapa de um trabalho escolar.\n\nTópico geral: "${topic}"\nTema específico: "${theme}"`
         : `Gera um resumo para a contracapa de um trabalho escolar sobre: "${theme}"`;
 
-    const response = await groqFetch((_key, _attempt) => ({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: userPrompt },
-        ],
-        stream: true,
-        max_tokens: 200,
-        temperature: 0.4,
-      }));
+    const stream = await geminiGenerateTextStreamSSE({
+      model: 'gemini-3.1-flash-lite-preview',
+      messages: [
+        { role: 'system', content: SYSTEM },
+        { role: 'user', content: userPrompt },
+      ],
+      maxOutputTokens: 200,
+      temperature: 0.4,
+    });
 
-    return new NextResponse(response.body, {
+    return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
