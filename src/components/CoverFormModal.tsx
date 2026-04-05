@@ -181,7 +181,7 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
   // ── Estilos base ──────────────────────────────────────────────────────────
 
-  const vars: CSSProperties = {
+  const cssVars: CSSProperties = {
     '--modal-bg':      '#0a0d0a',
     '--modal-surface': '#111611',
     '--modal-border':  '#1a2a1a',
@@ -192,6 +192,17 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
     '--modal-gold':    C.gold,
     '--modal-error':   '#c97070',
   } as CSSProperties;
+
+  // Altura máxima segura: viewport - status bar - margem inferior - safe areas
+  const modalStyle: CSSProperties = isMobile
+    ? {
+        ...cssVars,
+        maxHeight: 'calc(100dvh - 48px - env(safe-area-inset-bottom, 16px))',
+      }
+    : {
+        ...cssVars,
+        maxHeight: '88vh',
+      };
 
   return (
     <>
@@ -207,14 +218,14 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
         role="dialog"
         aria-modal="true"
         aria-label="Formulário de capa"
-        style={vars}
-        className={`fixed z-[71] bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-2xl overflow-hidden flex flex-col ${
+        style={modalStyle}
+        className={`fixed z-[71] bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-2xl flex flex-col ${
           isMobile
-            ? 'inset-x-2 bottom-2 top-[env(safe-area-inset-top,12px)] rounded-xl'
-            : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[560px] max-h-[88vh] rounded-xl'
+            ? 'inset-x-2 bottom-2 rounded-xl overflow-hidden'
+            : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[560px] rounded-xl overflow-hidden'
         }`}
       >
-        {/* Cabeçalho */}
+        {/* Cabeçalho — fixo no topo */}
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--modal-border)] px-5 py-3.5">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[13px] tracking-[0.06em] text-[var(--modal-accent)]">
@@ -233,8 +244,8 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
           </button>
         </div>
 
-        {/* Corpo com scroll */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        {/* Corpo com scroll — ocupa o espaço disponível entre header e footer */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
           {/* Instituição */}
           <Section label="Instituição">
             <Field
@@ -297,12 +308,12 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
           {/* Informações académicas */}
           <Section label="Informações Académicas">
-            <Field label="Curso" required error={errors.course}>
+            <Field label="Curso ou Classe" required error={errors.course}>
               <Input
                 value={form.course}
                 onChange={handleText('course')}
                 onVoiceText={text => setField('course', text)}
-                placeholder="Ex: Contabilidade CV3"
+                placeholder="Ex: Contabilidade CV3 ou 12 Classe"
                 hasError={!!errors.course}
               />
             </Field>
@@ -325,12 +336,12 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
                 rows={2}
               />
             </Field>
-            <Field label="Grupo (opcional)">
+            <Field label="Grupo (opcional) ou Nome:">
               <Input
                 value={form.group}
                 onChange={handleText('group')}
                 onVoiceText={text => setField('group', text)}
-                placeholder="Ex: 3º Grupo"
+                placeholder="Ex: 3º Grupo ou Nome:"
               />
             </Field>
           </Section>
@@ -413,8 +424,8 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
           </Section>
         </div>
 
-        {/* Rodapé */}
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--modal-border)] px-5 py-3.5">
+        {/* Rodapé — fixo na base, sempre visível */}
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--modal-border)] px-5 py-3.5 bg-[var(--modal-bg)]">
           <button
             onClick={onCancel}
             className="rounded border border-[var(--modal-border)] bg-transparent px-4 py-2 font-mono text-[11px] tracking-[0.04em] text-[var(--modal-muted)] hover:text-[var(--modal-text)] transition-colors"
