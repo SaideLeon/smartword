@@ -12,6 +12,11 @@ interface GeminiOptions {
   model?: string;
 }
 
+type GeminiContent = {
+  role: 'user' | 'model';
+  parts: Array<{ text: string }>;
+};
+
 function collectGeminiKeys(): string[] {
   const keys: string[] = [];
 
@@ -48,9 +53,9 @@ function buildPayload(messages: ChatMessage[]) {
     .filter(Boolean)
     .join('\n\n');
 
-  const contents = messages
+  const contents: GeminiContent[] = messages
     .filter(m => m.role !== 'system' && m.content)
-    .map((m) => ({
+    .map((m): GeminiContent => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
@@ -58,9 +63,7 @@ function buildPayload(messages: ChatMessage[]) {
   return { systemInstruction: systemInstruction || undefined, contents };
 }
 
-function ensureContents(
-  contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>,
-) {
+function ensureContents(contents: GeminiContent[]) {
   if (contents.length > 0) return contents;
   return [{ role: 'user' as const, parts: [{ text: 'Segue as instruções do sistema e responde ao pedido.' }] }];
 }
