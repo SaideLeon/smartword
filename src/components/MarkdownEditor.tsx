@@ -15,10 +15,29 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [recentAction, setRecentAction] = useState<'import' | 'clear' | 'pagebreak' | 'section' | 'toc' | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousValueRef = useRef(value);
 
   useEffect(() => () => {
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
   }, []);
+
+  useEffect(() => {
+    const previous = previousValueRef.current;
+    const grewByAppend = value.length > previous.length && value.startsWith(previous);
+    previousValueRef.current = value;
+
+    if (!grewByAppend) return;
+
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    requestAnimationFrame(() => {
+      textarea.scrollTo({
+        top: textarea.scrollHeight,
+        behavior: 'smooth',
+      });
+    });
+  }, [value]);
 
   const showActionFeedback = useCallback((action: 'import' | 'clear' | 'pagebreak' | 'section' | 'toc') => {
     setRecentAction(action);
