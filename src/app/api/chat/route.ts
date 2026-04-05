@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { groqFetch } from '@/lib/groq-resilient';
+import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 
 const SYSTEM_PROMPT = `És um assistente especialista em matemática e ciências.
 Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
@@ -18,19 +18,17 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    const response = await groqFetch((_key, _attempt) => ({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...messages,
-        ],
-        stream: true,
-        max_tokens: 4096,
-        temperature: 0.7,
-      }));
+    const stream = await geminiGenerateTextStreamSSE({
+      model: 'gemini-3.1-flash-lite-preview',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages,
+      ],
+      maxOutputTokens: 4096,
+      temperature: 0.7,
+    });
 
-    // Passa o stream SSE directamente ao cliente
-    return new NextResponse(response.body, {
+    return new NextResponse(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
