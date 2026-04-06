@@ -72,6 +72,25 @@ function extractText(nodes: InlineNode[]): string {
   }).join('');
 }
 
+// ─── Normalização de títulos para pré-visualização ───────────────────────
+// Garante que todos os títulos Markdown (#, ##, ###, …) ficam a negrito
+// na pré-visualização sem alterar o markdown original do editor.
+function applyHeadingBold(markdown: string): string {
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const match = line.match(/^(#{1,6})\s+(.+)$/);
+      if (!match) return line;
+
+      const hashes = match[1];
+      const content = match[2].trimEnd();
+      if (/^\*\*.+\*\*$/.test(content)) return line;
+
+      return `${hashes} **${content}**`;
+    })
+    .join('\n');
+}
+
 // ─── Índice (TOC) ─────────────────────────────────────────────────────────
 function PreviewTocNode({
   allNodes,
@@ -135,7 +154,8 @@ function PreviewTocNode({
 
 // ─── Componente principal ────────────────────────────────────────────────
 export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }: Props) {
-  const documentNodes = useMemo(() => parseToAST(markdown), [markdown]);
+  const previewMarkdown = useMemo(() => applyHeadingBold(markdown), [markdown]);
+  const documentNodes = useMemo(() => parseToAST(previewMarkdown), [previewMarkdown]);
   const originalNodes = useMemo(
     () => (originalMarkdown ? parseToAST(originalMarkdown) : []),
     [originalMarkdown],
