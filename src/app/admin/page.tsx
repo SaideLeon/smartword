@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabaseClient } from '@/hooks/useAuth';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
 type AdminTab = 'payments' | 'expenses' | 'report';
@@ -106,22 +105,36 @@ export default function AdminPage() {
   }, []);
 
   const loadExpenses = useCallback(async () => {
-    const { data } = await supabaseClient
-      .from('expense_items')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setExpenses((data as ExpenseItem[]) ?? []);
-  }, []);
+    try {
+      const res = await fetch('/api/admin/expenses');
+      const data = await res.json();
+      if (!res.ok) {
+        flash(`Erro ao carregar despesas: ${data?.error ?? `HTTP ${res.status}`}`);
+        setExpenses([]);
+        return;
+      }
+      setExpenses(Array.isArray(data) ? data : []);
+    } catch {
+      flash('Falha de rede ao carregar despesas.');
+      setExpenses([]);
+    }
+  }, [flash]);
 
   const loadReport = useCallback(async (month: number, year: number) => {
-    const { data } = await supabaseClient
-      .from('monthly_reports')
-      .select('*')
-      .eq('period_month', month)
-      .eq('period_year', year)
-      .single();
-    setReport((data as Report) ?? null);
-  }, []);
+    try {
+      const res = await fetch(`/api/admin/report?month=${month}&year=${year}`);
+      const data = await res.json();
+      if (!res.ok) {
+        flash(`Erro ao carregar relatório: ${data?.error ?? `HTTP ${res.status}`}`);
+        setReport(null);
+        return;
+      }
+      setReport((data as Report) ?? null);
+    } catch {
+      flash('Falha de rede ao carregar relatório.');
+      setReport(null);
+    }
+  }, [flash]);
 
   useEffect(() => {
     if (tab === 'payments') { void loadPayments(); return; }
@@ -151,8 +164,6 @@ export default function AdminPage() {
       flash('Preenche descrição e valor da despesa.');
       return;
     }
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) { flash('Sessão inválida. Faça login novamente.'); return; }
 
     const payload = {
       category:     expForm.category,
@@ -162,11 +173,13 @@ export default function AdminPage() {
       period_year:  expForm.period_year,
     };
 
-    const { error } = editingExpenseId
-      ? await supabaseClient.from('expense_items').update(payload).eq('id', editingExpenseId)
-      : await supabaseClient.from('expense_items').insert({ created_by: user.id, ...payload });
+    const res = await fetch(editingExpenseId ? `/api/admin/expenses?id=${editingExpenseId}` : '/api/admin/expenses', {
+      method: editingExpenseId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-    if (error) {
+    if (!res.ok) {
       flash(editingExpenseId ? 'Não foi possível atualizar.' : 'Não foi possível registar.');
       return;
     }
@@ -187,20 +200,23 @@ export default function AdminPage() {
   };
 
   const handleDeleteExpense = async (id: string) => {
-    const { error } = await supabaseClient.from('expense_items').delete().eq('id', id);
-    if (error) { flash('Não foi possível eliminar.'); return; }
+    const res = await fetch(`/api/admin/expenses?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) { flash('Não foi possível eliminar.'); return; }
     if (editingExpenseId === id) resetExpenseForm();
     flash('Despesa eliminada.');
     void loadExpenses();
   };
 
   const handleGenerateReport = async () => {
-    const { error } = await supabaseClient.rpc('generate_monthly_report', {
-      p_month: expForm.period_month,
-      p_year:  expForm.period_year,
-      p_rate:  64.05,
+    const res = await fetch('/api/admin/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        month: expForm.period_month,
+        year: expForm.period_year,
+      }),
     });
-    if (error) { flash('Falha ao gerar relatório.'); return; }
+    if (!res.ok) { flash('Falha ao gerar relatório.'); return; }
     flash('Relatório mensal gerado.');
     void loadReport(expForm.period_month, expForm.period_year);
   };
