@@ -24,7 +24,7 @@ REGRAS ABSOLUTAS:
 - Apresenta o trabalho como facto consumado, não como proposta nem interrogação`;
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, {
+  const limited = await enforceRateLimit(req, {
     scope: 'cover:abstract',
     maxRequests: 20,
     windowMs: 60_000,

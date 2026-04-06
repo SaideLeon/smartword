@@ -16,13 +16,14 @@ vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: mockEnforceRateLimit,
 }));
 
-import { PATCH, POST } from '@/app/api/payment/route';
+import { GET, PATCH, POST } from '@/app/api/payment/route';
 
 type MockSupabase = {
   auth: {
     getUser: ReturnType<typeof vi.fn>;
   };
   from: ReturnType<typeof vi.fn>;
+  rpc?: ReturnType<typeof vi.fn>;
 };
 
 function makeReq(url: string, init?: RequestInit) {
@@ -86,34 +87,17 @@ describe('Security suite — /api/payment', () => {
   });
 
   it('POST ignora amount_mzn enviado pelo cliente e usa price_mzn do plano', async () => {
-    const paymentInsert = vi.fn();
-    const paymentSingle = vi.fn().mockResolvedValue({
-      data: { id: 'payment-1' },
+    const rpc = vi.fn().mockResolvedValue({
+      data: { payment_id: 'payment-1', amount_mzn: 640 },
       error: null,
     });
-    const paymentSelect = vi.fn().mockReturnValue({ single: paymentSingle });
-    paymentInsert.mockReturnValue({ select: paymentSelect });
-
-    const plansSingle = vi.fn().mockResolvedValue({
-      data: { key: 'premium', price_mzn: 640, is_active: true },
-      error: null,
-    });
-    const plansEq = vi.fn().mockReturnValue({ single: plansSingle });
-    const plansSelect = vi.fn().mockReturnValue({ eq: plansEq });
-
-    const profileEq = vi.fn().mockResolvedValue({ error: null });
-    const profileUpdate = vi.fn().mockReturnValue({ eq: profileEq });
 
     const supabase: MockSupabase = {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn((table: string) => {
-        if (table === 'plans') return { select: plansSelect };
-        if (table === 'payment_history') return { insert: paymentInsert };
-        if (table === 'profiles') return { update: profileUpdate };
-        throw new Error(`unexpected table ${table}`);
-      }),
+      from: vi.fn(),
+      rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
 
@@ -130,27 +114,27 @@ describe('Security suite — /api/payment', () => {
     );
 
     expect(res.status).toBe(200);
-    expect(paymentInsert).toHaveBeenCalledWith(
+    expect(rpc).toHaveBeenCalledWith(
+      'register_payment',
       expect.objectContaining({
-        plan_key: 'premium',
-        amount_mzn: 640,
+        p_plan_key: 'premium',
+        p_transaction_id: 'TRX-123',
       }),
     );
   });
 
   it('POST com plan_key inválido retorna 400', async () => {
-    const plansSingle = vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } });
-    const plansEq = vi.fn().mockReturnValue({ single: plansSingle });
-    const plansSelect = vi.fn().mockReturnValue({ eq: plansEq });
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'P0002', message: 'Plano inválido ou inactivo' },
+    });
 
     const supabase: MockSupabase = {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn((table: string) => {
-        if (table === 'plans') return { select: plansSelect };
-        throw new Error(`unexpected table ${table}`);
-      }),
+      from: vi.fn(),
+      rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
 
@@ -167,11 +151,99 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(400);
   });
 
+  it('POST rejeita transaction_id com mais de 100 caracteres (R07)', async () => {
+    const rpc = vi.fn();
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      from: vi.fn(),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await POST(
+      makeReq('http://localhost/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan_key: 'premium',
+          transaction_id: 'A'.repeat(101),
+          payment_method: 'mpesa',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('POST rejeita work_session_id sem ownership (R18)', async () => {
+    const workSessionMaybeSingle = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    });
+    const workSessionEqUser = vi.fn().mockReturnValue({ maybeSingle: workSessionMaybeSingle });
+    const workSessionEqId = vi.fn().mockReturnValue({ eq: workSessionEqUser });
+    const workSessionSelect = vi.fn().mockReturnValue({ eq: workSessionEqId });
+    const rpc = vi.fn();
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'work_sessions') return { select: workSessionSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await POST(
+      makeReq('http://localhost/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan_key: 'premium',
+          transaction_id: 'TRX-OWN-1',
+          payment_method: 'mpesa',
+          work_session_id: 'd6f5c2a1-b8e1-4e7d-9c7e-5ae2de5f1b9c',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('POST respeita rate limit e retorna 429', async () => {
     mockEnforceRateLimit.mockReturnValueOnce(
       new Response(JSON.stringify({ error: 'rate limited' }), { status: 429 }),
     );
     const res = await POST(makeReq('http://localhost/api/payment', { method: 'POST' }));
     expect(res.status).toBe(429);
+  });
+
+  it('GET admin sem auditoria persistida retorna 500 (R16)', async () => {
+    const profileSingle = vi.fn().mockResolvedValue({ data: { role: 'admin' }, error: null });
+    const profileEq = vi.fn().mockReturnValue({ single: profileSingle });
+    const profileSelect = vi.fn().mockReturnValue({ eq: profileEq });
+
+    const auditInsert = vi.fn().mockResolvedValue({ error: { message: 'insert failed' } });
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') return { select: profileSelect };
+        if (table === 'audit_log') return { insert: auditInsert };
+        throw new Error(`unexpected table ${table}`);
+      }),
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await GET(makeReq('http://localhost/api/payment', { method: 'GET' }));
+    expect(res.status).toBe(500);
+    expect(auditInsert).toHaveBeenCalledTimes(1);
   });
 });
