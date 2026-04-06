@@ -16,7 +16,7 @@ vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: mockEnforceRateLimit,
 }));
 
-import { PATCH, POST } from '@/app/api/payment/route';
+import { GET, PATCH, POST } from '@/app/api/payment/route';
 
 type MockSupabase = {
   auth: {
@@ -151,6 +151,32 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(400);
   });
 
+  it('POST rejeita transaction_id com mais de 100 caracteres (R07)', async () => {
+    const rpc = vi.fn();
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      from: vi.fn(),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await POST(
+      makeReq('http://localhost/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan_key: 'premium',
+          transaction_id: 'A'.repeat(101),
+          payment_method: 'mpesa',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('POST rejeita work_session_id sem ownership (R18)', async () => {
     const workSessionMaybeSingle = vi.fn().mockResolvedValue({
       data: null,
@@ -195,5 +221,29 @@ describe('Security suite — /api/payment', () => {
     );
     const res = await POST(makeReq('http://localhost/api/payment', { method: 'POST' }));
     expect(res.status).toBe(429);
+  });
+
+  it('GET admin sem auditoria persistida retorna 500 (R16)', async () => {
+    const profileSingle = vi.fn().mockResolvedValue({ data: { role: 'admin' }, error: null });
+    const profileEq = vi.fn().mockReturnValue({ single: profileSingle });
+    const profileSelect = vi.fn().mockReturnValue({ eq: profileEq });
+
+    const auditInsert = vi.fn().mockResolvedValue({ error: { message: 'insert failed' } });
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') return { select: profileSelect };
+        if (table === 'audit_log') return { insert: auditInsert };
+        throw new Error(`unexpected table ${table}`);
+      }),
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await GET(makeReq('http://localhost/api/payment', { method: 'GET' }));
+    expect(res.status).toBe(500);
+    expect(auditInsert).toHaveBeenCalledTimes(1);
   });
 });

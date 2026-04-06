@@ -7,6 +7,67 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
+const PAYMENT_METHODS = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
+type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type PaymentPostInput = {
+  planKey: string;
+  transactionId: string;
+  paymentMethod: PaymentMethod;
+  workSessionId: string | null;
+};
+
+function parsePaymentPostBody(body: unknown): PaymentPostInput | null {
+  if (!body || typeof body !== 'object') return null;
+  const payload = body as Record<string, unknown>;
+
+  if (typeof payload.plan_key !== 'string' || typeof payload.transaction_id !== 'string') return null;
+  const planKey = payload.plan_key.trim();
+  const transactionId = payload.transaction_id.trim();
+  if (!planKey || planKey.length > 50) return null;
+  if (transactionId.length < 3 || transactionId.length > 100) return null;
+  if (!PAYMENT_METHODS.includes(payload.payment_method as PaymentMethod)) return null;
+
+  let workSessionId: string | null = null;
+  if (payload.work_session_id != null) {
+    if (typeof payload.work_session_id !== 'string') return null;
+    const normalized = payload.work_session_id.trim();
+    if (!UUID_V4_PATTERN.test(normalized)) return null;
+    workSessionId = normalized;
+  }
+
+  return {
+    planKey,
+    transactionId,
+    paymentMethod: payload.payment_method as PaymentMethod,
+    workSessionId,
+  };
+}
+
+type PaymentPatchInput = {
+  paymentId: string;
+  action: 'confirm' | 'reject';
+  notes: string | null;
+};
+
+function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
+  if (!body || typeof body !== 'object') return null;
+  const payload = body as Record<string, unknown>;
+  if (typeof payload.payment_id !== 'string' || !UUID_V4_PATTERN.test(payload.payment_id.trim())) return null;
+  if (payload.action !== 'confirm' && payload.action !== 'reject') return null;
+
+  let notes: string | null = null;
+  if (payload.notes != null) {
+    if (typeof payload.notes !== 'string') return null;
+    const normalized = payload.notes.trim();
+    if (normalized.length > 500) return null;
+    notes = normalized || null;
+  }
+
+  return { paymentId: payload.payment_id.trim(), action: payload.action, notes };
+}
+
 async function makeSupabase() {
   const cookieStore = await cookies();
   return createServerClient(
@@ -32,29 +93,11 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
-    const body = await req.json();
-    const allowedMethods = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
-    type PaymentMethod = (typeof allowedMethods)[number];
-
-    const normalizedPlanKey = typeof body.plan_key === 'string' ? body.plan_key.trim().slice(0, 50) : '';
-    const normalizedTransactionId = typeof body.transaction_id === 'string'
-      ? body.transaction_id.trim().slice(0, 100)
-      : '';
-    const paymentMethod: PaymentMethod | null = allowedMethods.includes(body.payment_method)
-      ? body.payment_method
-      : null;
-    const workSessionId = typeof body.work_session_id === 'string'
-      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.work_session_id)
-      ? body.work_session_id
-      : null;
-
-    if (!normalizedPlanKey || !normalizedTransactionId || !paymentMethod) {
+    const parsedBody = parsePaymentPostBody(await req.json());
+    if (!parsedBody) {
       return NextResponse.json({ error: 'Campos obrigatórios em falta ou inválidos' }, { status: 400 });
     }
-
-    if (typeof body.work_session_id === 'string' && !workSessionId) {
-      return NextResponse.json({ error: 'work_session_id inválido' }, { status: 400 });
-    }
+    const { planKey, transactionId, paymentMethod, workSessionId } = parsedBody;
 
     if (workSessionId) {
       const { data: workSession, error: workSessionError } = await supabase
@@ -74,8 +117,8 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabase.rpc('register_payment', {
       p_user_id: user.id,
-      p_plan_key: normalizedPlanKey,
-      p_transaction_id: normalizedTransactionId,
+      p_plan_key: planKey,
+      p_transaction_id: transactionId,
       p_payment_method: paymentMethod,
       p_work_session_id: workSessionId,
     });
@@ -121,18 +164,17 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    const { payment_id, action, notes } = await req.json();
-    // action: 'confirm' | 'reject'
-
-    if (!payment_id || !action) {
+    const parsedBody = parsePaymentPatchBody(await req.json());
+    if (!parsedBody) {
       return NextResponse.json({ error: 'payment_id e action são obrigatórios' }, { status: 400 });
     }
+    const { paymentId, action, notes } = parsedBody;
 
     // Buscar o pagamento
     const { data: payment, error: fetchError } = await supabase
       .from('payment_history')
       .select('*, plans(*)')
-      .eq('id', payment_id)
+      .eq('id', paymentId)
       .single();
 
     if (fetchError || !payment) {
@@ -150,7 +192,7 @@ export async function PATCH(req: Request) {
         confirmed_at: new Date().toISOString(),
         notes:        notes ?? null,
       }, { count: 'exact' })
-      .eq('id', payment_id)
+      .eq('id', paymentId)
       .eq('status', 'pending');
 
     if (updateError) throw new Error(updateError.message);
@@ -223,6 +265,26 @@ export async function GET(req: Request) {
   }
 
   const isAdmin = profile?.role === 'admin';
+
+  if (isAdmin) {
+    const { error: auditError } = await supabase
+      .from('audit_log')
+      .insert({
+        actor_id: user.id,
+        action: 'admin_list_payments',
+        resource: 'payment_history',
+        metadata: {
+          endpoint: '/api/payment',
+          method: 'GET',
+          queried_at: new Date().toISOString(),
+        },
+      });
+
+    if (auditError) {
+      console.error('[payment GET] Falha ao registrar auditoria admin:', auditError.message);
+      return NextResponse.json({ error: 'Falha ao registrar auditoria de acesso admin' }, { status: 500 });
+    }
+  }
 
   let paymentsQuery = supabase
     .from('payment_history')
