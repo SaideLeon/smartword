@@ -8,22 +8,27 @@ const ALLOWED_CATEGORIES = ['groq_api', 'supabase', 'hosting', 'domain', 'other'
 function parseExpensePayload(body: unknown) {
   if (!body || typeof body !== 'object') return null;
   const payload = body as Record<string, unknown>;
+  const category = payload.category;
+  const description = payload.description;
+  const amountMzn = payload.amount_mzn;
+  const periodMonth = payload.period_month;
+  const periodYear = payload.period_year;
 
-  if (!ALLOWED_CATEGORIES.includes(payload.category as typeof ALLOWED_CATEGORIES[number])) return null;
-  if (typeof payload.description !== 'string') return null;
-  if (typeof payload.amount_mzn !== 'number' || Number.isNaN(payload.amount_mzn) || payload.amount_mzn < 0) return null;
-  if (!Number.isInteger(payload.period_month) || payload.period_month < 1 || payload.period_month > 12) return null;
-  if (!Number.isInteger(payload.period_year) || payload.period_year < 2020 || payload.period_year > 2100) return null;
+  if (!ALLOWED_CATEGORIES.includes(category as typeof ALLOWED_CATEGORIES[number])) return null;
+  if (typeof description !== 'string') return null;
+  if (typeof amountMzn !== 'number' || Number.isNaN(amountMzn) || amountMzn < 0) return null;
+  if (typeof periodMonth !== 'number' || !Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12) return null;
+  if (typeof periodYear !== 'number' || !Number.isInteger(periodYear) || periodYear < 2020 || periodYear > 2100) return null;
 
-  const description = payload.description.trim().slice(0, 500);
-  if (!description) return null;
+  const normalizedDescription = description.trim().slice(0, 500);
+  if (!normalizedDescription) return null;
 
   return {
-    category: payload.category,
-    description,
-    amount_mzn: payload.amount_mzn,
-    period_month: payload.period_month,
-    period_year: payload.period_year,
+    category,
+    description: normalizedDescription,
+    amount_mzn: amountMzn,
+    period_month: periodMonth,
+    period_year: periodYear,
   };
 }
 
