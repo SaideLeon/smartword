@@ -1,42 +1,51 @@
 // src/middleware.ts
-// Protege rotas que exigem autenticação.
-// /app, /admin → requer login
-// /admin e /app/admin → requer role 'admin'
+// Protege todas as rotas privadas da aplicação.
+// Públicas: landing, planos, login, cadastro e rotas técnicas de auth.
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const PUBLIC_PATHS = new Set([
+  '/landing',
+  '/planos',
+  '/auth/login',
+  '/auth/signup',
+  '/auth/callback',
+  '/auth/error',
+]);
+
+const PUBLIC_PREFIXES = ['/landing/', '/planos/'];
+
+function isPublicPath(pathname: string) {
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
   let response = NextResponse.next({ request: { headers: request.headers } });
+
+  if (isPublicPath(pathname)) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string)                    { return request.cookies.get(name)?.value; },
-        set(name: string, value: string, o: any) { response.cookies.set({ name, value, ...o }); },
-        remove(name: string, o: any)         { response.cookies.delete({ name, ...o }); },
+        get(name: string) { return request.cookies.get(name)?.value; },
+        set(name: string, value: string, options: any) { response.cookies.set({ name, value, ...options }); },
+        remove(name: string, options: any) { response.cookies.delete({ name, ...options }); },
       },
-    }
+    },
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const { pathname } = request.nextUrl;
 
-  // Rotas públicas — deixar passar
-  if (
-    pathname.startsWith('/auth') ||
-    pathname === '/' ||
-    pathname.startsWith('/landing') ||
-    pathname.startsWith('/planos')
-  ) {
-    return response;
-  }
-
-  // Rota /app → exige login
-  if (pathname.startsWith('/app') && !user) {
+  if (!user) {
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
@@ -44,14 +53,7 @@ export async function middleware(request: NextRequest) {
 
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/app/admin');
 
-  // Rotas de administração → exigem login + role admin
   if (isAdminRoute) {
-    if (!user) {
-      const loginUrl = new URL('/auth/login', request.url);
-      loginUrl.searchParams.set('next', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -59,7 +61,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/app', request.url));
+      return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
@@ -67,5 +69,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|xml)$).*)',
+  ],
 };
