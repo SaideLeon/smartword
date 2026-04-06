@@ -339,30 +339,32 @@ function estimateFallbackHeight(node: DocumentNode): number {
 //   H4 — Itálico                      (seção quaternária)
 //   H5 — Normal                       (seção quinária)
 //   H6 — Normal (tamanho ligeiramente menor)
-function headingStyle(level: 1|2|3|4|5|6, bodyFontSize: number): React.CSSProperties {
+function headingStyle(level: number, bodyFontSize: number): React.CSSProperties {
+  const normalizedLevel = Math.min(6, Math.max(1, Number(level) || 1)) as 1 | 2 | 3 | 4 | 5 | 6;
   const ratio = bodyFontSize / BODY_FONT_SIZE_DESKTOP;
-  const fontSize = Math.round(HEADING_PX[level] * ratio);
-  const { before, after } = HEADING_MARGIN[level];
+  const fontSize = Math.round(HEADING_PX[normalizedLevel] * ratio);
+  const { before, after } = HEADING_MARGIN[normalizedLevel];
 
-  const base: React.CSSProperties = {
+  const perLevel: Record<
+    1 | 2 | 3 | 4 | 5 | 6,
+    Pick<React.CSSProperties, 'fontWeight' | 'fontStyle' | 'textAlign' | 'textTransform'>
+  > = {
+    1: { fontWeight: 700, fontStyle: 'normal', textAlign: 'center', textTransform: 'uppercase' },
+    2: { fontWeight: 700, fontStyle: 'normal', textAlign: 'left', textTransform: 'none' },
+    3: { fontWeight: 700, fontStyle: 'italic', textAlign: 'left', textTransform: 'none' },
+    4: { fontWeight: 400, fontStyle: 'italic', textAlign: 'left', textTransform: 'none' },
+    5: { fontWeight: 400, fontStyle: 'normal', textAlign: 'left', textTransform: 'none' },
+    6: { fontWeight: 400, fontStyle: 'normal', textAlign: 'left', textTransform: 'none' },
+  };
+
+  return {
     margin: `${before} 0 ${after} 0`,
     fontSize: `${fontSize}px`,
     lineHeight: LINE_HEIGHT,
     fontFamily: '"Times New Roman", Times, serif',
-    textAlign: level === 1 ? 'center' : 'left',
-    fontWeight: 400,
-    fontStyle: 'normal',
-    textTransform: 'none',
     letterSpacing: 'normal',
+    ...perLevel[normalizedLevel],
   };
-
-  switch (level) {
-    case 1: return { ...base, fontWeight: 700, textTransform: 'uppercase' };
-    case 2: return { ...base, fontWeight: 700 };
-    case 3: return { ...base, fontWeight: 700, fontStyle: 'italic' };
-    case 4: return { ...base, fontStyle: 'italic' };
-    default: return base;
-  }
 }
 
 // ─── Bloco de conteúdo ────────────────────────────────────────────────────
@@ -400,7 +402,7 @@ function PreviewBlockNode({ node, bodyFontSize, paraIndent }: BlockNodeProps) {
     case 'heading': {
       const HeadingTag = `h${node.level}` as ElementType;
       return (
-        <HeadingTag style={headingStyle(node.level as 1|2|3|4|5|6, bodyFontSize)}>
+        <HeadingTag style={headingStyle(Number(node.level), bodyFontSize)}>
           {renderInlineNodes(node.children)}
         </HeadingTag>
       );
