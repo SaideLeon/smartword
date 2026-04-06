@@ -69,67 +69,6 @@ function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
   return { paymentId: payload.payment_id.trim(), action: payload.action, notes };
 }
 
-const PAYMENT_METHODS = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
-type PaymentMethod = (typeof PAYMENT_METHODS)[number];
-const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-type PaymentPostInput = {
-  planKey: string;
-  transactionId: string;
-  paymentMethod: PaymentMethod;
-  workSessionId: string | null;
-};
-
-function parsePaymentPostBody(body: unknown): PaymentPostInput | null {
-  if (!body || typeof body !== 'object') return null;
-  const payload = body as Record<string, unknown>;
-
-  if (typeof payload.plan_key !== 'string' || typeof payload.transaction_id !== 'string') return null;
-  const planKey = payload.plan_key.trim();
-  const transactionId = payload.transaction_id.trim();
-  if (!planKey || planKey.length > 50) return null;
-  if (transactionId.length < 3 || transactionId.length > 100) return null;
-  if (!PAYMENT_METHODS.includes(payload.payment_method as PaymentMethod)) return null;
-
-  let workSessionId: string | null = null;
-  if (payload.work_session_id != null) {
-    if (typeof payload.work_session_id !== 'string') return null;
-    const normalized = payload.work_session_id.trim();
-    if (!UUID_V4_PATTERN.test(normalized)) return null;
-    workSessionId = normalized;
-  }
-
-  return {
-    planKey,
-    transactionId,
-    paymentMethod: payload.payment_method as PaymentMethod,
-    workSessionId,
-  };
-}
-
-type PaymentPatchInput = {
-  paymentId: string;
-  action: 'confirm' | 'reject';
-  notes: string | null;
-};
-
-function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
-  if (!body || typeof body !== 'object') return null;
-  const payload = body as Record<string, unknown>;
-  if (typeof payload.payment_id !== 'string' || !UUID_V4_PATTERN.test(payload.payment_id.trim())) return null;
-  if (payload.action !== 'confirm' && payload.action !== 'reject') return null;
-
-  let notes: string | null = null;
-  if (payload.notes != null) {
-    if (typeof payload.notes !== 'string') return null;
-    const normalized = payload.notes.trim();
-    if (normalized.length > 500) return null;
-    notes = normalized || null;
-  }
-
-  return { paymentId: payload.payment_id.trim(), action: payload.action, notes };
-}
-
 async function makeSupabase() {
   const cookieStore = await cookies();
   return createServerClient(

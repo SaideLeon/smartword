@@ -19,4 +19,13 @@ describe('validateBase64Image', () => {
     const jpegAsPng = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
     expect(validateBase64Image(jpegAsPng, 'image/png')).toBeNull();
   });
+
+  it('rejeita URL HTTP externa no lugar de base64', () => {
+    expect(validateBase64Image('http://evil.example/logo.png', 'image/png')).toBeNull();
+  });
+
+  it('rejeita payload base64 sem prefixo data URL correto', () => {
+    const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x00, 0x00]);
+    expect(validateBase64Image(pngBuffer.toString('base64'), 'image/png')).toBeNull();
+  });
 });
