@@ -259,17 +259,10 @@ describe('Security suite — /api/payment', () => {
     const profileSingle = vi.fn().mockResolvedValue({ data: { role: 'admin' } });
     const profileEq = vi.fn().mockReturnValue({ single: profileSingle });
     const profileSelect = vi.fn().mockReturnValue({ eq: profileEq });
-
-    const paymentSingle = vi.fn().mockResolvedValue({
-      data: { id: '2b59e44a-e319-48b4-a63f-36350ea7fc77', status: 'confirmed', user_id: 'user-2', plans: { duration_months: 1 } },
-      error: null,
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'P0004', message: 'Pagamento já foi processado' },
     });
-    const paymentEqFetch = vi.fn().mockReturnValue({ single: paymentSingle });
-    const paymentSelect = vi.fn().mockReturnValue({ eq: paymentEqFetch });
-
-    const paymentEqStatus = vi.fn().mockResolvedValue({ count: 0, error: null });
-    const paymentEqId = vi.fn().mockReturnValue({ eq: paymentEqStatus });
-    const paymentUpdate = vi.fn().mockReturnValue({ eq: paymentEqId });
 
     const supabase: MockSupabase = {
       auth: {
@@ -277,9 +270,9 @@ describe('Security suite — /api/payment', () => {
       },
       from: vi.fn((table: string) => {
         if (table === 'profiles') return { select: profileSelect };
-        if (table === 'payment_history') return { select: paymentSelect, update: paymentUpdate };
         throw new Error(`unexpected table ${table}`);
       }),
+      rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
 
@@ -296,26 +289,58 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(409);
   });
 
-  it('POST com fraude potencial registra audit_log (R21)', async () => {
+  it('PATCH sanitiza notes antes de enviar para RPC (R18)', async () => {
+    const profileSingle = vi.fn().mockResolvedValue({ data: { role: 'admin' } });
+    const profileEq = vi.fn().mockReturnValue({ single: profileSingle });
+    const profileSelect = vi.fn().mockReturnValue({ eq: profileEq });
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, status: 'confirmed' }, error: null });
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') return { select: profileSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await PATCH(
+      makeReq('http://localhost/api/payment', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          payment_id: '2b59e44a-e319-48b4-a63f-36350ea7fc77',
+          action: 'confirm',
+          notes: '<img src=x onerror=alert(1)> javascript:teste ok',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('confirm_payment', expect.objectContaining({
+      p_notes: 'teste ok',
+    }));
+  });
+
+  it('POST com fraude potencial regista via RPC e bloqueia pagamento (R21)', async () => {
     mockCheckPaymentFraud.mockResolvedValueOnce({
       flagged: true,
       reasons: ['transaction_id já usado por outro utilizador'],
     });
 
-    const auditInsert = vi.fn().mockResolvedValue({ error: null });
-    const rpc = vi.fn().mockResolvedValue({
-      data: { payment_id: 'payment-1', amount_mzn: 640 },
-      error: null,
+    const rpc = vi.fn((fnName: string) => {
+      if (fnName === 'log_fraud_event') return Promise.resolve({ data: null, error: null });
+      if (fnName === 'register_payment') return Promise.resolve({ data: { payment_id: 'payment-1' }, error: null });
+      return Promise.resolve({ data: null, error: null });
     });
 
     const supabase: MockSupabase = {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn((table: string) => {
-        if (table === 'audit_log') return { insert: auditInsert };
-        throw new Error(`unexpected table ${table}`);
-      }),
+      from: vi.fn(),
       rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
@@ -331,8 +356,47 @@ describe('Security suite — /api/payment', () => {
       }),
     );
 
-    expect(res.status).toBe(200);
-    expect(auditInsert).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(409);
+    expect(rpc).toHaveBeenCalledWith('log_fraud_event', expect.objectContaining({
+      p_actor_id: 'user-1',
+      p_transaction_id: 'TRX-123',
+    }));
+    expect(rpc).not.toHaveBeenCalledWith('register_payment', expect.anything());
+  });
+
+  it('POST com fraude e falha no log retorna 500 (R21)', async () => {
+    mockCheckPaymentFraud.mockResolvedValueOnce({
+      flagged: true,
+      reasons: ['suspeita'],
+    });
+
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'insert failed' },
+    });
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      from: vi.fn(),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await POST(
+      makeReq('http://localhost/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan_key: 'premium',
+          transaction_id: 'TRX-999',
+          payment_method: 'mpesa',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(500);
+    expect(rpc).toHaveBeenCalledWith('log_fraud_event', expect.anything());
   });
 
   it('GET admin sem auditoria persistida retorna 500 (R16)', async () => {
