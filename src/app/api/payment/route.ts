@@ -24,7 +24,7 @@ async function makeSupabase() {
 
 // ── POST: utilizador submete comprovativo de pagamento ───────────────────────
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
@@ -32,66 +32,69 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
-    const { plan_key, transaction_id, payment_method, work_session_id } = await req.json();
+    const body = await req.json();
+    const allowedMethods = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
+    type PaymentMethod = (typeof allowedMethods)[number];
 
-    if (!plan_key || !transaction_id || !payment_method) {
-      return NextResponse.json({ error: 'Campos obrigatórios em falta' }, { status: 400 });
+    const normalizedPlanKey = typeof body.plan_key === 'string' ? body.plan_key.trim().slice(0, 50) : '';
+    const normalizedTransactionId = typeof body.transaction_id === 'string'
+      ? body.transaction_id.trim().slice(0, 100)
+      : '';
+    const paymentMethod: PaymentMethod | null = allowedMethods.includes(body.payment_method)
+      ? body.payment_method
+      : null;
+    const workSessionId = typeof body.work_session_id === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.work_session_id)
+      ? body.work_session_id
+      : null;
+
+    if (!normalizedPlanKey || !normalizedTransactionId || !paymentMethod) {
+      return NextResponse.json({ error: 'Campos obrigatórios em falta ou inválidos' }, { status: 400 });
     }
 
-    const normalizedPlanKey = String(plan_key).trim();
-    const normalizedTransactionId = String(transaction_id).trim();
-    if (!normalizedPlanKey) {
-      return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
+    if (typeof body.work_session_id === 'string' && !workSessionId) {
+      return NextResponse.json({ error: 'work_session_id inválido' }, { status: 400 });
     }
 
-    // Segurança (R18): preço vem sempre do servidor e nunca do body do cliente.
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('key, price_mzn, is_active')
-      .eq('key', normalizedPlanKey)
-      .single();
+    if (workSessionId) {
+      const { data: workSession, error: workSessionError } = await supabase
+        .from('work_sessions')
+        .select('id')
+        .eq('id', workSessionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if (planError || !plan) {
-      return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
+      if (workSessionError || !workSession) {
+        return NextResponse.json(
+          { error: 'Sessão de trabalho inválida ou não autorizada' },
+          { status: 403 },
+        );
+      }
     }
 
-    if (!plan.is_active) {
-      return NextResponse.json({ error: 'Plano não disponível' }, { status: 400 });
-    }
+    const { data, error } = await supabase.rpc('register_payment', {
+      p_user_id: user.id,
+      p_plan_key: normalizedPlanKey,
+      p_transaction_id: normalizedTransactionId,
+      p_payment_method: paymentMethod,
+      p_work_session_id: workSessionId,
+    });
 
-    // Inserção directa para evitar race condition entre SELECT+INSERT.
-    // A constraint UNIQUE em payment_history.transaction_id garante atomicidade.
-    const { data: payment, error } = await supabase
-      .from('payment_history')
-      .insert({
-        user_id: user.id,
-        plan_key: normalizedPlanKey,
-        transaction_id: normalizedTransactionId,
-        amount_mzn: plan.price_mzn,
-        payment_method,
-        work_session_id: work_session_id ?? null,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (error?.code === '23505') {
+    if (error?.code === '23505' || error?.code === 'P0003') {
       return NextResponse.json({ error: 'Transação já registada' }, { status: 409 });
+    }
+
+    if (error?.code === 'P0002') {
+      return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
+    }
+
+    if (error?.code === 'P0001') {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
     }
 
     if (error) throw new Error(error.message);
 
-    // Actualizar perfil com transaction_id e status pending
-    await supabase
-      .from('profiles')
-      .update({
-        transaction_id: normalizedTransactionId,
-        payment_method,
-        payment_status: 'pending',
-      })
-      .eq('id', user.id);
-
-    return NextResponse.json({ ok: true, payment_id: payment.id });
+    return NextResponse.json({ ok: true, payment_id: data.payment_id });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -99,7 +102,7 @@ export async function POST(req: Request) {
 
 // ── PATCH: admin confirma ou rejeita o pagamento ─────────────────────────────
 export async function PATCH(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:patch', maxRequests: 30, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'payment:patch', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
@@ -199,7 +202,7 @@ export async function PATCH(req: Request) {
 
 // ── GET: listar pagamentos (admin vê todos, utilizador vê os seus) ───────────
 export async function GET(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:get', maxRequests: 30, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'payment:get', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();

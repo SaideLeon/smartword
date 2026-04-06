@@ -13,7 +13,7 @@ Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
 Usa notação LaTeX correcta para equações. Responde em português europeu.`;
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'chat:post', maxRequests: 20, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'chat:post', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
 
   try {

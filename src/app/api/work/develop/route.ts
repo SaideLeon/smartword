@@ -164,7 +164,7 @@ PROIBIÇÕES ABSOLUTAS:
 // ── Handler principal ────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   try {

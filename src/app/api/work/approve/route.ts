@@ -4,7 +4,7 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { generateResearchBrief } from '@/lib/research/brief';
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'work:approve', maxRequests: 20, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:approve', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
 
   try {

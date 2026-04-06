@@ -188,7 +188,7 @@ function extractStatusFromError(error: unknown): number | null {
 }
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, {
+  const limited = await enforceRateLimit(req, {
     scope: 'cover:agent',
     maxRequests: 30,
     windowMs: 60_000,
