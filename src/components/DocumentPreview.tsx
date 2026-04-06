@@ -18,15 +18,52 @@ type PreviewPage = {
   hasOversizedBlock: boolean;
 };
 
-const PAGE_WIDTH = 620;
-const PAGE_HEIGHT_DESKTOP = 880;
-const PAGE_HEIGHT_MOBILE = 780;
-const PAGE_PADDING_DESKTOP = 72;
-const PAGE_PADDING_MOBILE = 52;
+// ─── Constantes de layout ─────────────────────────────────────────────────
+const PAGE_WIDTH           = 620;
+const PAGE_HEIGHT_DESKTOP  = 877;  // proporção A4 (210×297 mm)
+const PAGE_HEIGHT_MOBILE   = 780;
+// Margens aproximadas ABNT: sup/esq 3 cm, inf/dir 2 cm
+// 620 px ≈ 210 mm → 1 mm ≈ 2.95 px → padding ~80 px (≈ 2.7 cm) para simplificar
+const PAGE_PADDING_DESKTOP = 80;
+const PAGE_PADDING_MOBILE  = 52;
 const FOOTER_RESERVED_SPACE = 28;
-const BODY_FONT_SIZE_DESKTOP = 16;
-const BODY_FONT_SIZE_MOBILE = 12;
 
+// ─── Tipografia ABNT NBR 14724 ────────────────────────────────────────────
+// Fonte: Times New Roman 12 pt
+// Área útil A4 (3+2 cm margens) = 155 mm = 457 pt → 620 px → 1 pt ≈ 1.357 px
+// 12 pt × 1.357 ≈ 16.3 px → 16 px (desktop)
+const BODY_FONT_SIZE_DESKTOP = 16;
+const BODY_FONT_SIZE_MOBILE  = 12;
+
+// Espaçamento entre linhas 1,5 (ABNT)
+const LINE_HEIGHT = 1.5;
+
+// Recuo de parágrafo 1,25 cm → 1,25 × 10 mm × 2.95 px/mm ≈ 37 px
+const PARAGRAPH_INDENT_DESKTOP = 37;
+const PARAGRAPH_INDENT_MOBILE  = 24;
+
+// Tamanhos de título por nível (em px, escala desktop)
+// ABNT usa 12 pt para todos; escalamos H1 e H2 para dar hierarquia visual
+const HEADING_PX: Record<1|2|3|4|5|6, number> = {
+  1: 22,  // ≈ 16 pt — capítulos (MAIÚSCULAS NEGRITO centrado)
+  2: 19,  // ≈ 14 pt — secções (Negrito)
+  3: 16,  // ≈ 12 pt — sub-secções (Negrito Itálico)
+  4: 16,  // ≈ 12 pt — quaternárias (Itálico)
+  5: 16,  // ≈ 12 pt — quinárias (Normal)
+  6: 15,  // ≈ 11 pt — senárias (Normal)
+};
+
+// Margem antes / depois de cada nível de título
+const HEADING_MARGIN: Record<1|2|3|4|5|6, { before: string; after: string }> = {
+  1: { before: '1.6rem', after: '0.6rem' },
+  2: { before: '1.2rem', after: '0.5rem' },
+  3: { before: '1.0rem', after: '0.4rem' },
+  4: { before: '0.85rem', after: '0.35rem' },
+  5: { before: '0.75rem', after: '0.3rem' },
+  6: { before: '0.65rem', after: '0.3rem' },
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
 function extractText(nodes: InlineNode[]): string {
   return nodes.map(n => {
     if (n.type === 'text') return n.value;
@@ -35,6 +72,7 @@ function extractText(nodes: InlineNode[]): string {
   }).join('');
 }
 
+// ─── Índice (TOC) ─────────────────────────────────────────────────────────
 function PreviewTocNode({
   allNodes,
   originalNodes,
@@ -55,9 +93,9 @@ function PreviewTocNode({
     [sourceNodes],
   );
 
-  const labelSize    = bodyFontSize * 0.72;
-  const entrySize    = bodyFontSize * 0.875;
-  const titleSize    = bodyFontSize * 0.95;
+  const labelSize = bodyFontSize * 0.72;
+  const entrySize = bodyFontSize * 0.875;
+  const titleSize = bodyFontSize * 0.95;
 
   return (
     <div style={{ fontFamily: '"Times New Roman", Times, serif', margin: '0.25rem 0 0.75rem' }}>
@@ -95,6 +133,7 @@ function PreviewTocNode({
   );
 }
 
+// ─── Componente principal ────────────────────────────────────────────────
 export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }: Props) {
   const documentNodes = useMemo(() => parseToAST(markdown), [markdown]);
   const originalNodes = useMemo(
@@ -102,19 +141,20 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
     [originalMarkdown],
   );
 
-  const measureRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const measureRefs        = useRef<Record<number, HTMLDivElement | null>>({});
+  const previewScrollRef   = useRef<HTMLDivElement>(null);
   const previousMarkdownRef = useRef(markdown);
   const [nodeHeights, setNodeHeights] = useState<Record<number, number>>({});
   const [measureTick, setMeasureTick] = useState(0);
 
-  const pageHeight = isMobile ? PAGE_HEIGHT_MOBILE : PAGE_HEIGHT_DESKTOP;
-  const pagePadding = isMobile ? PAGE_PADDING_MOBILE : PAGE_PADDING_DESKTOP;
+  const pageHeight     = isMobile ? PAGE_HEIGHT_MOBILE    : PAGE_HEIGHT_DESKTOP;
+  const pagePadding    = isMobile ? PAGE_PADDING_MOBILE   : PAGE_PADDING_DESKTOP;
   const pageBodyHeight = pageHeight - pagePadding * 2 - FOOTER_RESERVED_SPACE;
-  const bodyFontSize = isMobile ? BODY_FONT_SIZE_MOBILE : BODY_FONT_SIZE_DESKTOP;
+  const bodyFontSize   = isMobile ? BODY_FONT_SIZE_MOBILE : BODY_FONT_SIZE_DESKTOP;
+  const paraIndent     = isMobile ? PARAGRAPH_INDENT_MOBILE : PARAGRAPH_INDENT_DESKTOP;
 
   useEffect(() => {
-    const onResize = () => setMeasureTick((current) => current + 1);
+    const onResize = () => setMeasureTick((c) => c + 1);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -129,9 +169,8 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
       measured[i] = Math.ceil(element.getBoundingClientRect().height);
     }
     setNodeHeights((current) => {
-      const currentKeys = Object.keys(current);
       const measuredKeys = Object.keys(measured);
-      if (currentKeys.length === measuredKeys.length) {
+      if (Object.keys(current).length === measuredKeys.length) {
         let equal = true;
         for (const key of measuredKeys) {
           if (Math.abs((current[Number(key)] ?? 0) - measured[Number(key)]) > 1) { equal = false; break; }
@@ -158,7 +197,6 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
   }, [markdown, pages.length]);
 
   return (
-    /* ── sem header próprio — ganha espaço útil ── */
     <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-[var(--border)] bg-[var(--parchment)]">
       <div ref={previewScrollRef} className="no-scrollbar flex-1 overflow-y-auto p-3">
         <div className="grid gap-3">
@@ -166,14 +204,22 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
             <Fragment key={page.key}>
               <article
                 className="mx-auto w-full max-w-[620px] rounded-[4px] bg-white text-[#111] shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
-                style={{ minHeight: `${pageHeight}px`, padding: `${pagePadding}px`, fontFamily: '"Times New Roman", Times, serif', fontSize: `${bodyFontSize}px`, lineHeight: 1.5 }}
+                style={{
+                  minHeight: `${pageHeight}px`,
+                  padding: `${pagePadding}px`,
+                  fontFamily: '"Times New Roman", Times, serif',
+                  fontSize: `${bodyFontSize}px`,
+                  lineHeight: LINE_HEIGHT,
+                }}
               >
                 {page.startsNewSection && (
                   <p style={{ margin: '0 0 1.2rem 0', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6d6458' }}>
                     Nova secção
                   </p>
                 )}
-                <div style={{ display: 'grid', gap: '0.9rem' }}>
+
+                {/* Conteúdo da página — sem gap fixo; cada bloco gere as próprias margens */}
+                <div>
                   {page.nodeIndexes.length > 0
                     ? page.nodeIndexes.map((nodeIndex) => {
                         const node = documentNodes[nodeIndex];
@@ -187,16 +233,28 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
                             />
                           );
                         }
-                        return <PreviewBlockNode key={`${page.key}-${nodeIndex}`} node={node} />;
+                        return (
+                          <PreviewBlockNode
+                            key={`${page.key}-${nodeIndex}`}
+                            node={node}
+                            bodyFontSize={bodyFontSize}
+                            paraIndent={paraIndent}
+                          />
+                        );
                       })
                     : <p style={{ margin: 0, color: '#6f665a' }}>Página em branco</p>}
                 </div>
+
                 {page.hasOversizedBlock && (
                   <div style={{ marginTop: '1rem', borderTop: '1px dashed #d9d9d9', paddingTop: '0.5rem', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '11px', color: '#807667' }}>
                     Bloco longo demais para caber numa única página — mantendo íntegro para evitar cortes.
                   </div>
                 )}
-                <footer style={{ marginTop: '1.6rem', textAlign: 'center', fontSize: '12px', color: '#928575' }}>{index + 1}</footer>
+
+                {/* Número de página (Times New Roman, mesmo tamanho corpo) */}
+                <footer style={{ marginTop: 'auto', paddingTop: '1.2rem', textAlign: 'center', fontSize: `${bodyFontSize}px`, color: '#666', fontFamily: '"Times New Roman", Times, serif' }}>
+                  {index + 1}
+                </footer>
               </article>
 
               {index < pages.length - 1 && (
@@ -209,14 +267,18 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
         </div>
       </div>
 
-      {/* Área de medição oculta */}
+      {/* Área de medição oculta — mesma fonte/tamanho do desktop */}
       <div aria-hidden style={{ position: 'absolute', inset: '-99999px auto auto -99999px', width: `${PAGE_WIDTH}px`, visibility: 'hidden' }}>
-        <div style={{ width: `${PAGE_WIDTH - pagePadding * 2}px`, fontFamily: '"Times New Roman", Times, serif', fontSize: `${bodyFontSize}px`, lineHeight: 1.5 }}>
+        <div style={{ width: `${PAGE_WIDTH - PAGE_PADDING_DESKTOP * 2}px`, fontFamily: '"Times New Roman", Times, serif', fontSize: `${BODY_FONT_SIZE_DESKTOP}px`, lineHeight: LINE_HEIGHT }}>
           {documentNodes.map((node, index) => {
             if (node.type === 'page_break' || node.type === 'section_break' || node.type === 'toc') return null;
             return (
-              <div key={`measure-${index}`} ref={(element) => { measureRefs.current[index] = element; }} style={{ marginBottom: '0.9rem' }}>
-                <PreviewBlockNode node={node} />
+              <div key={`measure-${index}`} ref={(el) => { measureRefs.current[index] = el; }}>
+                <PreviewBlockNode
+                  node={node}
+                  bodyFontSize={BODY_FONT_SIZE_DESKTOP}
+                  paraIndent={PARAGRAPH_INDENT_DESKTOP}
+                />
               </div>
             );
           })}
@@ -226,6 +288,7 @@ export function DocumentPreview({ markdown, originalMarkdown, isMobile = false }
   );
 }
 
+// ─── Paginação ───────────────────────────────────────────────────────────
 function paginateNodes(nodes: DocumentNode[], heights: Record<number, number>, maxPageBodyHeight: number): PreviewPage[] {
   const pages: PreviewPage[] = [];
   let currentNodeIndexes: number[] = [];
@@ -258,72 +321,185 @@ function paginateNodes(nodes: DocumentNode[], heights: Record<number, number>, m
 
 function estimateFallbackHeight(node: DocumentNode): number {
   switch (node.type) {
-    case 'heading': return 72;
-    case 'list': return Math.max(90, node.items.length * 44);
-    case 'table': return Math.max(120, node.rows.length * 46);
-    case 'math_block': return 100;
-    case 'blockquote': return 92;
-    case 'toc': return 420;
-    case 'paragraph': return 44;
-    default: return 44;
+    case 'heading':    return node.level <= 2 ? 60 : 44;
+    case 'list':       return Math.max(80, node.items.length * 36);
+    case 'table':      return Math.max(100, node.rows.length * 40);
+    case 'math_block': return 88;
+    case 'blockquote': return 80;
+    case 'toc':        return 380;
+    case 'paragraph':  return 40;
+    default:           return 40;
   }
 }
 
-function PreviewBlockNode({ node }: { node: DocumentNode }) {
+// ─── Estilos de título (ABNT NBR 14724) ──────────────────────────────────
+//   H1 — MAIÚSCULAS NEGRITO centrado  (capítulo / seção primária)
+//   H2 — Negrito alinhado à esquerda  (seção secundária)
+//   H3 — Negrito Itálico              (seção terciária)
+//   H4 — Itálico                      (seção quaternária)
+//   H5 — Normal                       (seção quinária)
+//   H6 — Normal (tamanho ligeiramente menor)
+function headingStyle(level: 1|2|3|4|5|6, bodyFontSize: number): React.CSSProperties {
+  const ratio = bodyFontSize / BODY_FONT_SIZE_DESKTOP;
+  const fontSize = Math.round(HEADING_PX[level] * ratio);
+  const { before, after } = HEADING_MARGIN[level];
+
+  const base: React.CSSProperties = {
+    margin: `${before} 0 ${after} 0`,
+    fontSize: `${fontSize}px`,
+    lineHeight: LINE_HEIGHT,
+    fontFamily: '"Times New Roman", Times, serif',
+    textAlign: level === 1 ? 'center' : 'left',
+    fontWeight: 400,
+    fontStyle: 'normal',
+    textTransform: 'none',
+    letterSpacing: 'normal',
+  };
+
+  switch (level) {
+    case 1: return { ...base, fontWeight: 700, textTransform: 'uppercase' };
+    case 2: return { ...base, fontWeight: 700 };
+    case 3: return { ...base, fontWeight: 700, fontStyle: 'italic' };
+    case 4: return { ...base, fontStyle: 'italic' };
+    default: return base;
+  }
+}
+
+// ─── Bloco de conteúdo ────────────────────────────────────────────────────
+interface BlockNodeProps {
+  node: DocumentNode;
+  bodyFontSize: number;
+  paraIndent: number;
+}
+
+function PreviewBlockNode({ node, bodyFontSize, paraIndent }: BlockNodeProps) {
+  const lineGap = `${LINE_HEIGHT * bodyFontSize * 0.3}px`;
+
   switch (node.type) {
+
     case 'paragraph':
       return (
-        <p style={{ margin: 0, textAlign: 'justify', textJustify: 'inter-word', hyphens: 'auto', wordBreak: 'normal', overflowWrap: 'break-word' }}>
+        <p style={{
+          margin: 0,
+          paddingTop: lineGap,
+          paddingBottom: lineGap,
+          textIndent: paraIndent > 0 ? `${paraIndent}px` : undefined,
+          textAlign: 'justify',
+          textJustify: 'inter-word',
+          hyphens: 'auto',
+          wordBreak: 'normal',
+          overflowWrap: 'break-word',
+          lineHeight: LINE_HEIGHT,
+          fontSize: `${bodyFontSize}px`,
+          fontFamily: '"Times New Roman", Times, serif',
+        }}>
           {renderInlineNodes(node.children)}
         </p>
       );
+
     case 'heading': {
       const HeadingTag = `h${node.level}` as ElementType;
-      const sizeMap: Record<1 | 2 | 3 | 4 | 5 | 6, string> = { 1: '34px', 2: '28px', 3: '24px', 4: '21px', 5: '18px', 6: '16px' };
       return (
-        <HeadingTag style={{ margin: '0.5rem 0 0.35rem 0', fontSize: sizeMap[node.level], lineHeight: 1.28, fontWeight: 700 }}>
+        <HeadingTag style={headingStyle(node.level as 1|2|3|4|5|6, bodyFontSize)}>
           {renderInlineNodes(node.children)}
         </HeadingTag>
       );
     }
+
     case 'list': {
       const Tag = (node.ordered ? 'ol' : 'ul') as 'ol' | 'ul';
       return (
-        <Tag style={{ margin: 0, paddingLeft: '1.5rem', display: 'grid', gap: '0.6rem' }}>
-          {node.items.map((item, index) => (
-            <li key={index}>
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
-                {item.map((child, childIndex) => <PreviewBlockNode key={childIndex} node={child} />)}
+        <Tag style={{
+          margin: `${lineGap} 0`,
+          paddingLeft: `${paraIndent + 18}px`,
+          lineHeight: LINE_HEIGHT,
+          fontSize: `${bodyFontSize}px`,
+          fontFamily: '"Times New Roman", Times, serif',
+        }}>
+          {node.items.map((item, i) => (
+            <li key={i} style={{ marginBottom: `${LINE_HEIGHT * bodyFontSize * 0.1}px` }}>
+              <div>
+                {item.map((child, ci) => (
+                  <PreviewBlockNode key={ci} node={child} bodyFontSize={bodyFontSize} paraIndent={0} />
+                ))}
               </div>
             </li>
           ))}
         </Tag>
       );
     }
+
     case 'blockquote':
       return (
-        <blockquote style={{ margin: 0, borderLeft: '3px solid #c2c2c2', padding: '0.35rem 0 0.35rem 0.9rem', color: '#2d2d2d', display: 'grid', gap: '0.55rem' }}>
-          {node.children.map((child, index) => <PreviewBlockNode key={index} node={child} />)}
+        <blockquote style={{
+          margin: `${lineGap} ${paraIndent}px`,
+          borderLeft: '3px solid #bbb',
+          paddingLeft: '0.75rem',
+          color: '#2d2d2d',
+          fontSize: `${bodyFontSize * 0.94}px`,
+          lineHeight: LINE_HEIGHT,
+          fontFamily: '"Times New Roman", Times, serif',
+        }}>
+          {node.children.map((child, i) => (
+            <PreviewBlockNode key={i} node={child} bodyFontSize={bodyFontSize} paraIndent={0} />
+          ))}
         </blockquote>
       );
+
     case 'math_block':
-      return <MathNode latex={node.latex} displayMode />;
+      return (
+        <div style={{ margin: `${lineGap} 0` }}>
+          <MathNode latex={node.latex} displayMode />
+        </div>
+      );
+
     case 'table':
-      return <TableNode rows={node.rows} align={node.align} />;
+      return (
+        <div style={{ margin: `${LINE_HEIGHT * bodyFontSize * 0.5}px 0` }}>
+          <TableNode rows={node.rows} align={node.align} bodyFontSize={bodyFontSize} />
+        </div>
+      );
+
     default:
       return null;
   }
 }
 
-function TableNode({ rows, align }: { rows: TableRowNode[]; align: (TableAlign | null)[] }) {
+// ─── Tabela ───────────────────────────────────────────────────────────────
+function TableNode({
+  rows,
+  align,
+  bodyFontSize,
+}: {
+  rows: TableRowNode[];
+  align: (TableAlign | null)[];
+  bodyFontSize: number;
+}) {
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '15px' }}>
+      <table style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        tableLayout: 'fixed',
+        fontSize: `${bodyFontSize}px`,
+        lineHeight: LINE_HEIGHT,
+        fontFamily: '"Times New Roman", Times, serif',
+      }}>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} style={{ background: row.isHeader ? '#e8edf8' : 'transparent' }}>
+            <tr key={rowIndex}>
               {row.cells.map((cell, cellIndex) => (
-                <td key={cellIndex} style={{ border: '1px solid #8f8f8f', padding: '0.45rem 0.55rem', verticalAlign: 'top', textAlign: align[cellIndex] ?? 'left', fontWeight: row.isHeader ? 700 : 400 }}>
+                <td
+                  key={cellIndex}
+                  style={{
+                    border: '1px solid #555',
+                    padding: '0.3rem 0.5rem',
+                    verticalAlign: 'top',
+                    textAlign: align[cellIndex] ?? 'left',
+                    fontWeight: row.isHeader ? 700 : 400,
+                    background: row.isHeader ? '#f0ece6' : 'transparent',
+                  }}
+                >
                   {renderInlineNodes(cell.children)}
                 </td>
               ))}
@@ -335,30 +511,64 @@ function TableNode({ rows, align }: { rows: TableRowNode[]; align: (TableAlign |
   );
 }
 
+// ─── Inline nodes ─────────────────────────────────────────────────────────
 function renderInlineNodes(nodes: InlineNode[]): ReactNode {
   return nodes.map((node, index) => {
     const key = `${node.type}-${index}`;
     switch (node.type) {
-      case 'text': return <Fragment key={key}>{node.value}</Fragment>;
-      case 'strong': return <strong key={key}>{renderInlineNodes(node.children)}</strong>;
-      case 'emphasis': return <em key={key}>{renderInlineNodes(node.children)}</em>;
-      case 'inline_code': return <code key={key} style={{ background: '#f5f5f5', borderRadius: '4px', padding: '0.06rem 0.3rem', fontFamily: '"Courier New", monospace', fontSize: '0.94em' }}>{node.value}</code>;
-      case 'link': return <a key={key} href={node.url} target="_blank" rel="noreferrer" style={{ color: '#0f4aa8', textDecoration: 'underline' }}>{renderInlineNodes(node.children)}</a>;
-      case 'math_inline': return <MathNode key={key} latex={node.latex} displayMode={false} />;
-      default: return null;
+      case 'text':
+        return <Fragment key={key}>{node.value}</Fragment>;
+      case 'strong':
+        return <strong key={key}>{renderInlineNodes(node.children)}</strong>;
+      case 'emphasis':
+        return <em key={key}>{renderInlineNodes(node.children)}</em>;
+      case 'inline_code':
+        return (
+          <code key={key} style={{
+            background: '#f5f5f5',
+            borderRadius: '3px',
+            padding: '0.05rem 0.28rem',
+            fontFamily: '"Courier New", monospace',
+            fontSize: '0.92em',
+          }}>
+            {node.value}
+          </code>
+        );
+      case 'link':
+        return (
+          <a key={key} href={node.url} target="_blank" rel="noreferrer" style={{ color: '#0f4aa8', textDecoration: 'underline' }}>
+            {renderInlineNodes(node.children)}
+          </a>
+        );
+      case 'math_inline':
+        return <MathNode key={key} latex={node.latex} displayMode={false} />;
+      default:
+        return null;
     }
   });
 }
 
+// ─── MathNode ─────────────────────────────────────────────────────────────
 function MathNode({ latex, displayMode }: { latex: string; displayMode: boolean }) {
   const mathMarkup = useMemo(() => {
-    try { return temml.renderToString(latex, { displayMode, throwOnError: false, strict: false }); }
-    catch { return null; }
+    try {
+      return temml.renderToString(latex, { displayMode, throwOnError: false, strict: false });
+    } catch {
+      return null;
+    }
   }, [displayMode, latex]);
 
   if (!mathMarkup) return <code>{latex}</code>;
+
   return (
-    <span style={{ display: displayMode ? 'block' : 'inline-flex', width: displayMode ? '100%' : 'auto', justifyContent: displayMode ? 'center' : 'initial', overflowX: 'auto' }}
+    <span
+      style={{
+        display: displayMode ? 'block' : 'inline-flex',
+        width: displayMode ? '100%' : 'auto',
+        justifyContent: displayMode ? 'center' : 'initial',
+        overflowX: 'auto',
+        lineHeight: LINE_HEIGHT,
+      }}
       dangerouslySetInnerHTML={{ __html: mathMarkup }}
     />
   );
