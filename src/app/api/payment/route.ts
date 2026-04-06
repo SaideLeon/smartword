@@ -140,8 +140,14 @@ export async function POST(req: Request) {
       });
 
       if (fraudAuditError) {
-        console.error('[payment POST] Falha ao registrar flag de fraude:', fraudAuditError.message);
+        console.error('[payment POST] Falha crítica ao registrar flag de fraude:', fraudAuditError.message);
+        return NextResponse.json({ error: 'Erro interno de segurança' }, { status: 500 });
       }
+
+      return NextResponse.json(
+        { error: 'Transação não pode ser processada. Contacte o suporte.' },
+        { status: 409 }
+      );
     }
 
     const { data, error } = await supabase.rpc('register_payment', {
