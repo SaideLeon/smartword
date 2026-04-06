@@ -52,6 +52,15 @@ type PaymentPatchInput = {
   notes: string | null;
 };
 
+function sanitizeNotes(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
   if (!body || typeof body !== 'object') return null;
   const payload = body as Record<string, unknown>;
@@ -61,7 +70,7 @@ function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
   let notes: string | null = null;
   if (payload.notes != null) {
     if (typeof payload.notes !== 'string') return null;
-    const normalized = payload.notes.trim();
+    const normalized = sanitizeNotes(payload.notes);
     if (normalized.length > 500) return null;
     notes = normalized || null;
   }
@@ -241,7 +250,7 @@ export async function GET(req: Request) {
   const isAdmin = profile?.role === 'admin';
 
   if (isAdmin) {
-    const { error: auditError } = await supabase
+    void supabase
       .from('audit_log')
       .insert({
         actor_id: user.id,
@@ -252,12 +261,12 @@ export async function GET(req: Request) {
           method: 'GET',
           queried_at: new Date().toISOString(),
         },
+      })
+      .then(({ error: auditError }) => {
+        if (auditError) {
+          console.error('[payment GET] Falha ao registrar auditoria admin:', auditError.message);
+        }
       });
-
-    if (auditError) {
-      console.error('[payment GET] Falha ao registrar auditoria admin:', auditError.message);
-      return NextResponse.json({ error: 'Falha ao registrar auditoria de acesso admin' }, { status: 500 });
-    }
   }
 
   let paymentsQuery = supabase
