@@ -12,7 +12,7 @@ import {
 // GET /api/tcc/compress?sessionId=...&targetSection=N
 // Retorna o estado de compressão sem executar nada.
 export async function GET(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'tcc:compress:get', maxRequests: 30, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'tcc:compress:get', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
 // POST /api/tcc/compress  { sessionId, targetSectionIndex }
 // Executa a compressão (se necessário) e retorna a sessão actualizada.
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'tcc:compress:post', maxRequests: 12, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'tcc:compress:post', maxRequests: 12, windowMs: 60_000 });
   if (limited) return limited;
 
   try {

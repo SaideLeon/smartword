@@ -8,7 +8,7 @@ import { detectContextType } from '@/lib/tcc/context-detector';
 
 // POST /api/tcc/approve  { sessionId, outline }
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'tcc:approve', maxRequests: 20, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'tcc:approve', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
 
   try {

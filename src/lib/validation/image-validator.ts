@@ -20,7 +20,16 @@ export function validateBase64Image(
   mediaType: 'image/png' | 'image/jpeg',
 ): Buffer | null {
   try {
-    const rawBase64 = base64.replace(/^data:[^;]+;base64,/, '');
+    const expectedPrefix = `data:${mediaType};base64,`;
+    if (!base64.startsWith(expectedPrefix)) {
+      return null;
+    }
+
+    const rawBase64 = base64.slice(expectedPrefix.length);
+    if (!rawBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(rawBase64)) {
+      return null;
+    }
+
     const buffer = Buffer.from(rawBase64, 'base64');
 
     if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) return null;

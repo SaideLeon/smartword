@@ -33,7 +33,7 @@ Formato obrigatório de resposta:
 Sê detalhado mas conciso em cada descrição. Não incluas texto de desenvolvimento, apenas o esboço estrutural.`;
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'tcc:outline', maxRequests: 10, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'tcc:outline', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
