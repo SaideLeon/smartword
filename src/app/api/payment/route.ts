@@ -38,24 +38,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Campos obrigatórios em falta' }, { status: 400 });
     }
 
-    // Verificar se o transaction_id já existe (evitar duplicados)
-    const { data: existing } = await supabase
-      .from('payment_history')
-      .select('id')
-      .eq('transaction_id', transaction_id)
-      .single();
+    const normalizedTransactionId = String(transaction_id).trim();
 
-    if (existing) {
-      return NextResponse.json({ error: 'Transação já registada' }, { status: 409 });
-    }
-
-    // Inserir pagamento com status 'pending'
+    // Inserção directa para evitar race condition entre SELECT+INSERT.
+    // A constraint UNIQUE em payment_history.transaction_id garante atomicidade.
     const { data: payment, error } = await supabase
       .from('payment_history')
       .insert({
         user_id: user.id,
         plan_key,
-        transaction_id,
+        transaction_id: normalizedTransactionId,
         amount_mzn,
         payment_method,
         work_session_id: work_session_id ?? null,
@@ -64,13 +56,17 @@ export async function POST(req: Request) {
       .select()
       .single();
 
+    if (error?.code === '23505') {
+      return NextResponse.json({ error: 'Transação já registada' }, { status: 409 });
+    }
+
     if (error) throw new Error(error.message);
 
     // Actualizar perfil com transaction_id e status pending
     await supabase
       .from('profiles')
       .update({
-        transaction_id,
+        transaction_id: normalizedTransactionId,
         payment_method,
         payment_status: 'pending',
       })
@@ -123,16 +119,26 @@ export async function PATCH(req: Request) {
 
     const newStatus = action === 'confirm' ? 'confirmed' : 'rejected';
 
-    // Actualizar pagamento
-    await supabase
+    // Actualizar pagamento apenas se ainda estiver pendente (evita dupla confirmação)
+    const { count, error: updateError } = await supabase
       .from('payment_history')
       .update({
         status:       newStatus,
         confirmed_by: user.id,
         confirmed_at: new Date().toISOString(),
         notes:        notes ?? null,
-      })
-      .eq('id', payment_id);
+      }, { count: 'exact' })
+      .eq('id', payment_id)
+      .eq('status', 'pending');
+
+    if (updateError) throw new Error(updateError.message);
+
+    if (count === 0) {
+      return NextResponse.json(
+        { error: 'Pagamento já foi processado anteriormente', status: payment.status },
+        { status: 409 },
+      );
+    }
 
     // Se confirmado: activar o plano no perfil do utilizador
     if (action === 'confirm') {
