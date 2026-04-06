@@ -4,6 +4,7 @@ import {
 } from 'docx';
 import type { CoverData } from './cover-types';
 import { calculateCoverLayout, calculateBackCoverLayout } from './cover-layout';
+import { validateBase64Image } from '@/lib/validation/image-validator';
 
 // ── Dimensões de página (mesmas do docx-builder.ts) ──────────────────────────
 
@@ -171,22 +172,24 @@ function buildCoverSection(data: CoverData): object {
   const children: Paragraph[] = [];
 
   // 1. Logo (opcional)
-  if (data.logoBase64) {
-    const rawBase64 = data.logoBase64.replace(/^data:[^;]+;base64,/, '');
+  if (data.logoBase64 && data.logoMediaType) {
+    const imageBuffer = validateBase64Image(data.logoBase64, data.logoMediaType);
 
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 120, line: 240, lineRule: 'auto' as any },
-        children: [
-          new ImageRun({
-            type: data.logoMediaType === 'image/jpeg' ? 'jpg' : 'png',
-            data: Buffer.from(rawBase64, 'base64'),
-            transformation: { width: 132, height: 132 }, // ≈ 35mm a 96 DPI
-          }),
-        ],
-      }),
-    );
+    if (imageBuffer) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 120, line: 240, lineRule: 'auto' as any },
+          children: [
+            new ImageRun({
+              type: data.logoMediaType === 'image/jpeg' ? 'jpg' : 'png',
+              data: imageBuffer,
+              transformation: { width: 132, height: 132 }, // ≈ 35mm a 96 DPI
+            }),
+          ],
+        }),
+      );
+    }
   }
 
   // 2. Cabeçalho (instituição + delegação)

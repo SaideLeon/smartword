@@ -32,13 +32,32 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
-    const { plan_key, transaction_id, amount_mzn, payment_method, work_session_id } = await req.json();
+    const { plan_key, transaction_id, payment_method, work_session_id } = await req.json();
 
-    if (!plan_key || !transaction_id || !amount_mzn || !payment_method) {
+    if (!plan_key || !transaction_id || !payment_method) {
       return NextResponse.json({ error: 'Campos obrigatórios em falta' }, { status: 400 });
     }
 
+    const normalizedPlanKey = String(plan_key).trim();
     const normalizedTransactionId = String(transaction_id).trim();
+    if (!normalizedPlanKey) {
+      return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
+    }
+
+    // Segurança (R18): preço vem sempre do servidor e nunca do body do cliente.
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('key, price_mzn, is_active')
+      .eq('key', normalizedPlanKey)
+      .single();
+
+    if (planError || !plan) {
+      return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
+    }
+
+    if (!plan.is_active) {
+      return NextResponse.json({ error: 'Plano não disponível' }, { status: 400 });
+    }
 
     // Inserção directa para evitar race condition entre SELECT+INSERT.
     // A constraint UNIQUE em payment_history.transaction_id garante atomicidade.
@@ -46,9 +65,9 @@ export async function POST(req: Request) {
       .from('payment_history')
       .insert({
         user_id: user.id,
-        plan_key,
+        plan_key: normalizedPlanKey,
         transaction_id: normalizedTransactionId,
-        amount_mzn,
+        amount_mzn: plan.price_mzn,
         payment_method,
         work_session_id: work_session_id ?? null,
         status: 'pending',
