@@ -24,7 +24,7 @@ async function makeSupabase() {
 
 // ── POST: utilizador submete comprovativo de pagamento ───────────────────────
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
@@ -43,10 +43,33 @@ export async function POST(req: Request) {
     const paymentMethod: PaymentMethod | null = allowedMethods.includes(body.payment_method)
       ? body.payment_method
       : null;
-    const workSessionId = typeof body.work_session_id === 'string' ? body.work_session_id : null;
+    const workSessionId = typeof body.work_session_id === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.work_session_id)
+      ? body.work_session_id
+      : null;
 
     if (!normalizedPlanKey || !normalizedTransactionId || !paymentMethod) {
       return NextResponse.json({ error: 'Campos obrigatórios em falta ou inválidos' }, { status: 400 });
+    }
+
+    if (typeof body.work_session_id === 'string' && !workSessionId) {
+      return NextResponse.json({ error: 'work_session_id inválido' }, { status: 400 });
+    }
+
+    if (workSessionId) {
+      const { data: workSession, error: workSessionError } = await supabase
+        .from('work_sessions')
+        .select('id')
+        .eq('id', workSessionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (workSessionError || !workSession) {
+        return NextResponse.json(
+          { error: 'Sessão de trabalho inválida ou não autorizada' },
+          { status: 403 },
+        );
+      }
     }
 
     const { data, error } = await supabase.rpc('register_payment', {
@@ -79,7 +102,7 @@ export async function POST(req: Request) {
 
 // ── PATCH: admin confirma ou rejeita o pagamento ─────────────────────────────
 export async function PATCH(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:patch', maxRequests: 30, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'payment:patch', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
@@ -179,7 +202,7 @@ export async function PATCH(req: Request) {
 
 // ── GET: listar pagamentos (admin vê todos, utilizador vê os seus) ───────────
 export async function GET(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:get', maxRequests: 30, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'payment:get', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();

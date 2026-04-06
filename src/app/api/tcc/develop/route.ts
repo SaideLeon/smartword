@@ -358,7 +358,7 @@ O trabalho tem secções próprias para Conclusão e Referências — não as an
 // ---------------------------------------------------------------------------
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'tcc:develop', maxRequests: 10, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'tcc:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   let sessionId: string | null = null;

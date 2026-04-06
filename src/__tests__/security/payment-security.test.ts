@@ -151,6 +151,44 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(400);
   });
 
+  it('POST rejeita work_session_id sem ownership (R18)', async () => {
+    const workSessionMaybeSingle = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    });
+    const workSessionEqUser = vi.fn().mockReturnValue({ maybeSingle: workSessionMaybeSingle });
+    const workSessionEqId = vi.fn().mockReturnValue({ eq: workSessionEqUser });
+    const workSessionSelect = vi.fn().mockReturnValue({ eq: workSessionEqId });
+    const rpc = vi.fn();
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'work_sessions') return { select: workSessionSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await POST(
+      makeReq('http://localhost/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan_key: 'premium',
+          transaction_id: 'TRX-OWN-1',
+          payment_method: 'mpesa',
+          work_session_id: 'd6f5c2a1-b8e1-4e7d-9c7e-5ae2de5f1b9c',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('POST respeita rate limit e retorna 429', async () => {
     mockEnforceRateLimit.mockReturnValueOnce(
       new Response(JSON.stringify({ error: 'rate limited' }), { status: 429 }),

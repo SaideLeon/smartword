@@ -39,7 +39,7 @@ REGRAS DE ADEQUAÇÃO AO NÍVEL SECUNDÁRIO/MÉDIO — OBRIGATÓRIAS:
 Escreve em português europeu/moçambicano. Sê concreto e útil.`;
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
