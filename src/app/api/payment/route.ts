@@ -124,18 +124,11 @@ export async function POST(req: Request) {
         reasons: fraudCheck.reasons,
       });
 
-      const { error: fraudAuditError } = await supabase
-        .from('audit_log')
-        .insert({
-          actor_id: user.id,
-          action: 'payment_fraud_flag',
-          resource: 'payment_history',
-          metadata: {
-            transaction_id: transactionId,
-            reasons: fraudCheck.reasons,
-            flagged_at: new Date().toISOString(),
-          },
-        });
+      const { error: fraudAuditError } = await supabase.rpc('log_fraud_event', {
+        p_actor_id: user.id,
+        p_transaction_id: transactionId,
+        p_reasons: fraudCheck.reasons,
+      });
 
       if (fraudAuditError) {
         console.error('[payment POST] Falha ao registrar flag de fraude:', fraudAuditError.message);
