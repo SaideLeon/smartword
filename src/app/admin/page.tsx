@@ -276,6 +276,11 @@ export default function AdminPage() {
                       <p className="font-mono text-[11px] text-[#c8bfb4]">
                         Plano <strong className="text-[var(--gold)]">{p.plans?.label ?? p.plan_key}</strong>{' '}
                         · {toCurrency(p.amount_mzn)} · {p.payment_method.toUpperCase()}
+                        {p.plans && p.amount_mzn !== p.plans.price_mzn && (
+                          <span className="ml-2 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">
+                            ⚠ Divergência: {toCurrency(p.plans.price_mzn)}
+                          </span>
+                        )}
                       </p>
                       <p className="font-mono text-[10px] text-[#8a7d6e]">
                         Transação: {p.transaction_id}
