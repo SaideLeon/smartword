@@ -7,6 +7,8 @@ import { getWorkSession, saveWorkResearchBrief, saveWorkSectionContent } from '@
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { generateResearchBrief } from '@/lib/research/brief';
+import { parseSessionPayload } from '@/lib/validation/input-guards';
+import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 
 // ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
 
@@ -166,7 +168,12 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   try {
-    const { sessionId, sectionIndex } = await req.json();
+    const parsedPayload = parseSessionPayload(await req.json());
+    if (!parsedPayload) {
+      return NextResponse.json({ error: 'Payload inválido: sessionId e sectionIndex são obrigatórios' }, { status: 400 });
+    }
+
+    const { sessionId, sectionIndex } = parsedPayload;
 
     const session = await getWorkSession(sessionId);
     if (!session) return NextResponse.json({ error: 'Sessão não encontrada' }, { status: 404 });
@@ -190,15 +197,16 @@ export async function POST(req: Request) {
       .map(current => ({ title: current.title, content: current.content }));
 
     const previousContext = previousSections.length > 0
-      ? `\n[SECÇÕES ANTERIORES]\n${
+      ? `\n[SECÇÕES ANTERIORES]\n${wrapUserInput(
+          'user_previous_sections',
           previousSections.map(current =>
             `### ${current.title}\n${current.content.slice(0, 400)}${current.content.length > 400 ? '…' : ''}`
-          ).join('\n\n')
-        }\n`
+          ).join('\n\n'),
+        )}\n`
       : '\n[SECÇÕES ANTERIORES]\n(nenhuma secção anterior disponível)\n';
 
     const researchContext = session.research_brief
-      ? `\n[FICHA DE PESQUISA]\n${session.research_brief}\n`
+      ? `\n[FICHA DE PESQUISA]\n${wrapUserInput('user_research_brief', session.research_brief)}\n`
       : '\n[FICHA DE PESQUISA]\n(não disponível)\n';
 
     const isSubsection = /^\d+\.\d+/.test(section.title);
@@ -217,6 +225,8 @@ O trabalho tem secções próprias para isso — NÃO as antecipes aqui.`
 
     const systemPrompt = `IDENTIDADE E PAPEL
 ==================
+${PROMPT_INJECTION_GUARD}
+
 És um redactor académico especializado em trabalhos escolares do ensino secundário e médio.
 O teu trabalho é produzir conteúdo académico rigoroso, claro e adequado ao nível etário dos alunos (14–18 anos).
 
@@ -226,10 +236,10 @@ A norma de referenciação é APA (7.ª edição) em todo o trabalho.
 CONTEXTO DO PROJECTO (fornecido pelo sistema a cada chamada)
 ============================================================
 [TÓPICO DO TRABALHO]
-${session.topic}
+${wrapUserInput('user_topic', session.topic)}
 
 [ESBOÇO ORIENTADOR]
-${outline}
+${wrapUserInput('user_outline', outline)}
 ${previousContext}
 ${researchContext}
 
