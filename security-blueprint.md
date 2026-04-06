@@ -2,7 +2,7 @@
 
 **Projecto:** Muneri — Gerador de Trabalhos Académicos  
 **Data da auditoria:** 2026-04-06  
-**Auditado por:** Claude Security Audit Skill v1.0  
+**Auditado por:** Claude Security Audit Skill v1.0
 
 ---
 
@@ -10,12 +10,14 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Pontuação actual | 25/100 |
-| Pontuação esperada após correcções | 100/100 |
+| Pontuação actual | 22/100 |
+| Pontuação esperada após correcções | 97/100 |
 | Vulnerabilidades CRÍTICO | 3 |
-| Vulnerabilidades ALTO | 5 |
+| Vulnerabilidades ALTO | 3 |
 | Vulnerabilidades MÉDIO | 1 |
-| **Resultado actual** | **REPROVADO — não apto para produção** |
+| **Resultado actual** | **🔴 REPROVADO — não apto para produção** |
+
+> Após correcções das 3 CRÍTICO e 3 ALTO: score 97 → **Aprovado com Ressalvas**
 
 ---
 
@@ -23,347 +25,222 @@
 
 | # | Regra | Severidade | Localização | Esforço | Estado |
 |---|-------|-----------|-------------|---------|--------|
-| 1 | [R17](#r17-rls-permissivo) | 🔴 CRÍTICO | `supabase/migrations/001,007` | Médio | ⬜ Pendente |
-| 2 | [R08/CTF-R07](#r08-race-condition-em-pagamentos) | 🔴 CRÍTICO | `src/app/api/payment/route.ts` | Alto | ⬜ Pendente |
-| 3 | [R22](#r22-rate-limiter-em-memória) | 🔴 CRÍTICO | `src/lib/rate-limit.ts` | Alto | ⬜ Pendente |
-| 4 | [R18](#r18-mass-assignment-work_session_id) | 🟠 ALTO | `src/app/api/payment/route.ts` | Baixo | ⬜ Pendente |
-| 5 | [R07](#r07-limite-de-tamanho-de-input) | 🟠 ALTO | `src/app/api/payment/route.ts` | Baixo | ⬜ Pendente |
-| 6 | [R16](#r16-sem-auditoria-de-acesso-admin) | 🟠 ALTO | `src/app/api/payment/route.ts` (GET) | Médio | ⬜ Pendente |
-| 7 | [R21](#r21-sem-detecção-automática-de-fraude) | 🟠 ALTO | Sistema de pagamentos | Alto | ⬜ Pendente |
-| 8 | [R23](#r23-testes-de-segurança-incompletos) | 🟠 ALTO | `src/tests/security/` | Médio | ⬜ Pendente |
-| 9 | [R13](#r13-validação-de-logobase64) | 🟡 MÉDIO | `src/app/api/cover/export/route.ts` | Baixo | ⬜ Pendente |
+| 1 | [R08/R19](#r08r19-race-condition-na-confirmação-de-pagamento) | 🔴 CRÍTICO | `api/payment/route.ts : PATCH()` | Alto | ⬜ Pendente |
+| 2 | [R17](#r17-política-rls-audit_log-bloqueia-inserts-de-utilizadores-comuns) | 🔴 CRÍTICO | `migrations/012_audit_log.sql` | Médio | ⬜ Pendente |
+| 3 | [R22](#r22-admin-page-acede-à-bd-directamente-sem-camada-de-api) | 🔴 CRÍTICO | `app/admin/page.tsx` | Alto | ⬜ Pendente |
+| 4 | [R16](#r16-audit_log-como-ponto-único-de-falha-no-get-payments) | 🟠 ALTO | `api/payment/route.ts : GET()` | Baixo | ⬜ Pendente |
+| 5 | [R18](#r18-campo-notes-aceite-sem-sanitização-htmlxss) | 🟠 ALTO | `api/payment/route.ts : PATCH()` | Baixo | ⬜ Pendente |
+| 6 | [R21](#r21-detecção-de-fraude-não-bloqueia-o-pagamento) | 🟠 ALTO | `api/payment/route.ts : POST()` | Médio | ⬜ Pendente |
+| 7 | [R13](#r13-filename-sem-sanitização-no-header-content-disposition) | 🟡 MÉDIO | `api/cover/export/route.ts` | Baixo | ⬜ Pendente |
 
 > **Esforço:** Baixo (< 1h) · Médio (1–4h) · Alto (> 4h)
 
 ---
 
-## [R17] RLS Permissivo — CRÍTICO
-
-### Contexto
-
-**O que existe actualmente:**
-
-```sql
--- migrations/001_tcc_sessions.sql (pode persistir em produção)
-create policy "allow_all_anon" on tcc_sessions
-  for all using (true) with check (true);
-
--- migrations/007: tenta remover mas falha silenciosamente se já foi removida
-DROP POLICY IF EXISTS "allow_all_anon" ON tcc_sessions;
-
--- Nova política depende de user_id NOT NULL — mas sessões antigas têm NULL
-CREATE POLICY "tcc_user_access" ON tcc_sessions
-  FOR ALL
-  USING (auth.uid() = user_id OR is_admin())
-```
-
-**Por que é explorável:**  
-Qualquer utilizador anónimo com a URL do Supabase e a chave `anon` pode ler/escrever todas as sessões TCC se a política permissiva estiver activa. Mesmo com a política correcta, sessões com `user_id = NULL` ficam inacessíveis para o utilizador legítimo mas continuam acessíveis a admins comprometidos.
-
-**Impacto potencial:**  
-Exposição de todos os trabalhos académicos de todos os utilizadores; possibilidade de alteração/eliminação de sessões de outros utilizadores.
-
----
-
-### Arquitectura da Correcção
-
-```
-ESTADO ACTUAL:
-  Cliente anon → Supabase anon key → tcc_sessions (sem restrição se policy permissiva activa)
-
-ESTADO CORRECTO:
-  Cliente auth → JWT verificado → RLS: auth.uid() = user_id (NOT NULL) → acesso restrito
-  Admin auth  → JWT verificado → RLS: is_admin() → acesso auditado
-```
-
----
-
-### Implementação Passo a Passo
-
-#### Passo 1 — Verificar estado actual das políticas em produção
-
-```sql
--- Executar no Supabase SQL Editor para confirmar o estado real
-SELECT
-  tablename,
-  policyname,
-  cmd,
-  qual,
-  with_check
-FROM pg_policies
-WHERE tablename IN ('tcc_sessions', 'work_sessions', 'profiles', 'payment_history')
-ORDER BY tablename, policyname;
-
--- ALERTA: se aparecer "allow_all_anon" com qual = 'true', executar imediatamente:
-DROP POLICY IF EXISTS "allow_all_anon" ON tcc_sessions;
-DROP POLICY IF EXISTS "allow_all_anon_work" ON work_sessions;
-```
-
-#### Passo 2 — Adicionar NOT NULL + DEFAULT em user_id (migração 010)
-
-```sql
--- supabase/migrations/010_fix_rls_user_id.sql
-
--- 1. Backfill: sessões sem user_id são irrecuperáveis — mover para tabela de arquivo
-CREATE TABLE IF NOT EXISTS tcc_sessions_orphaned AS
-  SELECT * FROM tcc_sessions WHERE user_id IS NULL;
-
--- 2. Eliminar sessões órfãs da tabela principal
-DELETE FROM tcc_sessions WHERE user_id IS NULL;
-
--- 3. Tornar user_id obrigatório
-ALTER TABLE tcc_sessions
-  ALTER COLUMN user_id SET NOT NULL;
-
-ALTER TABLE tcc_sessions
-  ALTER COLUMN user_id SET DEFAULT auth.uid();
-
--- Repetir para work_sessions
-CREATE TABLE IF NOT EXISTS work_sessions_orphaned AS
-  SELECT * FROM work_sessions WHERE user_id IS NULL;
-DELETE FROM work_sessions WHERE user_id IS NULL;
-ALTER TABLE work_sessions ALTER COLUMN user_id SET NOT NULL;
-ALTER TABLE work_sessions ALTER COLUMN user_id SET DEFAULT auth.uid();
-
--- 4. Verificação final: não deve retornar linhas
-SELECT COUNT(*) FROM tcc_sessions WHERE user_id IS NULL;
-SELECT COUNT(*) FROM work_sessions WHERE user_id IS NULL;
-```
-
-#### Passo 3 — Confirmar que as políticas correctas estão activas
-
-```sql
--- Verificar: apenas estas políticas devem existir para tcc_sessions
--- tcc_user_access: USING (auth.uid() = user_id OR is_admin())
--- Nenhuma política com USING (true)
-
--- Se necessário recriar:
-DROP POLICY IF EXISTS "allow_all_anon" ON tcc_sessions;
-DROP POLICY IF EXISTS "tcc_user_access" ON tcc_sessions;
-
-CREATE POLICY "tcc_user_access" ON tcc_sessions
-  FOR ALL
-  USING  (auth.uid() = user_id OR is_admin())
-  WITH CHECK (auth.uid() = user_id OR is_admin());
-```
-
----
-
-### Teste de Validação
-
-```typescript
-// src/tests/security/rls.test.ts
-// Executar com: npx vitest run src/tests/security/rls.test.ts
-
-import { createClient } from '@supabase/supabase-js';
-
-describe('RLS — tcc_sessions', () => {
-  it('utilizador anónimo não consegue ler sessões', async () => {
-    const anonClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data, error } = await anonClient.from('tcc_sessions').select('id');
-    // Com RLS correcta: data deve ser [] ou error deve existir
-    expect(data?.length ?? 0).toBe(0);
-  });
-
-  it('utilizador autenticado só vê as suas sessões', async () => {
-    // Criar sessão com user A, tentar ler com user B
-    // (requer dois clientes com JWTs distintos)
-    const { data } = await userBClient.from('tcc_sessions')
-      .select('id')
-      .eq('user_id', userAId);
-    expect(data?.length ?? 0).toBe(0);
-  });
-});
-```
-
-**Resultado esperado:** Ambos os testes passam sem retornar dados de outros utilizadores.
-
----
-
-### Lista de Verificação antes do Lançamento
-
-- [ ] Executar query de verificação de políticas em produção — sem `USING (true)`
-- [ ] Migração 010 aplicada e sessões órfãs arquivadas
-- [ ] `user_id NOT NULL` confirmado via `information_schema.columns`
-- [ ] Teste de RLS com dois utilizadores a passar
-- [ ] Chave `service_role` nunca exposta no código cliente
-
----
-
-## [R08] Race Condition em Pagamentos — CRÍTICO
+## [R08/R19] Race Condition na Confirmação de Pagamento — CRÍTICO
 
 ### Contexto
 
 **O que existe actualmente:**
 
 ```typescript
-// src/app/api/payment/route.ts — três operações separadas
-const { data: plan } = await supabase.from('plans').select(...).single();
-// ← janela de race condition aqui ←
-const { data: payment, error } = await supabase
-  .from('payment_history').insert({...}).select().single();
-// ← segundo pedido pode chegar aqui ←
-await supabase.from('profiles').update({...}).eq('id', user.id);
+// src/app/api/payment/route.ts — PATCH()
+// Passo 1: leitura do pagamento
+const { data: payment } = await supabase
+  .from('payment_history')
+  .select('*, plans(*)')
+  .eq('id', paymentId)
+  .single();
+
+// ← JANELA DE RACE CONDITION: outra request pode confirmar aqui
+
+// Passo 2: actualização condicional (dois statements separados)
+const { count } = await supabase
+  .from('payment_history')
+  .update({ status: newStatus, confirmed_by: user.id, ... })
+  .eq('id', paymentId)
+  .eq('status', 'pending'); // sem lock na leitura anterior
 ```
 
-**Por que é explorável:**  
-Dois pedidos simultâneos passam ambos pela verificação do plano, ambos tentam inserir em `payment_history` (um falha pela constraint UNIQUE), mas se o timing for exacto, o `UPDATE profiles` pode correr duas vezes ou numa ordem inesperada. Em planos com `works_limit`, o contador `works_used` pode ser manipulado.
+**Por que é explorável:**
+Dois admins a confirmar o mesmo pagamento em simultâneo lêem ambos `status='pending'` no Passo 1. Ambos avançam para o Passo 2 e um sobrescreve o outro. Mais grave: após a confirmação, o perfil do utilizador é actualizado (`plan_key`, `plan_expires_at`, `works_used = 0`) — esta actualização pode ocorrer duas vezes, reiniciando contadores de uso indevidamente.
 
-**Impacto potencial:**  
-Activação de plano sem pagamento válido; corrupção do estado do perfil do utilizador.
+**Impacto potencial:**
+Activação dupla de plano pago, reset duplo de contadores de uso, inconsistência de estado financeiro.
 
 ---
 
 ### Arquitectura da Correcção
 
 ```
-ACTUAL:
-  API Route → SELECT plan → INSERT payment_history → UPDATE profiles
-              (3 operações independentes, sem garantia de atomicidade)
+ANTES:
+  PATCH handler
+    └── SELECT payment (sem lock)
+    └── UPDATE payment WHERE status='pending'   ← race window
+    └── UPDATE profiles
 
-CORRECTO:
-  API Route → supabase.rpc('register_payment', {...})
-                └─ BEGIN
-                   ├─ SELECT plan FOR UPDATE (lock)
-                   ├─ INSERT payment_history
-                   ├─ UPDATE profiles (status pending)
-                   └─ COMMIT
+DEPOIS:
+  PATCH handler
+    └── RPC confirm_payment(payment_id, admin_id, action, notes)
+          └── SELECT payment FOR UPDATE          ← row lock
+          └── IF status != 'pending' → RAISE EXCEPTION
+          └── UPDATE payment_history
+          └── UPDATE profiles
+          └── RETURN result
+          └── COMMIT (automático no PL/pgSQL)
 ```
 
 ---
 
 ### Implementação Passo a Passo
 
-#### Passo 1 — Criar função PostgreSQL atómica
+#### Passo 1 — Criar função PL/pgSQL `confirm_payment`
 
 ```sql
--- supabase/migrations/011_atomic_payment.sql
+-- supabase/migrations/013_atomic_confirm_payment.sql
 
-CREATE OR REPLACE FUNCTION register_payment(
-  p_user_id       uuid,
-  p_plan_key      text,
-  p_transaction_id text,
-  p_payment_method text,
-  p_work_session_id uuid DEFAULT NULL
+CREATE OR REPLACE FUNCTION confirm_payment(
+  p_payment_id uuid,
+  p_admin_id   uuid,
+  p_action     text,   -- 'confirm' | 'reject'
+  p_notes      text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
-  v_plan          plans%ROWTYPE;
-  v_payment_id    uuid;
+  v_payment  payment_history%ROWTYPE;
+  v_plan     plans%ROWTYPE;
+  v_new_status text;
+  v_expires  timestamptz;
 BEGIN
-  -- 1. Verificar autenticação: só o próprio utilizador pode registar
-  IF auth.uid() != p_user_id THEN
-    RAISE EXCEPTION 'Unauthorized' USING ERRCODE = 'P0001';
+  -- Verificar que o chamador é admin
+  IF NOT is_admin() THEN
+    RAISE EXCEPTION 'Acesso negado' USING ERRCODE = 'P0001';
   END IF;
 
-  -- 2. Verificar plano (com lock para evitar race condition)
-  SELECT * INTO v_plan
-  FROM plans
-  WHERE key = p_plan_key AND is_active = true
-  FOR SHARE; -- partilhado: múltiplos podem ler, nenhum pode alterar
+  IF p_action NOT IN ('confirm', 'reject') THEN
+    RAISE EXCEPTION 'Acção inválida' USING ERRCODE = 'P0002';
+  END IF;
+
+  -- Lock optimista: bloqueia a linha para esta transacção
+  SELECT * INTO v_payment
+  FROM payment_history
+  WHERE id = p_payment_id
+  FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Plano inválido ou inactivo' USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'Pagamento não encontrado' USING ERRCODE = 'P0003';
   END IF;
 
-  -- 3. Verificar se o transaction_id já existe (idempotência)
-  IF EXISTS (SELECT 1 FROM payment_history WHERE transaction_id = p_transaction_id) THEN
-    RAISE EXCEPTION 'Transação já registada' USING ERRCODE = 'P0003';
+  -- Verificar idempotência: já foi processado?
+  IF v_payment.status != 'pending' THEN
+    RAISE EXCEPTION 'Pagamento já foi processado: %', v_payment.status
+      USING ERRCODE = 'P0004';
   END IF;
 
-  -- 4. Inserir pagamento com preço do SERVIDOR (nunca do cliente)
-  INSERT INTO payment_history (
-    user_id, plan_key, transaction_id,
-    amount_mzn, payment_method, work_session_id, status
-  ) VALUES (
-    p_user_id, p_plan_key, p_transaction_id,
-    v_plan.price_mzn, p_payment_method, p_work_session_id, 'pending'
-  )
-  RETURNING id INTO v_payment_id;
+  v_new_status := CASE p_action WHEN 'confirm' THEN 'confirmed' ELSE 'rejected' END;
 
-  -- 5. Actualizar perfil com status pending
-  UPDATE profiles SET
-    transaction_id   = p_transaction_id,
-    payment_method   = p_payment_method,
-    payment_status   = 'pending',
-    updated_at       = now()
-  WHERE id = p_user_id;
+  -- Actualizar pagamento
+  UPDATE payment_history
+  SET status       = v_new_status,
+      confirmed_by = p_admin_id,
+      confirmed_at = now(),
+      notes        = p_notes,
+      updated_at   = now()
+  WHERE id = p_payment_id;
 
-  RETURN jsonb_build_object('payment_id', v_payment_id, 'amount_mzn', v_plan.price_mzn);
+  -- Actualizar perfil do utilizador
+  IF p_action = 'confirm' THEN
+    SELECT * INTO v_plan FROM plans WHERE key = v_payment.plan_key;
+
+    IF v_plan.duration_months > 0 THEN
+      v_expires := now() + (v_plan.duration_months || ' months')::interval;
+    END IF;
+
+    UPDATE profiles
+    SET plan_key            = v_payment.plan_key,
+        plan_expires_at     = v_expires,
+        payment_status      = 'active',
+        payment_verified_at = now(),
+        payment_verified_by = p_admin_id,
+        works_used          = 0,
+        edits_used          = 0,
+        updated_at          = now()
+    WHERE id = v_payment.user_id;
+  ELSE
+    UPDATE profiles
+    SET payment_status = 'none',
+        updated_at     = now()
+    WHERE id = v_payment.user_id;
+  END IF;
+
+  RETURN jsonb_build_object('ok', true, 'status', v_new_status);
 
 EXCEPTION
-  WHEN SQLSTATE 'P0001' THEN
-    RAISE EXCEPTION 'Unauthorized' USING ERRCODE = 'P0001';
-  WHEN SQLSTATE 'P0002' THEN
-    RAISE EXCEPTION 'Plano inválido ou inactivo' USING ERRCODE = 'P0002';
-  WHEN unique_violation THEN
-    RAISE EXCEPTION 'Transação já registada' USING ERRCODE = '23505';
+  WHEN SQLSTATE 'P0004' THEN
+    -- Re-lançar com código específico para o handler HTTP distinguir
+    RAISE EXCEPTION '%', SQLERRM USING ERRCODE = 'P0004';
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION confirm_payment(uuid, uuid, text, text) TO authenticated;
 ```
 
-#### Passo 2 — Simplificar o handler da API
+#### Passo 2 — Simplificar o handler PATCH para usar o RPC
 
 ```typescript
-// src/app/api/payment/route.ts — POST handler corrigido
-export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
+// src/app/api/payment/route.ts — PATCH() substituído
+
+export async function PATCH(req: Request) {
+  const limited = await enforceRateLimit(req, {
+    scope: 'payment:patch', maxRequests: 30, windowMs: 60_000
+  });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
+  // Verificar role admin (mantida por defesa em profundidade, além do RLS)
+  const { data: adminProfile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single();
+  if (adminProfile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+  }
+
   try {
-    const body = await req.json();
-
-    // Validação com whitelist explícita
-    const ALLOWED_METHODS = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
-    type PaymentMethod = typeof ALLOWED_METHODS[number];
-
-    const plan_key        = typeof body.plan_key === 'string' ? body.plan_key.trim().slice(0, 50) : null;
-    const transaction_id  = typeof body.transaction_id === 'string' ? body.transaction_id.trim().slice(0, 100) : null;
-    const payment_method  = ALLOWED_METHODS.includes(body.payment_method) ? body.payment_method as PaymentMethod : null;
-    const work_session_id = typeof body.work_session_id === 'string' ? body.work_session_id : null;
-
-    if (!plan_key || !transaction_id || !payment_method) {
-      return NextResponse.json({ error: 'Campos obrigatórios em falta ou inválidos' }, { status: 400 });
+    const parsedBody = parsePaymentPatchBody(await req.json());
+    if (!parsedBody) {
+      return NextResponse.json({ error: 'payment_id e action são obrigatórios' }, { status: 400 });
     }
+    const { paymentId, action, notes } = parsedBody;
 
-    // Verificar ownership de work_session_id (R18)
-    if (work_session_id) {
-      const { data: ws } = await supabase
-        .from('work_sessions')
-        .select('id')
-        .eq('id', work_session_id)
-        .eq('user_id', user.id)
-        .single();
-      if (!ws) {
-        return NextResponse.json({ error: 'Sessão de trabalho inválida' }, { status: 403 });
-      }
-    }
-
-    // Operação atómica via RPC
-    const { data, error } = await supabase.rpc('register_payment', {
-      p_user_id:        user.id,
-      p_plan_key:       plan_key,
-      p_transaction_id: transaction_id,
-      p_payment_method: payment_method,
-      p_work_session_id: work_session_id ?? null,
+    // Uma única chamada atómica com SELECT FOR UPDATE interno
+    const { data, error } = await supabase.rpc('confirm_payment', {
+      p_payment_id: paymentId,
+      p_admin_id:   user.id,
+      p_action:     action,
+      p_notes:      notes ?? null,
     });
 
-    if (error?.code === '23505' || error?.message?.includes('já registada')) {
-      return NextResponse.json({ error: 'Transação já registada' }, { status: 409 });
+    if (error) {
+      // P0004 = já processado (409)
+      if (error.code === 'P0004') {
+        return NextResponse.json(
+          { error: 'Pagamento já foi processado anteriormente' },
+          { status: 409 }
+        );
+      }
+      if (error.code === 'P0003') {
+        return NextResponse.json({ error: 'Pagamento não encontrado' }, { status: 404 });
+      }
+      throw new Error(error.message);
     }
-    if (error) throw new Error(error.message);
 
-    return NextResponse.json({ ok: true, payment_id: data.payment_id });
+    return NextResponse.json({ ok: true, status: action === 'confirm' ? 'confirmed' : 'rejected' });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
@@ -375,510 +252,166 @@ export async function POST(req: Request) {
 ### Teste de Validação
 
 ```typescript
-// src/tests/security/payment-race-condition.test.ts
-// Executar com: npx vitest run src/tests/security/payment-race-condition.test.ts
+// src/__tests__/security/payment-race-condition.test.ts
+import { describe, expect, it, vi } from 'vitest';
 
-describe('Race Condition — register_payment', () => {
-  it('dois pedidos simultâneos com o mesmo transaction_id: apenas um deve ter sucesso', async () => {
-    const requests = [
-      fetch('/api/payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ plan_key: 'basico', transaction_id: 'TRX-RACE-001', payment_method: 'mpesa' }),
-      }),
-      fetch('/api/payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-        body: JSON.stringify({ plan_key: 'basico', transaction_id: 'TRX-RACE-001', payment_method: 'mpesa' }),
-      }),
-    ];
+describe('R08/R19 — confirm_payment atómica', () => {
+  it('segunda confirmação simultânea retorna 409', async () => {
+    // Simula dois admins a confirmar o mesmo pagamento
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: { ok: true, status: 'confirmed' }, error: null })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: 'P0004', message: 'Pagamento já foi processado: confirmed' }
+      });
 
-    const results = await Promise.all(requests);
-    const statuses = results.map(r => r.status);
+    const supabase = { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }) },
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { role: 'admin' } }) }) }) }),
+      rpc };
 
-    // Exactamente um deve ser 200, o outro 409
-    expect(statuses.filter(s => s === 200).length).toBe(1);
-    expect(statuses.filter(s => s === 409).length).toBe(1);
+    // Primeira confirmação: sucesso
+    const res1 = await rpc('confirm_payment', { p_payment_id: 'p-1', p_admin_id: 'admin-1', p_action: 'confirm', p_notes: null });
+    expect(res1.error).toBeNull();
+
+    // Segunda confirmação: 409
+    const res2 = await rpc('confirm_payment', { p_payment_id: 'p-1', p_admin_id: 'admin-2', p_action: 'confirm', p_notes: null });
+    expect(res2.error?.code).toBe('P0004');
   });
 });
 ```
 
-**Resultado esperado:** Apenas um dos pedidos simultâneos tem sucesso; o outro recebe 409.
+**Resultado esperado:** Segunda chamada devolve `{ error: { code: 'P0004' } }`, handler retorna HTTP 409.
 
 ---
 
 ### Lista de Verificação antes do Lançamento
 
-- [ ] Função `register_payment` criada e testada no Supabase
-- [ ] Handler POST simplificado a usar `supabase.rpc()`
-- [ ] Teste de race condition a passar
-- [ ] `amount_mzn` nunca aceite do cliente (vem sempre do plano no servidor)
-- [ ] `work_session_id` verificado contra `user_id` antes de usar
+- [ ] Migração `013_atomic_confirm_payment.sql` aplicada em produção
+- [ ] Handler PATCH simplificado e testado
+- [ ] Testes de race condition a passar
+- [ ] Remover código de actualização de `profiles` do handler (agora no RPC)
+- [ ] Variáveis de ambiente actualizadas (se aplicável)
+- [ ] Revisão de código por par antes do merge
 
 ---
 
-## [R22] Rate Limiter em Memória — CRÍTICO
+## [R17] Política RLS `audit_log` Bloqueia Inserts de Utilizadores Comuns — CRÍTICO
 
 ### Contexto
 
 **O que existe actualmente:**
 
-```typescript
-// src/lib/rate-limit.ts
-const store = new Map<string, Bucket>(); // estado volátil — reseta a cada cold start
+```sql
+-- migrations/012_audit_log.sql
+CREATE POLICY "audit_log_admin_insert" ON audit_log
+  FOR INSERT
+  WITH CHECK (is_admin() AND actor_id = auth.uid());
+-- ← Apenas admins podem inserir
+```
 
-export function enforceRateLimit(req: Request, config: RateLimitConfig): NextResponse | null {
-  const bucket = store.get(key); // Map local — não partilhado entre instâncias
-  // ...
+```typescript
+// src/app/api/payment/route.ts — POST() — utilizador comum
+if (fraudCheck.flagged) {
+  const { error: fraudAuditError } = await supabase
+    .from('audit_log')
+    .insert({ actor_id: user.id, action: 'payment_fraud_flag', ... });
+  // ← RLS rejeita silenciosamente; fraudAuditError é logado mas fluxo continua
 }
 ```
 
-**Por que é explorável:**  
-Next.js em Vercel é serverless: cada pedido pode iniciar uma nova instância, o `Map` começa vazio, e o rate limit é contornado trivialmente. Um atacante pode forçar cold starts ou simplesmente aguardar que as instâncias rodem em paralelo.
+**Por que é explorável:**
+O sistema de detecção de fraude depende do audit_log para registar actividade suspeita. Como a política bloqueia inserts de utilizadores comuns, **nenhum evento de fraude é jamais registado**. O administrador fica cego a toda a actividade fraudulenta. Um atacante pode reutilizar transaction IDs de outros utilizadores repetidamente sem deixar rasto.
 
-**Impacto potencial:**  
-Bypass completo do rate limiting em endpoints financeiros (`payment:post` — 5 req/min) e de autenticação; possibilidade de brute force e abuso de recursos.
+**Impacto potencial:**
+Sistema de anti-fraude completamente inoperacional. Fraude financeira sem detecção ou auditoria.
 
 ---
 
 ### Arquitectura da Correcção
 
 ```
-ACTUAL:
-  Request → Rate Limit (Map em memória, volátil) → Handler
-  ↑ cada instância Vercel tem o seu próprio Map
+OPÇÃO A (recomendada) — Função SECURITY DEFINER:
+  POST /api/payment
+    └── checkPaymentFraud() → flagged: true
+    └── log_fraud_event(user_id, transaction_id, reasons[])
+          └── INSERT INTO audit_log (SECURITY DEFINER ignora RLS do chamador)
 
-CORRECTO:
-  Request → Rate Limit (Upstash Redis, persistente e partilhado) → Handler
-  ↑ todas as instâncias partilham o mesmo estado Redis
+OPÇÃO B — Política RLS adicional:
+  Adicionar policy que permite INSERT quando actor_id = auth.uid()
+  (mais simples, mas dá acesso mais amplo ao audit_log)
 ```
 
 ---
 
 ### Implementação Passo a Passo
 
-#### Passo 1 — Instalar dependência
-
-```bash
-npm install @upstash/ratelimit @upstash/redis
-```
-
-#### Passo 2 — Configurar variáveis de ambiente
-
-```bash
-# .env.local (nunca commitar)
-UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your-token-here
-```
-
-#### Passo 3 — Substituir rate-limit.ts
-
-```typescript
-// src/lib/rate-limit.ts — versão corrigida com Upstash
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-import { NextResponse } from 'next/server';
-
-// Singleton Redis (reutiliza conexão entre invocações quentes)
-const redis = new Redis({
-  url:   process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
-// Cache de instâncias de rate limiter por scope
-const limiters = new Map<string, Ratelimit>();
-
-function getRateLimiter(scope: string, maxRequests: number, windowMs: number): Ratelimit {
-  const key = `${scope}:${maxRequests}:${windowMs}`;
-  if (!limiters.has(key)) {
-    limiters.set(key, new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(maxRequests, `${windowMs}ms`),
-      prefix:  `muneri:rl:${scope}`,
-    }));
-  }
-  return limiters.get(key)!;
-}
-
-function getClientIp(req: Request): string {
-  const forwardedFor = req.headers.get('x-forwarded-for');
-  if (forwardedFor) return forwardedFor.split(',')[0].trim();
-  return req.headers.get('x-real-ip') ?? 'unknown';
-}
-
-type RateLimitConfig = {
-  scope: string;
-  maxRequests: number;
-  windowMs: number;
-};
-
-export async function enforceRateLimit(
-  req: Request,
-  config: RateLimitConfig,
-): Promise<NextResponse | null> {
-  // Fallback em desenvolvimento (sem Redis configurado)
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
-    console.warn('[rate-limit] UPSTASH_REDIS_REST_URL não configurado — rate limiting desactivado');
-    return null;
-  }
-
-  const ip = getClientIp(req);
-  const limiter = getRateLimiter(config.scope, config.maxRequests, config.windowMs);
-  const { success, reset, remaining } = await limiter.limit(ip);
-
-  if (!success) {
-    const retryAfterSec = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
-    return NextResponse.json(
-      { error: 'Demasiados pedidos. Tenta novamente em instantes.', retryAfterSec },
-      {
-        status: 429,
-        headers: {
-          'Retry-After':       String(retryAfterSec),
-          'X-RateLimit-Limit': String(config.maxRequests),
-          'X-RateLimit-Reset': String(reset),
-        },
-      },
-    );
-  }
-
-  return null;
-}
-```
-
-#### Passo 4 — Actualizar todos os handlers para usar `await`
-
-```typescript
-// Todos os handlers que usam enforceRateLimit devem adicionar await:
-// ANTES:
-const limited = enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
-
-// DEPOIS:
-const limited = await enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
-```
-
-> **Nota:** `enforceRateLimit` passa a ser `async`. Actualizar todas as chamadas nos seguintes ficheiros:
-> - `src/app/api/payment/route.ts`
-> - `src/app/api/chat/route.ts`
-> - `src/app/api/cover/abstract/route.ts`
-> - `src/app/api/cover/agent/route.ts`
-> - `src/app/api/cover/export/route.ts`
-> - `src/app/api/export/route.ts`
-> - `src/app/api/tcc/approve/route.ts`
-> - `src/app/api/tcc/compress/route.ts`
-> - `src/app/api/tcc/develop/route.ts`
-> - `src/app/api/tcc/outline/route.ts`
-> - `src/app/api/tcc/session/route.ts`
-> - `src/app/api/work/approve/route.ts`
-> - `src/app/api/work/develop/route.ts`
-> - `src/app/api/work/generate/route.ts`
-> - `src/app/api/work/session/route.ts`
-
----
-
-### Teste de Validação
-
-```typescript
-// src/tests/security/rate-limit.test.ts
-describe('Rate Limiting — Redis persistente', () => {
-  it('respeita o limite mesmo em instâncias paralelas simuladas', async () => {
-    // Simula 6 pedidos rápidos (limite é 5/min para payment:post)
-    const results = await Promise.all(
-      Array.from({ length: 6 }, () =>
-        fetch('/api/payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-real-ip': '1.2.3.4' },
-          body: JSON.stringify({}),
-        })
-      )
-    );
-    const statuses = results.map(r => r.status);
-    expect(statuses.filter(s => s === 429).length).toBeGreaterThanOrEqual(1);
-  });
-});
-```
-
-**Resultado esperado:** Pelo menos 1 dos 6 pedidos recebe 429; o limite é respeitado globalmente.
-
----
-
-### Lista de Verificação antes do Lançamento
-
-- [ ] Conta Upstash criada e Redis configurado
-- [ ] `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` em produção (Vercel Environment Variables)
-- [ ] Todos os handlers actualizados para `await enforceRateLimit(...)`
-- [ ] Teste de rate limit a passar
-- [ ] Verificar que o fallback de desenvolvimento não desactiva proteção em produção
-
----
-
-## [R18] Mass Assignment — work_session_id — ALTO
-
-### Contexto
-
-**O que existe actualmente:**
-
-```typescript
-// src/app/api/payment/route.ts
-const { plan_key, transaction_id, payment_method, work_session_id } = await req.json();
-// work_session_id inserido sem verificar se pertence ao utilizador autenticado
-await supabase.from('payment_history').insert({ ..., work_session_id: work_session_id ?? null });
-```
-
-**Por que é explorável:**  
-Um atacante pode associar o seu pagamento à sessão de trabalho de outro utilizador, interferindo com o estado dessa sessão ou obtendo acesso a funcionalidades pagas indevidas.
-
-**Impacto potencial:**  
-Interferência com dados de outros utilizadores; possível acesso não autorizado a funcionalidades premium.
-
----
-
-### Implementação Passo a Passo
-
-#### Passo 1 — Validar ownership de work_session_id
-
-```typescript
-// Adicionar antes do INSERT em payment_history
-if (work_session_id) {
-  // Verificar que a sessão pertence ao utilizador autenticado
-  const { data: ws, error: wsError } = await supabase
-    .from('work_sessions')
-    .select('id')
-    .eq('id', work_session_id)
-    .eq('user_id', user.id) // garantia de ownership
-    .maybeSingle();
-
-  if (wsError || !ws) {
-    return NextResponse.json(
-      { error: 'Sessão de trabalho inválida ou não autorizada' },
-      { status: 403 }
-    );
-  }
-}
-```
-
-#### Passo 2 — Whitelist explícita de campos do body
-
-```typescript
-// Campos aceites do cliente com tipos e limites explícitos
-const ALLOWED_METHODS = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
-
-const plan_key        = typeof body.plan_key === 'string'        ? body.plan_key.trim().slice(0, 50)        : null;
-const transaction_id  = typeof body.transaction_id === 'string'  ? body.transaction_id.trim().slice(0, 100) : null;
-const payment_method  = ALLOWED_METHODS.includes(body.payment_method) ? body.payment_method : null;
-// work_session_id é o único campo UUID aceite — validado abaixo
-const work_session_id = typeof body.work_session_id === 'string' && /^[0-9a-f-]{36}$/.test(body.work_session_id)
-  ? body.work_session_id : null;
-
-// NUNCA aceitar: amount_mzn, role, plan_expires_at, payment_status do body
-```
-
----
-
-### Teste de Validação
-
-```typescript
-describe('Mass Assignment — work_session_id', () => {
-  it('rejeita work_session_id de outro utilizador', async () => {
-    // userB tenta usar a sessão de userA
-    const res = await fetch('/api/payment', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': userBAuthCookie },
-      body: JSON.stringify({
-        plan_key:        'basico',
-        transaction_id:  'TRX-IDOR-001',
-        payment_method:  'mpesa',
-        work_session_id: userASessionId, // sessão pertence a outro utilizador
-      }),
-    });
-    expect(res.status).toBe(403);
-  });
-});
-```
-
-**Resultado esperado:** 403 Forbidden ao tentar usar sessão de outro utilizador.
-
----
-
-### Lista de Verificação antes do Lançamento
-
-- [ ] Verificação de ownership de `work_session_id` implementada
-- [ ] Whitelist explícita de campos do body (sem aceitar `amount_mzn` do cliente)
-- [ ] Teste de IDOR a passar
-- [ ] Campos sensíveis como `role` e `payment_status` nunca aceites do body
-
----
-
-## [R07] Limite de Tamanho de Input — ALTO
-
-### Contexto
-
-**O que existe actualmente:**
-
-```typescript
-// Apenas verificação de presença — sem limites de tamanho ou validação de enum
-const { plan_key, transaction_id, payment_method, work_session_id } = await req.json();
-if (!plan_key || !transaction_id || !payment_method) {
-  return NextResponse.json({ error: 'Campos obrigatórios em falta' }, { status: 400 });
-}
-```
-
-**Por que é explorável:**  
-`transaction_id` sem limite permite payloads de megabytes que podem causar DoS. `payment_method` sem enum gera erro 500 (expõe informação interna) em vez de 400 controlado.
-
-**Impacto potencial:**  
-DoS por payloads grandes; exposição de stack traces via erros 500.
-
----
-
-### Implementação Passo a Passo
-
-#### Passo 1 — Adicionar validação com Zod
-
-```bash
-npm install zod
-```
-
-#### Passo 2 — Schema de validação para pagamento
-
-```typescript
-// src/lib/validation/payment-schema.ts
-import { z } from 'zod';
-
-export const paymentPostSchema = z.object({
-  plan_key:        z.string().trim().min(1).max(50),
-  transaction_id:  z.string().trim().min(3).max(100),
-  payment_method:  z.enum(['mpesa', 'emola', 'bank_transfer', 'card']),
-  work_session_id: z.string().uuid().optional().nullable(),
-});
-
-export const paymentPatchSchema = z.object({
-  payment_id: z.string().uuid(),
-  action:     z.enum(['confirm', 'reject']),
-  notes:      z.string().max(500).optional().nullable(),
-});
-
-export type PaymentPostInput  = z.infer<typeof paymentPostSchema>;
-export type PaymentPatchInput = z.infer<typeof paymentPatchSchema>;
-```
-
-#### Passo 3 — Usar schema no handler
-
-```typescript
-// src/app/api/payment/route.ts — POST
-const parseResult = paymentPostSchema.safeParse(await req.json());
-if (!parseResult.success) {
-  return NextResponse.json(
-    { error: 'Dados inválidos', details: parseResult.error.flatten() },
-    { status: 400 }
-  );
-}
-const { plan_key, transaction_id, payment_method, work_session_id } = parseResult.data;
-```
-
----
-
-### Teste de Validação
-
-```typescript
-describe('Validação de Input — payment POST', () => {
-  it('rejeita transaction_id com mais de 100 caracteres', async () => {
-    const res = await fetch('/api/payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-      body: JSON.stringify({
-        plan_key: 'basico',
-        transaction_id: 'A'.repeat(101),
-        payment_method: 'mpesa',
-      }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it('rejeita payment_method inválido com 400 (não 500)', async () => {
-    const res = await fetch('/api/payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': authCookie },
-      body: JSON.stringify({ plan_key: 'basico', transaction_id: 'TRX-001', payment_method: 'bitcoin' }),
-    });
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toBeDefined();
-    // Não deve expor stack trace
-    expect(JSON.stringify(body)).not.toContain('stack');
-  });
-});
-```
-
-**Resultado esperado:** Inputs inválidos retornam 400 com mensagem controlada, nunca 500.
-
----
-
-### Lista de Verificação antes do Lançamento
-
-- [ ] Zod instalado e schemas criados
-- [ ] Todos os handlers de pagamento a usar `safeParse`
-- [ ] Teste de inputs inválidos a passar
-- [ ] Stack traces nunca expostos em respostas de erro
-
----
-
-## [R16] Sem Auditoria de Acesso Admin — ALTO
-
-### Contexto
-
-**O que existe actualmente:**
-
-```typescript
-// GET /api/payment — admin acede a dados pessoais de todos os utilizadores sem registo
-if (isAdmin) {
-  // paymentsQuery sem filtro de user_id — retorna todos os pagamentos
-  // Enriquece com profiles (email, full_name) — dados pessoais
-  // Nenhum log desta operação
-}
-```
-
-**Por que é explorável:**  
-Um admin comprometido (ou um utilizador com `role = 'admin'` indevidamente atribuído) tem acesso silencioso a todos os dados pessoais sem deixar rasto auditável.
-
-**Impacto potencial:**  
-Violação de privacidade; incumprimento de obrigações legais de protecção de dados; dificuldade de detecção de abusos internos.
-
----
-
-### Implementação Passo a Passo
-
-#### Passo 1 — Adicionar tabela de auditoria
+#### Passo 1 — Criar função `SECURITY DEFINER` para log de fraude
 
 ```sql
--- supabase/migrations/012_audit_log.sql
-CREATE TABLE IF NOT EXISTS audit_log (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at  timestamptz DEFAULT now(),
-  actor_id    uuid REFERENCES profiles(id),
-  action      text NOT NULL,  -- 'admin_list_payments', 'admin_confirm_payment', etc.
-  resource    text,           -- 'payment_history', 'profiles'
-  metadata    jsonb           -- detalhes adicionais (IDs acedidos, etc.)
-);
+-- supabase/migrations/014_fraud_audit_function.sql
 
-ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
--- Só admins podem ler; inserção via SECURITY DEFINER function
-CREATE POLICY "audit_admin_read" ON audit_log FOR SELECT USING (is_admin());
--- Proibir DELETE e UPDATE mesmo para admins
-CREATE POLICY "audit_immutable" ON audit_log FOR DELETE USING (false);
+-- Função que contorna o RLS para registar eventos de fraude de utilizadores
+CREATE OR REPLACE FUNCTION log_fraud_event(
+  p_actor_id      uuid,
+  p_transaction_id text,
+  p_reasons       text[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER  -- executa com privilégios do owner, não do chamador
+SET search_path = public
+AS $$
+BEGIN
+  -- Validação: o actor deve ser o utilizador autenticado
+  IF p_actor_id != auth.uid() THEN
+    RAISE EXCEPTION 'actor_id deve ser o utilizador autenticado';
+  END IF;
+
+  INSERT INTO audit_log (actor_id, action, resource, metadata)
+  VALUES (
+    p_actor_id,
+    'payment_fraud_flag',
+    'payment_history',
+    jsonb_build_object(
+      'transaction_id', p_transaction_id,
+      'reasons',        to_jsonb(p_reasons),
+      'flagged_at',     now()
+    )
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION log_fraud_event(uuid, text, text[]) TO authenticated;
 ```
 
-#### Passo 2 — Registar acesso admin no GET
+#### Passo 2 — Usar o RPC no handler POST
 
 ```typescript
-// src/app/api/payment/route.ts — GET handler
-if (isAdmin) {
-  // Registar acesso antes de retornar dados
-  await supabase.from('audit_log').insert({
-    actor_id: user.id,
-    action:   'admin_list_payments',
-    resource: 'payment_history',
-    metadata: { count: payments?.length ?? 0, timestamp: new Date().toISOString() },
+// src/app/api/payment/route.ts — POST() — bloco de fraude
+
+if (fraudCheck.flagged) {
+  console.warn('[payment POST] fraude potencial detectada', {
+    userId: user.id, transactionId, reasons: fraudCheck.reasons,
   });
+
+  // Usa função SECURITY DEFINER em vez de insert directo
+  const { error: fraudAuditError } = await supabase.rpc('log_fraud_event', {
+    p_actor_id:       user.id,
+    p_transaction_id: transactionId,
+    p_reasons:        fraudCheck.reasons,
+  });
+
+  if (fraudAuditError) {
+    // Se o log de fraude falhar, bloquear a transacção por precaução
+    console.error('[payment POST] Falha crítica ao registar fraude:', fraudAuditError.message);
+    return NextResponse.json({ error: 'Erro interno de segurança' }, { status: 500 });
+  }
+
+  // DECISÃO DE NEGÓCIO: bloquear pagamentos flagged (ver R21)
+  return NextResponse.json(
+    { error: 'Transação não pode ser processada. Contacte o suporte.' },
+    { status: 409 }
+  );
 }
 ```
 
@@ -887,221 +420,585 @@ if (isAdmin) {
 ### Teste de Validação
 
 ```typescript
-describe('Auditoria — acesso admin', () => {
-  it('regista entrada em audit_log quando admin lista pagamentos', async () => {
-    await fetch('/api/payment', { headers: { 'Cookie': adminAuthCookie } });
-    const { data } = await adminSupabase
-      .from('audit_log')
-      .select('*')
-      .eq('action', 'admin_list_payments')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    expect(data?.[0]?.actor_id).toBe(adminUserId);
+// src/__tests__/security/payment-security.test.ts — adicionar ao suite existente
+
+it('POST com fraude deteta e regista via RPC (não insert directo)', async () => {
+  mockCheckPaymentFraud.mockResolvedValueOnce({
+    flagged: true, reasons: ['transaction_id já usado por outro utilizador'],
+  });
+
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+  const supabase = {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+    from: vi.fn(),
+    rpc,
+  };
+  mockCreateServerClient.mockReturnValue(supabase);
+
+  const res = await POST(makeReq('http://localhost/api/payment', {
+    method: 'POST',
+    body: JSON.stringify({ plan_key: 'premium', transaction_id: 'TRX-FRAUD', payment_method: 'mpesa' }),
+  }));
+
+  expect(res.status).toBe(409); // Bloqueado
+  expect(rpc).toHaveBeenCalledWith('log_fraud_event', expect.objectContaining({
+    p_actor_id: 'user-1',
+    p_transaction_id: 'TRX-FRAUD',
+  }));
+});
+```
+
+**Resultado esperado:** `rpc('log_fraud_event', ...)` chamado; resposta HTTP 409.
+
+---
+
+### Lista de Verificação antes do Lançamento
+
+- [ ] Migração `014_fraud_audit_function.sql` aplicada
+- [ ] Handler POST actualizado para usar `rpc('log_fraud_event')`
+- [ ] Verificar que `log_fraud_event` falha se `p_actor_id != auth.uid()`
+- [ ] Testes de fraude actualizados e a passar
+- [ ] Revisão de código por par
+
+---
+
+## [R22] Admin Page Acede à BD Directamente sem Camada de API — CRÍTICO
+
+### Contexto
+
+**O que existe actualmente:**
+
+```typescript
+// src/app/admin/page.tsx — acesso directo à BD pelo browser
+const loadExpenses = useCallback(async () => {
+  const { data } = await supabaseClient
+    .from('expense_items')
+    .select('*')
+    .order('created_at', { ascending: false });
+  setExpenses((data as ExpenseItem[]) ?? []);
+}, []);
+
+const handleSaveExpense = async () => {
+  const { error } = editingExpenseId
+    ? await supabaseClient.from('expense_items').update(payload).eq('id', editingExpenseId)
+    : await supabaseClient.from('expense_items').insert({ created_by: user.id, ...payload });
+};
+
+const handleGenerateReport = async () => {
+  const { error } = await supabaseClient.rpc('generate_monthly_report', { ... });
+};
+```
+
+**Por que é explorável:**
+Quando a lógica de negócio reside apenas no RLS do Supabase, uma única misconfiguration de política (erro de migração, update de schema, bug em `is_admin()`) expõe directamente dados financeiros sensíveis. Não existe camada de validação de input, rate limiting, nem audit log para estas operações — todas elas críticas para o negócio.
+
+**Impacto potencial:**
+Exposição total de dados financeiros da plataforma (receitas, despesas, margens) se o RLS falhar. Sem rastreabilidade de quem alterou o quê.
+
+---
+
+### Arquitectura da Correcção
+
+```
+ANTES:
+  Browser (admin/page.tsx)
+    └── supabaseClient.from('expense_items') → Supabase RLS (única camada)
+
+DEPOIS:
+  Browser (admin/page.tsx)
+    └── fetch('/api/admin/expenses')
+          └── enforceRateLimit()
+          └── verificar role=admin (server-side)
+          └── supabase server client (cookie auth)
+          └── audit_log de acesso
+          └── Supabase RLS (segunda camada)
+```
+
+---
+
+### Implementação Passo a Passo
+
+#### Passo 1 — Criar `/api/admin/expenses/route.ts`
+
+```typescript
+// src/app/api/admin/expenses/route.ts
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { enforceRateLimit } from '@/lib/rate-limit';
+
+async function makeSupabase() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (n) => cookieStore.get(n)?.value,
+                  set: (n, v, o) => cookieStore.set({ name: n, value: v, ...o }),
+                  remove: (n, o) => cookieStore.delete({ name: n, ...o }) } }
+  );
+}
+
+async function requireAdmin(supabase: any) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return null;
+  return user;
+}
+
+export async function GET(req: Request) {
+  const limited = await enforceRateLimit(req, { scope: 'admin:expenses:get', maxRequests: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
+  const supabase = await makeSupabase();
+  const user = await requireAdmin(supabase);
+  if (!user) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+
+  const { data, error } = await supabase
+    .from('expense_items').select('*').order('created_at', { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data ?? []);
+}
+
+export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, { scope: 'admin:expenses:post', maxRequests: 20, windowMs: 60_000 });
+  if (limited) return limited;
+
+  const supabase = await makeSupabase();
+  const user = await requireAdmin(supabase);
+  if (!user) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+
+  const body = await req.json();
+
+  // Whitelist de campos — protecção contra mass assignment
+  const ALLOWED_CATEGORIES = ['groq_api', 'supabase', 'hosting', 'domain', 'other'] as const;
+  const category = body.category;
+  const description = typeof body.description === 'string' ? body.description.trim().slice(0, 500) : null;
+  const amount_mzn = typeof body.amount_mzn === 'number' && body.amount_mzn >= 0 ? body.amount_mzn : null;
+  const period_month = Number.isInteger(body.period_month) && body.period_month >= 1 && body.period_month <= 12 ? body.period_month : null;
+  const period_year = Number.isInteger(body.period_year) && body.period_year >= 2020 ? body.period_year : null;
+
+  if (!ALLOWED_CATEGORIES.includes(category) || !description || amount_mzn === null || !period_month || !period_year) {
+    return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase.from('expense_items').insert({
+    created_by: user.id, category, description, amount_mzn, period_month, period_year,
+  }).select().single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
+export async function PATCH(req: Request) {
+  const limited = await enforceRateLimit(req, { scope: 'admin:expenses:patch', maxRequests: 20, windowMs: 60_000 });
+  if (limited) return limited;
+
+  const supabase = await makeSupabase();
+  const user = await requireAdmin(supabase);
+  if (!user) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+
+  const body = await req.json();
+  const { id, ...rest } = body;
+  if (!id || typeof id !== 'string') return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+
+  // Apenas campos permitidos
+  const update: Record<string, unknown> = {};
+  if (rest.description) update.description = String(rest.description).trim().slice(0, 500);
+  if (rest.amount_mzn !== undefined) update.amount_mzn = Number(rest.amount_mzn);
+
+  const { data, error } = await supabase.from('expense_items').update(update).eq('id', id).select().single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
+}
+
+export async function DELETE(req: Request) {
+  const limited = await enforceRateLimit(req, { scope: 'admin:expenses:delete', maxRequests: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
+  const supabase = await makeSupabase();
+  const user = await requireAdmin(supabase);
+  if (!user) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+
+  const { error } = await supabase.from('expense_items').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+```
+
+#### Passo 2 — Actualizar `admin/page.tsx` para usar as novas API routes
+
+```typescript
+// src/app/admin/page.tsx — substituir todas as chamadas supabaseClient
+
+// ANTES:
+// const { data } = await supabaseClient.from('expense_items').select('*')...
+
+// DEPOIS:
+const loadExpenses = useCallback(async () => {
+  const res = await fetch('/api/admin/expenses');
+  const data = await res.json();
+  if (!res.ok) { setMessage(`Erro: ${data?.error}`); return; }
+  setExpenses(Array.isArray(data) ? data : []);
+}, []);
+
+const handleSaveExpense = async () => {
+  const method = editingExpenseId ? 'PATCH' : 'POST';
+  const url = editingExpenseId ? `/api/admin/expenses?id=${editingExpenseId}` : '/api/admin/expenses';
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...expForm, amount_mzn: Number(expForm.amount_mzn) }),
+  });
+  if (!res.ok) { flash('Erro ao guardar despesa.'); return; }
+  flash(editingExpenseId ? 'Despesa actualizada.' : 'Despesa adicionada.');
+  resetExpenseForm();
+  void loadExpenses();
+};
+
+const handleDeleteExpense = async (id: string) => {
+  const res = await fetch(`/api/admin/expenses?id=${id}`, { method: 'DELETE' });
+  if (!res.ok) { flash('Não foi possível eliminar.'); return; }
+  if (editingExpenseId === id) resetExpenseForm();
+  flash('Despesa eliminada.');
+  void loadExpenses();
+};
+```
+
+---
+
+### Teste de Validação
+
+```typescript
+// src/__tests__/security/admin-expenses.test.ts
+import { describe, expect, it } from 'vitest';
+
+describe('R22 — Admin Expenses API', () => {
+  it('GET sem autenticação retorna 403', async () => {
+    // Mock sem user autenticado
+    const res = await GET(new Request('http://localhost/api/admin/expenses'));
+    expect(res.status).toBe(403);
+  });
+
+  it('POST com utilizador não-admin retorna 403', async () => {
+    // Mock com user role='user'
+    const res = await POST(new Request('http://localhost/api/admin/expenses', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: 'supabase', description: 'Test', amount_mzn: 100, period_month: 4, period_year: 2026 }),
+    }));
+    expect(res.status).toBe(403);
+  });
+
+  it('POST rejeita campos fora da whitelist', async () => {
+    // Mock com user role='admin', mas body com campo injectado
+    const res = await POST(new Request('http://localhost/api/admin/expenses', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: 'evil', description: 'Hack', amount_mzn: -999, period_month: 4, period_year: 2026 }),
+    }));
+    expect(res.status).toBe(400);
   });
 });
 ```
 
-**Resultado esperado:** Cada acesso admin gera uma entrada em `audit_log`.
+**Resultado esperado:** Acessos não autorizados e dados inválidos rejeitados com 403/400.
 
 ---
 
 ### Lista de Verificação antes do Lançamento
 
-- [ ] Tabela `audit_log` criada e RLS configurado
-- [ ] Todos os endpoints admin a registar acesso
-- [ ] Política de retenção de logs definida (mín. 90 dias)
-- [ ] Alertas configurados para acessos fora do horário normal
+- [ ] API routes `/api/admin/expenses` e `/api/admin/reports` criadas e testadas
+- [ ] `admin/page.tsx` migrado para usar API routes
+- [ ] Rate limiting activo em todos os endpoints admin
+- [ ] `supabaseClient` browser removido de todas as operações financeiras admin
+- [ ] Testes de integração a cobrir cenários de acesso não autorizado
+- [ ] Revisão de código por par
 
 ---
 
-## [R21] Sem Detecção Automática de Fraude — ALTO
+## [R16] `audit_log` como Ponto Único de Falha no GET Payments — ALTO
 
 ### Contexto
 
 **O que existe actualmente:**
 
-Todo o fluxo de pagamento depende de revisão humana manual. O utilizador submete qualquer string como `transaction_id` e aguarda que um admin confirme. Não existe verificação automática junto das operadoras.
+```typescript
+// src/app/api/payment/route.ts — GET()
+if (isAdmin) {
+  const { error: auditError } = await supabase.from('audit_log').insert({...});
+  if (auditError) {
+    // ← Bloqueia completamente a listagem de pagamentos
+    return NextResponse.json({ error: 'Falha ao registrar auditoria de acesso admin' }, { status: 500 });
+  }
+}
+// Continua para listar pagamentos apenas se audit passou
+```
 
-**Por que é explorável:**  
-Um utilizador pode submeter IDs fictícios repetidamente, tentando que um admin distraído confirme por engano. Sem alertas automáticos, padrões de fraude passam despercebidos.
+**Por que é explorável:**
+Se o `audit_log` estiver temporariamente indisponível (falha de BD, limite de conexões, bug de migração), o admin perde acesso a toda a lista de pagamentos. Um atacante que consiga causar erros no `audit_log` (ex.: preenchendo o disco, injectando dados inválidos) efectivamente bloqueia a capacidade de gestão de pagamentos.
 
-**Impacto potencial:**  
-Activação de planos pagos sem pagamento real; perda de receita; dificuldade de detecção de abuso sistemático.
+**Impacto potencial:**
+Denial of service auto-infligido. Admin incapaz de confirmar/rejeitar pagamentos durante falhas de auditoria.
 
 ---
 
 ### Implementação Passo a Passo
 
-#### Passo 1 — Regras heurísticas automáticas (curto prazo)
+#### Passo 1 — Desacoplar auditoria da operação principal
 
 ```typescript
-// src/lib/payment-fraud-detection.ts
+// src/app/api/payment/route.ts — GET() corrigido
 
-export interface FraudCheckResult {
-  flagged: boolean;
-  reasons: string[];
-}
-
-export async function checkPaymentFraud(
-  userId: string,
-  transactionId: string,
-  supabase: any,
-): Promise<FraudCheckResult> {
-  const reasons: string[] = [];
-
-  // 1. Mesmo transaction_id submetido por IPs diferentes
-  const { data: dupTxn } = await supabase
-    .from('payment_history')
-    .select('id, user_id')
-    .eq('transaction_id', transactionId)
-    .neq('user_id', userId);
-  if (dupTxn?.length > 0) {
-    reasons.push('transaction_id já usado por outro utilizador');
-  }
-
-  // 2. Utilizador com mais de 3 pagamentos pendentes simultâneos
-  const { count } = await supabase
-    .from('payment_history')
-    .select('id', { count: 'exact' })
-    .eq('user_id', userId)
-    .eq('status', 'pending');
-  if ((count ?? 0) >= 3) {
-    reasons.push('mais de 3 pagamentos pendentes simultâneos');
-  }
-
-  // 3. transaction_id com padrão suspeito (muito curto, só letras repetidas, etc.)
-  if (transactionId.length < 6 || /^(.)\1{4,}/.test(transactionId)) {
-    reasons.push('transaction_id com padrão suspeito');
-  }
-
-  return { flagged: reasons.length > 0, reasons };
-}
-```
-
-#### Passo 2 — Integrar no handler POST
-
-```typescript
-// Após validação e antes do insert
-const fraudCheck = await checkPaymentFraud(user.id, transaction_id, supabase);
-if (fraudCheck.flagged) {
-  // Registar mas não bloquear imediatamente — alertar admin
-  console.warn('[payment] Fraude potencial detectada', { userId: user.id, reasons: fraudCheck.reasons });
-  await supabase.from('audit_log').insert({
+if (isAdmin) {
+  // Auditoria assíncrona — não bloqueia a resposta
+  supabase.from('audit_log').insert({
     actor_id: user.id,
-    action:   'payment_fraud_flag',
-    metadata: { transaction_id, reasons: fraudCheck.reasons },
+    action: 'admin_list_payments',
+    resource: 'payment_history',
+    metadata: { endpoint: '/api/payment', method: 'GET', queried_at: new Date().toISOString() },
+  }).then(({ error }) => {
+    if (error) {
+      // Logar o erro mas NÃO bloquear a operação
+      console.error('[payment GET] Falha ao registrar auditoria admin:', error.message);
+      // Opcional: enviar para serviço de monitoring (ex.: Sentry)
+    }
   });
+  // Continua imediatamente para listar pagamentos
 }
 ```
 
 ---
 
-### Lista de Verificação antes do Lançamento
+### Teste de Validação
 
-- [ ] Regras heurísticas implementadas e testadas
-- [ ] Alertas ao admin para pagamentos flagged
-- [ ] A longo prazo: integração com API M-Pesa/e-Mola para verificação de `transaction_id`
-- [ ] Documentação das regras de fraude actualizada
+```typescript
+// Actualizar teste existente em payment-security.test.ts
+
+it('GET admin com falha de auditoria retorna 200 (não 500)', async () => {
+  const auditInsert = vi.fn().mockResolvedValue({ error: { message: 'insert failed' } });
+  const paymentsSelect = vi.fn().mockReturnValue({
+    order: vi.fn().mockReturnValue({ data: [], error: null })
+  });
+
+  const supabase = {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null }) },
+    from: vi.fn((table: string) => {
+      if (table === 'profiles') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { role: 'admin' } }) }) }) };
+      if (table === 'audit_log') return { insert: auditInsert };
+      if (table === 'payment_history') return { select: paymentsSelect };
+      throw new Error(`unexpected: ${table}`);
+    }),
+  };
+  mockCreateServerClient.mockReturnValue(supabase);
+
+  const res = await GET(makeReq('http://localhost/api/payment', { method: 'GET' }));
+  // Antes: 500 — Depois: 200
+  expect(res.status).toBe(200);
+});
+```
+
+**Resultado esperado:** HTTP 200 mesmo quando `audit_log` falha. Erro apenas logado no servidor.
 
 ---
 
-## [R23] Testes de Segurança Incompletos — ALTO
+### Lista de Verificação antes do Lançamento
+
+- [ ] Auditoria convertida para operação assíncrona (fire-and-forget com logging de erros)
+- [ ] Teste `GET admin sem auditoria persistida retorna 500` actualizado para esperar 200
+- [ ] Verificar que auditoria ainda é registada em condições normais
+
+---
+
+## [R18] Campo `notes` Aceite sem Sanitização HTML/XSS — ALTO
 
 ### Contexto
 
 **O que existe actualmente:**
 
 ```typescript
-// src/tests/security/payment-security.test.ts — cobre apenas:
-// ✅ 401 sem autenticação
-// ✅ 403 sem role admin
-// ✅ ignora amount_mzn do cliente
-// ✅ 400 com plan_key inválido
-// ✅ 429 com rate limit
-// ❌ race condition
-// ❌ work_session_id de outro utilizador (IDOR)
-// ❌ payment_method inválido
-// ❌ transaction_id com tamanho excessivo
-// ❌ PATCH em pagamento já confirmado
+// src/app/api/payment/route.ts — parsePaymentPatchBody()
+let notes: string | null = null;
+if (payload.notes != null) {
+  const normalized = payload.notes.trim();
+  if (normalized.length > 500) return null;
+  notes = normalized || null;
+  // ← Sem stripping de HTML ou scripts
+}
 ```
+
+**Por que é explorável:**
+O campo `notes` é guardado em BD e renderizado no painel admin (`src/app/admin/page.tsx`) dentro de um elemento React. Embora o React escape texto por defeito em `{p.notes}`, se algum componente futuro usar `dangerouslySetInnerHTML` ou se o campo for usado noutro contexto (email, PDF, exportação), o HTML não sanitizado causará XSS stored.
+
+**Impacto potencial:**
+XSS stored no painel admin, potencial account takeover de contas de administrador.
 
 ---
 
 ### Implementação Passo a Passo
 
-#### Passo 1 — Adicionar casos de teste em falta
+#### Passo 1 — Sanitizar `notes` no parser
 
 ```typescript
-// src/tests/security/payment-security.test.ts — casos adicionais
+// src/app/api/payment/route.ts — parsePaymentPatchBody() corrigido
 
-it('PATCH em pagamento já confirmado retorna 409', async () => {
-  // Configurar: payment já com status 'confirmed'
-  const paymentSingle = vi.fn().mockResolvedValue({ data: { id: 'payment-1', status: 'confirmed' } });
-  const paymentEq2 = vi.fn().mockResolvedValue({ count: 0, error: null }); // count = 0 → já processado
-  const paymentEq = vi.fn().mockReturnValue({ eq: paymentEq2 });
-  const paymentUpdate = vi.fn().mockReturnValue({ eq: paymentEq });
+function stripHtml(input: string): string {
+  // Remove todas as tags HTML e atributos event handler
+  return input
+    .replace(/<[^>]*>/g, '')           // remove tags HTML
+    .replace(/javascript:/gi, '')       // remove protocolo javascript:
+    .replace(/on\w+\s*=/gi, '')         // remove event handlers inline
+    .trim();
+}
 
-  // ... setup supabase mock com admin role ...
+function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
+  // ... validação existente ...
 
+  let notes: string | null = null;
+  if (payload.notes != null) {
+    if (typeof payload.notes !== 'string') return null;
+    const stripped = stripHtml(payload.notes.trim());
+    if (stripped.length > 500) return null;
+    notes = stripped || null;
+  }
+
+  return { paymentId: payload.payment_id.trim(), action: payload.action, notes };
+}
+```
+
+---
+
+### Teste de Validação
+
+```typescript
+it('PATCH rejeita/sanitiza notes com HTML (R18)', async () => {
+  // ... setup de supabase mock com admin ...
   const res = await PATCH(makeReq('http://localhost/api/payment', {
     method: 'PATCH',
-    body: JSON.stringify({ payment_id: 'payment-1', action: 'confirm' }),
+    body: JSON.stringify({
+      payment_id: '2b59e44a-e319-48b4-a63f-36350ea7fc77',
+      action: 'confirm',
+      notes: '<script>alert("xss")</script>Nota legítima',
+    }),
   }));
-  expect(res.status).toBe(409);
-});
-
-it('POST com payment_method inválido retorna 400', async () => {
-  const supabase: MockSupabase = {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
-    from: vi.fn(),
-  };
-  mockCreateServerClient.mockReturnValue(supabase);
-
-  const res = await POST(makeReq('http://localhost/api/payment', {
-    method: 'POST',
-    body: JSON.stringify({ plan_key: 'basico', transaction_id: 'TRX-001', payment_method: 'bitcoin' }),
+  // A nota deve ser guardada sem o script
+  // Verificar que rpc foi chamado com notes sem HTML
+  expect(rpc).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+    p_notes: expect.not.stringContaining('<script>'),
   }));
-  expect(res.status).toBe(400);
 });
+```
 
-it('POST com transaction_id de 200 caracteres retorna 400', async () => {
-  const supabase: MockSupabase = {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
-    from: vi.fn(),
-  };
-  mockCreateServerClient.mockReturnValue(supabase);
+**Resultado esperado:** `notes` guardado como `"Nota legítima"` sem o tag `<script>`.
 
-  const res = await POST(makeReq('http://localhost/api/payment', {
-    method: 'POST',
-    body: JSON.stringify({ plan_key: 'basico', transaction_id: 'A'.repeat(200), payment_method: 'mpesa' }),
-  }));
-  expect(res.status).toBe(400);
-});
+---
+
+### Lista de Verificação antes do Lançamento
+
+- [ ] Função `stripHtml` adicionada e testada
+- [ ] `parsePaymentPatchBody` actualizado
+- [ ] Considerar usar `isomorphic-dompurify` para sanitização mais robusta em produção
+
+---
+
+## [R21] Detecção de Fraude não Bloqueia o Pagamento — ALTO
+
+### Contexto
+
+**O que existe actualmente:**
+
+```typescript
+// src/app/api/payment/route.ts — POST()
+const fraudCheck = await checkPaymentFraud(user.id, transactionId, supabase);
+if (fraudCheck.flagged) {
+  // Apenas loga — pagamento continua!
+  await supabase.from('audit_log').insert({...}); // falha silenciosamente
+}
+// Executa independentemente
+const { data, error } = await supabase.rpc('register_payment', {...});
+```
+
+**Por que é explorável:**
+A detecção de fraude é puramente informativa. Um utilizador que reutilize o `transaction_id` de outra pessoa tem o pagamento registado com sucesso. Como o audit_log também falha silenciosamente (R17), nem registo há.
+
+**Impacto potencial:**
+Activação fraudulenta de planos pagos sem pagamento legítimo. Perda de receita directa.
+
+---
+
+### Implementação Passo a Passo
+
+#### Passo 1 — Adicionar decisão de bloqueio após detecção de fraude
+
+```typescript
+// src/app/api/payment/route.ts — POST() — bloco de fraude completo
+
+const fraudCheck = await checkPaymentFraud(user.id, transactionId, supabase);
+if (fraudCheck.flagged) {
+  console.warn('[payment POST] fraude potencial detectada', {
+    userId: user.id, transactionId, reasons: fraudCheck.reasons,
+  });
+
+  // Registar via função SECURITY DEFINER (ver R17)
+  const { error: auditError } = await supabase.rpc('log_fraud_event', {
+    p_actor_id:       user.id,
+    p_transaction_id: transactionId,
+    p_reasons:        fraudCheck.reasons,
+  });
+
+  if (auditError) {
+    console.error('[payment POST] Falha crítica ao registar fraude:', auditError.message);
+    return NextResponse.json({ error: 'Erro interno. Tente novamente.' }, { status: 500 });
+  }
+
+  // BLOQUEIO: não continuar com register_payment
+  return NextResponse.json(
+    { error: 'Não foi possível processar a transacção. Se o problema persistir, contacte o suporte.' },
+    { status: 409 }
+  );
+}
 ```
 
 ---
 
 ### Teste de Validação
 
-```bash
-# Executar suite completa
-npx vitest run src/tests/security/
-# Todos os testes devem passar — incluindo os novos
+```typescript
+it('POST com fraude retorna 409 e NÃO regista o pagamento (R21)', async () => {
+  mockCheckPaymentFraud.mockResolvedValueOnce({
+    flagged: true, reasons: ['transaction_id já usado'],
+  });
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+  // ... setup supabase ...
+
+  const res = await POST(makeReq('http://localhost/api/payment', {
+    method: 'POST',
+    body: JSON.stringify({ plan_key: 'premium', transaction_id: 'TRX-123', payment_method: 'mpesa' }),
+  }));
+
+  expect(res.status).toBe(409);
+  // register_payment NUNCA deve ser chamado quando há fraude
+  expect(rpc).toHaveBeenCalledWith('log_fraud_event', expect.anything());
+  expect(rpc).not.toHaveBeenCalledWith('register_payment', expect.anything());
+});
 ```
 
-**Resultado esperado:** 100% dos testes de segurança a passar após implementação das correcções.
+**Resultado esperado:** HTTP 409, `register_payment` não é chamado.
 
 ---
 
 ### Lista de Verificação antes do Lançamento
 
-- [ ] Casos de teste adicionados e a passar
-- [ ] Coverage de segurança > 80% nos handlers de pagamento
-- [ ] CI/CD configurado para executar testes de segurança em cada PR
+- [ ] Bloco de fraude retorna 409 antes de `register_payment`
+- [ ] Teste existente `POST com fraude potencial registra audit_log` actualizado para esperar 409
+- [ ] Mensagem de erro genérica (não revela motivo da rejeição ao utilizador)
 
 ---
 
-## [R13] Validação de logoBase64 — MÉDIO
+## [R13] `filename` sem Sanitização no Header Content-Disposition — MÉDIO
 
 ### Contexto
 
@@ -1109,56 +1006,45 @@ npx vitest run src/tests/security/
 
 ```typescript
 // src/app/api/cover/export/route.ts
-if (coverData.logoBase64 || coverData.logoMediaType) {
-  // Verifica magic bytes (bom) mas não verifica o prefixo da data URL
-  const imageBuffer = validateBase64Image(coverData.logoBase64, coverData.logoMediaType);
-}
+const { coverData, markdown, filename = 'trabalho' } = await req.json();
+// ...
+'Content-Disposition': `attachment; filename="${filename}.docx"`,
+// filename não sanitizado — pode conter " ou caracteres de controlo
 ```
 
-**Por que é explorável:**  
-Se `logoBase64` for uma URL HTTP externa (ex.: `http://attacker.com/img.png`) e o `replace` na função `validateBase64Image` falhar silenciosamente, o buffer pode conter dados inesperados. Também não existe verificação explícita do prefixo `data:image/`.
+**Por que é explorável:**
+Um utilizador pode enviar `filename = 'file"; malicious-header: injected'`, injectando headers HTTP adicionais na resposta. Causa HTTP header injection.
 
-**Impacto potencial:**  
-Processamento de dados arbitrários como imagem; possível DoS ou comportamento inesperado na geração do DOCX.
+**Impacto potencial:**
+Manipulação de headers de resposta, potencial cache poisoning ou redirecccionamento em proxies.
 
 ---
 
 ### Implementação Passo a Passo
 
-#### Passo 1 — Verificar prefixo explicitamente
+#### Passo 1 — Sanitizar `filename` antes de usar no header
 
 ```typescript
-// src/lib/validation/image-validator.ts — versão corrigida
+// src/app/api/cover/export/route.ts — e também src/app/api/export/route.ts
 
-export function validateBase64Image(
-  base64: string,
-  mediaType: 'image/png' | 'image/jpeg',
-): Buffer | null {
-  try {
-    // 1. Verificar prefixo explícito (impede URLs externas)
-    const expectedPrefix = `data:${mediaType};base64,`;
-    if (!base64.startsWith(expectedPrefix)) {
-      console.warn('[image-validator] Prefixo inválido:', base64.slice(0, 30));
-      return null;
-    }
-
-    const rawBase64 = base64.slice(expectedPrefix.length);
-
-    // 2. Verificar que é base64 válido
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(rawBase64)) {
-      return null;
-    }
-
-    const buffer = Buffer.from(rawBase64, 'base64');
-
-    if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) return null;
-    if (!validateImageBuffer(buffer, mediaType)) return null;
-
-    return buffer;
-  } catch {
-    return null;
-  }
+function sanitizeFilename(input: string): string {
+  return input
+    .replace(/[^a-zA-Z0-9_\-. ]/g, '') // apenas caracteres seguros
+    .replace(/\s+/g, '_')               // espaços para underscore
+    .slice(0, 80)                        // limite de tamanho
+    || 'documento';                      // fallback se vazio após sanitização
 }
+
+// No handler:
+const rawFilename = typeof body.filename === 'string' ? body.filename : 'trabalho';
+const filename = sanitizeFilename(rawFilename);
+
+return new NextResponse(buffer, {
+  headers: {
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'Content-Disposition': `attachment; filename="${filename}.docx"`,
+  },
+});
 ```
 
 ---
@@ -1166,53 +1052,45 @@ export function validateBase64Image(
 ### Teste de Validação
 
 ```typescript
-// src/lib/validation/__tests__/image-validator.test.ts — casos adicionais
-
-it('rejeita URL HTTP externa disfarçada de base64', () => {
-  expect(validateBase64Image('http://evil.com/malware.png', 'image/png')).toBeNull();
-});
-
-it('rejeita base64 sem prefixo data:', () => {
-  const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x00, 0x00]);
-  expect(validateBase64Image(pngBuffer.toString('base64'), 'image/png')).toBeNull();
+it('sanitiza filename com caracteres especiais (R13)', () => {
+  expect(sanitizeFilename('../../../etc/passwd')).toBe('etcpasswd');
+  expect(sanitizeFilename('file"; evil=1')).toBe('file_evil1');
+  expect(sanitizeFilename('trabalho académico')).toBe('trabalho_acadmico');
+  expect(sanitizeFilename('')).toBe('documento');
 });
 ```
 
-**Resultado esperado:** URLs externas e base64 sem prefixo correctos são rejeitados.
+**Resultado esperado:** Todos os casos devolvem strings seguras para uso em headers HTTP.
 
 ---
 
 ### Lista de Verificação antes do Lançamento
 
-- [ ] Verificação de prefixo implementada
-- [ ] Testes de casos edge a passar
-- [ ] Limite de tamanho de imagem mantido (2MB)
+- [ ] `sanitizeFilename` aplicado em `cover/export/route.ts` e `export/route.ts`
+- [ ] Testes unitários da função adicionados
 
 ---
 
 ## Lista de Verificação Global Pré-Lançamento
 
 ### Obrigatório (CRÍTICO e ALTO)
-
-- [ ] RLS verificado em produção — sem `USING (true)` activo em nenhuma tabela
-- [ ] `user_id NOT NULL` em `tcc_sessions` e `work_sessions`
-- [ ] Função `register_payment` RPC criada e testada
-- [ ] Rate limiter migrado para Upstash Redis
-- [ ] `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` configurados em produção
-- [ ] `work_session_id` verificado contra `user_id` antes de usar
-- [ ] Validação Zod para todos os campos do body de pagamento
-- [ ] Tabela `audit_log` criada e acesso admin registado
-- [ ] Regras heurísticas de fraude implementadas
-- [ ] Suite de testes de segurança completa e a passar
+- [ ] Migração `013_atomic_confirm_payment.sql` aplicada e testada
+- [ ] Migração `014_fraud_audit_function.sql` aplicada e testada
+- [ ] Handler PATCH usa RPC `confirm_payment` com `FOR UPDATE`
+- [ ] Handler POST usa RPC `log_fraud_event` e bloqueia pagamentos fraudulentos
+- [ ] API routes `/api/admin/expenses` e `/api/admin/reports` criadas
+- [ ] `admin/page.tsx` migrado para API routes (sem `supabaseClient` browser para BD financeira)
+- [ ] Auditoria no `GET /api/payment` convertida para assíncrona (não bloqueia)
+- [ ] Campo `notes` sanitizado contra HTML/XSS
+- [ ] Suite de testes de segurança (`vitest run`) a passar integralmente
+- [ ] RLS revisto após migrações (confirmar `audit_log` acessível para `log_fraud_event`)
 
 ### Recomendado (MÉDIO e Boas Práticas)
-
-- [ ] Verificação de prefixo de `logoBase64` implementada
-- [ ] Integração com API M-Pesa/e-Mola para verificação de `transaction_id`
-- [ ] Testes de penetração com IA (R25) realizados
-- [ ] Política de retenção de logs definida (mín. 90 dias)
-- [ ] Rotação de secrets Gemini/Groq agendada
-- [ ] Documentação de regras de acesso actualizada
+- [ ] `sanitizeFilename` aplicado em todos os endpoints de exportação
+- [ ] Testes de penetração manuais nos endpoints de pagamento
+- [ ] Monitorização de erros (ex.: Sentry) para falhas silenciosas de auditoria
+- [ ] Rotação de secrets do Supabase agendada
+- [ ] Revisão de todas as políticas RLS após cada nova migração
 
 ---
 
@@ -1222,11 +1100,12 @@ it('rejeita base64 sem prefixo data:', () => {
 |---------|-----------|
 | [OWASP Top 10](https://owasp.org/www-project-top-ten/) | Top 10 vulnerabilidades mais críticas da web |
 | [Supabase RLS Docs](https://supabase.com/docs/guides/auth/row-level-security) | Configuração correcta de Row Level Security |
-| [Upstash Rate Limit](https://github.com/upstash/ratelimit) | Rate limiting distribuído para serverless |
-| [Zod](https://zod.dev/) | Validação de schema server-side em TypeScript |
-| [Supabase RPC](https://supabase.com/docs/reference/javascript/rpc) | Transacções atómicas via funções PostgreSQL |
+| [Supabase SECURITY DEFINER](https://supabase.com/docs/guides/database/functions#security-definer-vs-invoker) | Funções que contornam RLS de forma controlada |
+| [PostgreSQL FOR UPDATE](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE) | Locking de linhas para prevenir race conditions |
+| [isomorphic-dompurify](https://www.npmjs.com/package/isomorphic-dompurify) | Sanitização HTML server-side em Node.js |
 
 ---
 
 _Blueprint gerado automaticamente pela Security Audit Skill v1.0_  
-_Baseado em: Relatório CTF v1.0 + Plataforma de Análise de Segurança de Código v1.0_
+_Baseado em: Relatório CTF v1.0 + Plataforma de Análise de Segurança de Código v1.0_  
+_Projecto: Muneri — Quelimane, Moçambique — 2026_
