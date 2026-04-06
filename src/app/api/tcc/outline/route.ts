@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { saveOutlineDraft } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
+import { parseOutlinePayload } from '@/lib/validation/input-guards';
+import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 
-const OUTLINE_SYSTEM = `És um especialista em metodologia académica e orientação de TCC (Trabalho de Conclusão de Curso).
+const OUTLINE_SYSTEM = `${PROMPT_INJECTION_GUARD}
+
+És um especialista em metodologia académica e orientação de TCC (Trabalho de Conclusão de Curso).
 Geras esboços estruturados, completos e academicamente sólidos em português europeu.
 
 Ao gerar um esboço, segue SEMPRE esta estrutura em Markdown:
@@ -33,17 +37,21 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   try {
-    const { sessionId, topic, suggestions } = await req.json();
-    const cleanedSuggestions = typeof suggestions === 'string' ? suggestions.trim() : '';
-    const suggestionBlock = cleanedSuggestions
-      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${cleanedSuggestions}\n\nAplica estas sugestões com prioridade e regenera o esboço completo.`
+    const parsedPayload = parseOutlinePayload(await req.json());
+    if (!parsedPayload) {
+      return NextResponse.json({ error: 'Payload inválido ou demasiado longo' }, { status: 400 });
+    }
+
+    const { sessionId, topic, suggestions } = parsedPayload;
+    const suggestionBlock = suggestions
+      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo.`
       : '';
 
     const stream = await geminiGenerateTextStreamSSE({
       model: 'gemini-3.1-flash-lite-preview',
       messages: [
         { role: 'system', content: OUTLINE_SYSTEM },
-        { role: 'user', content: `Gera um esboço detalhado para um TCC sobre o seguinte tópico:\n\n"${topic}"${suggestionBlock}` },
+        { role: 'user', content: `Gera um esboço detalhado para um TCC sobre o seguinte tópico:\n\n${wrapUserInput('user_topic', topic)}${suggestionBlock}` },
       ],
       maxOutputTokens: 2048,
       temperature: 0.4,

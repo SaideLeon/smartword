@@ -5,8 +5,12 @@
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
+import { parseCoverAbstractPayload } from '@/lib/validation/input-guards';
+import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 
-const SYSTEM = `És um especialista em redacção académica do ensino secundário/médio em Moçambique.
+const SYSTEM = `${PROMPT_INJECTION_GUARD}
+
+És um especialista em redacção académica do ensino secundário/médio em Moçambique.
 Gera um resumo (abstract) conciso e académico para a contracapa de um trabalho escolar.
 
 REGRAS ABSOLUTAS:
@@ -28,21 +32,22 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   try {
-    const { theme, topic, outline } = await req.json();
-
-    if (!theme) {
-      return NextResponse.json({ error: 'theme é obrigatório' }, { status: 400 });
+    const parsedPayload = parseCoverAbstractPayload(await req.json());
+    if (!parsedPayload) {
+      return NextResponse.json({ error: 'Payload inválido ou demasiado longo' }, { status: 400 });
     }
 
-    const outlineExcerpt = typeof outline === 'string' && outline.trim()
-      ? outline.trim().slice(0, 2500)
+    const { theme, topic, outline } = parsedPayload;
+
+    const outlineExcerpt = outline
+      ? outline.slice(0, 2500)
       : null;
 
     const userPrompt = outlineExcerpt
-      ? `Gera um resumo (abstract) para a contracapa deste trabalho escolar.\n\nTema: "${theme}"\n\nEsboço aprovado do trabalho (usa isto como base para descrever o conteúdo):\n${outlineExcerpt}`
+      ? `Gera um resumo (abstract) para a contracapa deste trabalho escolar.\n\nTema:\n${wrapUserInput('user_theme', theme)}\n\nEsboço aprovado do trabalho (usa isto como base para descrever o conteúdo):\n${wrapUserInput('user_outline', outlineExcerpt)}`
       : topic
-        ? `Gera um resumo para a contracapa de um trabalho escolar.\n\nTópico geral: "${topic}"\nTema específico: "${theme}"`
-        : `Gera um resumo para a contracapa de um trabalho escolar sobre: "${theme}"`;
+        ? `Gera um resumo para a contracapa de um trabalho escolar.\n\nTópico geral:\n${wrapUserInput('user_topic', topic)}\nTema específico:\n${wrapUserInput('user_theme', theme)}`
+        : `Gera um resumo para a contracapa de um trabalho escolar sobre:\n${wrapUserInput('user_theme', theme)}`;
 
     const stream = await geminiGenerateTextStreamSSE({
       model: 'gemini-3.1-flash-lite-preview',

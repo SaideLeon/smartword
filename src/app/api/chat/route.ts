@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
+import { parseChatMessages } from '@/lib/validation/input-guards';
 
 const SYSTEM_PROMPT = `És um assistente especialista em matemática e ciências.
 Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
@@ -18,11 +19,16 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
+    const parsedMessages = parseChatMessages(messages);
+    if (!parsedMessages) {
+      return NextResponse.json({ error: 'messages inválidas ou demasiado longas' }, { status: 400 });
+    }
+
     const stream = await geminiGenerateTextStreamSSE({
       model: 'gemini-3.1-flash-lite-preview',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        ...messages,
+        ...parsedMessages,
       ],
       maxOutputTokens: 4096,
       temperature: 0.7,

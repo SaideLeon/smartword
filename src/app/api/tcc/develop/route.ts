@@ -7,6 +7,8 @@ import type { TccSection } from '@/lib/tcc/types';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { buildContextInstruction, type ContextType } from '@/lib/tcc/context-detector';
+import { parseSessionPayload } from '@/lib/validation/input-guards';
+import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 
 // ---------------------------------------------------------------------------
 // Constantes de classificação de secções
@@ -257,11 +259,11 @@ function buildSystemPrompt(
   contextType: ContextType,
 ): string {
   const historicalContext = compressionActive && contextSummary
-    ? `\n[CONTEXTO HISTÓRICO COMPRIMIDO]\n${contextSummary}\n`
+    ? `\n[CONTEXTO HISTÓRICO COMPRIMIDO]\n${wrapUserInput('user_context_summary', contextSummary)}\n`
     : '';
 
   const recentContext = recentSectionsContent
-    ? `\n[SECÇÕES RECENTES COMPLETAS]\n${recentSectionsContent}\n`
+    ? `\n[SECÇÕES RECENTES COMPLETAS]\n${wrapUserInput('user_recent_sections', recentSectionsContent)}\n`
     : '';
 
   const contextNote = compressionActive
@@ -269,7 +271,7 @@ function buildSystemPrompt(
     : '';
 
   const researchContext = researchBrief
-    ? `\n[FICHA DE PESQUISA]\n${researchBrief}\n`
+    ? `\n[FICHA DE PESQUISA]\n${wrapUserInput('user_research_brief', researchBrief)}\n`
     : '\n[FICHA DE PESQUISA]\n(não disponível)\n';
 
   const isSubsection   = /^\d+\.\d+/.test(currentSection.title);
@@ -308,13 +310,15 @@ O trabalho tem secções próprias para Conclusão e Referências — não as an
 Produzes texto técnico, rigoroso e cientificamente fundamentado, em português europeu.
 A norma de referenciação é APA (7.ª edição) e deve ser respeitada em todo o trabalho.
 
+${PROMPT_INJECTION_GUARD}
+
 CONTEXTO DO PROJECTO (fornecido pelo sistema a cada chamada)
 ============================================================
 [TÓPICO DO TCC]
-${topic}
+${wrapUserInput('user_topic', topic)}
 
 [ESBOÇO APROVADO]
-${outline}
+${wrapUserInput('user_outline', outline)}
 ${historicalContext}${recentContext}${contextNote}${researchContext}
 
 ${contextInstruction}
@@ -362,10 +366,9 @@ export async function POST(req: Request) {
 
   try {
     const payload = await req.json();
-    sessionId    = payload?.sessionId ?? null;
-    sectionIndex = typeof payload?.sectionIndex === 'number' ? payload.sectionIndex : null;
+    const parsedPayload = parseSessionPayload(payload);
 
-    if (!sessionId || sectionIndex === null) {
+    if (!parsedPayload) {
       console.error('[api/tcc/develop] Payload inválido', {
         sessionId,
         sectionIndex,
@@ -379,7 +382,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const parsedSectionIndex = sectionIndex;
+    sessionId = parsedPayload.sessionId;
+    sectionIndex = parsedPayload.sectionIndex;
+
+    const parsedSectionIndex = parsedPayload.sectionIndex;
 
     let session = await getSession(sessionId);
     if (!session) {
