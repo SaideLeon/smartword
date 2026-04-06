@@ -10,7 +10,7 @@ import {
 import { enforceRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'work:session:get', maxRequests: 60, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:session:get', maxRequests: 60, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'work:session:post', maxRequests: 20, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:session:post', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const limited = enforceRateLimit(req, { scope: 'work:session:delete', maxRequests: 20, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:session:delete', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
 
   try {

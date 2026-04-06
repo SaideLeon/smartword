@@ -9,7 +9,7 @@ import type { CoverData } from '@/lib/docx/cover-types';
 import { validateBase64Image } from '@/lib/validation/image-validator';
 
 export async function POST(req: Request) {
-  const limited = enforceRateLimit(req, {
+  const limited = await enforceRateLimit(req, {
     scope: 'cover:export',
     maxRequests: 10,
     windowMs: 60_000,
