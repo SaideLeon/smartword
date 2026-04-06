@@ -4,6 +4,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type E
 import temml from 'temml';
 import { parseToAST } from '@/lib/docx/parser';
 import type { DocumentNode, InlineNode, TableAlign, TableRowNode } from '@/lib/docx/types';
+import { sanitizeMathMarkup } from '@/lib/math-markup-sanitizer';
 
 interface Props {
   markdown: string;
@@ -574,7 +575,8 @@ function renderInlineNodes(nodes: InlineNode[]): ReactNode {
 function MathNode({ latex, displayMode }: { latex: string; displayMode: boolean }) {
   const mathMarkup = useMemo(() => {
     try {
-      return temml.renderToString(latex, { displayMode, throwOnError: false, strict: false });
+      const rawMarkup = temml.renderToString(latex, { displayMode, throwOnError: false, strict: false });
+      return sanitizeMathMarkup(rawMarkup);
     } catch {
       return null;
     }

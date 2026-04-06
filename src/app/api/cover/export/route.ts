@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { generateDocxWithCover } from '@/lib/docx';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import type { CoverData } from '@/lib/docx/cover-types';
+import { validateBase64Image } from '@/lib/validation/image-validator';
 
 export async function POST(req: Request) {
   const limited = enforceRateLimit(req, {
@@ -20,6 +21,21 @@ export async function POST(req: Request) {
 
     if (!coverData) {
       return NextResponse.json({ error: 'coverData é obrigatório' }, { status: 400 });
+    }
+
+    if (coverData.logoBase64 || coverData.logoMediaType) {
+      const validMediaTypes = ['image/png', 'image/jpeg'] as const;
+      if (!coverData.logoBase64 || !coverData.logoMediaType || !validMediaTypes.includes(coverData.logoMediaType)) {
+        return NextResponse.json({ error: 'Logo inválido: tipo MIME não suportado' }, { status: 400 });
+      }
+
+      const imageBuffer = validateBase64Image(coverData.logoBase64, coverData.logoMediaType);
+      if (!imageBuffer) {
+        return NextResponse.json(
+          { error: 'Logo inválido: magic bytes não correspondem ao tipo declarado' },
+          { status: 400 },
+        );
+      }
     }
 
     const buffer = await generateDocxWithCover(coverData as CoverData, markdown ?? '');
