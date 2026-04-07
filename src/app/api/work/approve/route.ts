@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { approveWorkOutline, saveWorkResearchBrief } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { requireAuth } from '@/lib/api-auth';
 import { generateResearchBrief } from '@/lib/research/brief';
 
 const MAX_SESSION_ID_CHARS = 100;
@@ -9,6 +10,9 @@ const MAX_OUTLINE_CHARS = 15_000;
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:approve', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const body = await req.json();

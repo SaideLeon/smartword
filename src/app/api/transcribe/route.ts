@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api-auth';
 
 export const runtime = 'nodejs';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
@@ -33,6 +34,9 @@ function getGroqApiKey() {
 }
 
 export async function POST(request: Request) {
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
+
   try {
     const apiKey = getGroqApiKey();
     if (!apiKey) {

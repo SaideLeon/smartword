@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockRequireAuth = vi.fn();
+
+vi.mock('@/lib/api-auth', () => ({
+  requireAuth: mockRequireAuth,
+}));
+
 import { POST } from '@/app/api/transcribe/route';
 
 describe('Security suite — /api/transcribe (R07 tamanho áudio)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.GROQ_API_KEY = 'test-key';
+    mockRequireAuth.mockResolvedValue({ user: { id: 'u1' }, error: null });
   });
 
   it('rejeita ficheiro acima de 25MB antes de chamar a API externa', async () => {

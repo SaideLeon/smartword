@@ -8,12 +8,16 @@ import {
   saveTccCoverData,
 } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { requireAuth } from '@/lib/api-auth';
 
 // GET /api/tcc/session          → listar sessões recentes
 // GET /api/tcc/session?id=...   → buscar sessão específica
 export async function GET(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:session:get', maxRequests: 60, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const { searchParams } = new URL(req.url);
@@ -36,6 +40,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:session:post', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const body = await req.json();
@@ -72,6 +79,9 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:session:delete', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const { searchParams } = new URL(req.url);
