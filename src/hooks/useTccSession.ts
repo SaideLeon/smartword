@@ -368,7 +368,6 @@ export function useTccSession(): UseTccSession {
             _action: 'markInserted',
             sessionId: session.id,
             sectionIndex: index,
-            sections: session.sections,
           }),
         });
 
@@ -414,7 +413,6 @@ export function useTccSession(): UseTccSession {
           _action: 'markInserted',
           sessionId: session.id,
           sectionIndex: index,
-          sections: session.sections,
         }),
       });
     } catch { /* não crítico */ }

@@ -455,7 +455,6 @@ export function useWorkSession() {
           _action: 'markInserted',
           sessionId: session.id,
           sectionIndex: index,
-          sections: session.sections,
         }),
       });
 

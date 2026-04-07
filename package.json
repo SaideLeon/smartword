@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint .",
     "clean": "next clean",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:security": "vitest run src/__tests__/security/",
+    "test:security:watch": "vitest watch src/__tests__/security/",
+    "test:adversarial": "node scripts/adversarial-test.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
