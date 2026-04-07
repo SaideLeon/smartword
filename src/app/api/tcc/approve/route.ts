@@ -6,28 +6,40 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { generateResearchBrief } from '@/lib/research/brief';
 import { detectContextType } from '@/lib/tcc/context-detector';
 
+const MAX_SESSION_ID_CHARS = 100;
+const MAX_OUTLINE_CHARS = 15_000;
+
 // POST /api/tcc/approve  { sessionId, outline }
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:approve', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
 
   try {
-    const { sessionId, outline } = await req.json();
+    const body = await req.json();
+    const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : '';
+    const outline = typeof body?.outline === 'string' ? body.outline.trim() : '';
 
-    if (!sessionId || !outline?.trim()) {
+    if (!sessionId || sessionId.length > MAX_SESSION_ID_CHARS || !outline) {
       return NextResponse.json(
         { error: 'sessionId e outline são obrigatórios' },
         { status: 400 },
       );
     }
 
-    const session = await approveOutline(sessionId, outline.trim());
+    if (outline.length > MAX_OUTLINE_CHARS) {
+      return NextResponse.json(
+        { error: 'outline demasiado longo (máx 15 000 caracteres)' },
+        { status: 400 },
+      );
+    }
+
+    const session = await approveOutline(sessionId, outline);
 
     // Detecta o tipo de contextualização UMA VEZ, no momento da aprovação,
     // e persiste na sessão para que todos os develops subsequentes a usem
     // sem recalcular.
     try {
-      const contextType = detectContextType(session.topic, outline.trim());
+      const contextType = detectContextType(session.topic, outline);
       await saveContextType(session.id, contextType);
       session.context_type = contextType;
     } catch (ctxError) {
@@ -40,7 +52,7 @@ export async function POST(req: Request) {
     try {
       const research = await generateResearchBrief(
         session.topic,
-        outline.trim(),
+        outline,
         session.context_type, // passa o contexto para que o brief use fontes adequadas
       );
       await saveTccResearchBrief(session.id, research.keywords, research.brief);

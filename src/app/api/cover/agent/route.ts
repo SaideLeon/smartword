@@ -6,6 +6,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
+const MAX_TOPIC_CHARS = 500;
+const MAX_OUTLINE_CHARS = 15_000;
+const MAX_MESSAGES = 30;
+const MAX_MESSAGE_CHARS = 8_000;
+
 const COVER_TOOL_DECLARATION = {
   name: 'criar_capa',
   description:
@@ -207,13 +212,44 @@ export async function POST(req: Request) {
 
   try {
     const { topic, outline, messages, mode = 'unknown', phase = 'unknown' } = await req.json();
+    const normalizedTopic = typeof topic === 'string' ? topic.trim() : '';
+    const normalizedOutline = typeof outline === 'string' && outline.trim()
+      ? outline.trim()
+      : 'Esboço aprovado não fornecido.';
+    const messageList = Array.isArray(messages) ? messages : null;
 
-    if (!topic) {
+    if (!normalizedTopic || normalizedTopic.length > MAX_TOPIC_CHARS) {
       console.warn('[cover:agent] bad_request missing_topic', { mode, phase });
       return NextResponse.json(
-        { error: 'topic é obrigatório' },
+        { error: 'topic inválido ou demasiado longo' },
         { status: 400 },
       );
+    }
+
+    if (normalizedOutline.length > MAX_OUTLINE_CHARS) {
+      return NextResponse.json(
+        { error: 'outline demasiado longo (máx 15 000 caracteres)' },
+        { status: 400 },
+      );
+    }
+
+    if (!messageList || messageList.length > MAX_MESSAGES) {
+      return NextResponse.json(
+        { error: 'messages inválidas' },
+        { status: 400 },
+      );
+    }
+
+    for (const message of messageList) {
+      if (!message || typeof message !== 'object') {
+        return NextResponse.json({ error: 'messages inválidas' }, { status: 400 });
+      }
+      if (message.role !== 'user' && message.role !== 'assistant') {
+        return NextResponse.json({ error: 'messages inválidas' }, { status: 400 });
+      }
+      if (typeof message.content !== 'string' || message.content.length > MAX_MESSAGE_CHARS) {
+        return NextResponse.json({ error: 'mensagem demasiado longa' }, { status: 400 });
+      }
     }
 
     const apiKeys = collectGeminiKeys();
@@ -224,11 +260,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const normalizedOutline = typeof outline === 'string' && outline.trim()
-      ? outline.trim()
-      : 'Esboço aprovado não fornecido.';
-
-    const messageList = Array.isArray(messages) ? messages : [];
     const lastUserMessage = [...messageList].reverse().find((m: any) => m?.role === 'user')?.content ?? '';
     const normalizedLastUserMessage = String(lastUserMessage).toLowerCase();
     const userIntent = /\b(sim|quero|ok|pode|inclui|incluir)\b/.test(normalizedLastUserMessage)
@@ -240,7 +271,7 @@ export async function POST(req: Request) {
     console.info('[cover:agent] request', {
       mode,
       phase,
-      topicPreview: String(topic).slice(0, 120),
+      topicPreview: normalizedTopic.slice(0, 120),
       outlineChars: normalizedOutline.length,
       messagesCount: messageList.length,
       userIntent,
@@ -255,9 +286,9 @@ export async function POST(req: Request) {
       try {
         result = await ai.models.generateContent({
           model: 'gemini-3.1-flash-lite-preview',
-          contents: buildGeminiContents(messageList, String(topic), normalizedOutline),
+          contents: buildGeminiContents(messageList, normalizedTopic, normalizedOutline),
           config: {
-            systemInstruction: buildSystemPrompt(topic, normalizedOutline),
+            systemInstruction: buildSystemPrompt(normalizedTopic, normalizedOutline),
             temperature: 0.3,
             maxOutputTokens: 512,
             tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],

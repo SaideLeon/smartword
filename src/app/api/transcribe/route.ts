@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 function getGroqApiKey() {
   const collected: string[] = [];
@@ -32,6 +33,12 @@ export async function POST(request: Request) {
     const audio = form.get('audio');
     if (!(audio instanceof File)) {
       return NextResponse.json({ error: 'Ficheiro de áudio ausente.' }, { status: 400 });
+    }
+    if (audio.size > MAX_AUDIO_BYTES) {
+      return NextResponse.json(
+        { error: 'Ficheiro demasiado grande (máx 25 MB).' },
+        { status: 400 },
+      );
     }
 
     const groqForm = new FormData();
