@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseChatMessages } from '@/lib/validation/input-guards';
+import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
 const SYSTEM_PROMPT = `És um assistente especialista em matemática e ciências.
 Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
@@ -15,6 +16,12 @@ Usa notação LaTeX correcta para equações. Responde em português europeu.`;
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'chat:post', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const planError = await requireFeatureAccess(user.id, 'ai_chat');
+  if (planError) return planError;
 
   try {
     const { messages } = await req.json();
