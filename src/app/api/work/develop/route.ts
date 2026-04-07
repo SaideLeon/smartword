@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkResearchBrief, saveWorkSectionContent } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { requireAuth } from '@/lib/api-auth';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { generateResearchBrief } from '@/lib/research/brief';
 import { parseSessionPayload } from '@/lib/validation/input-guards';
@@ -166,6 +167,9 @@ PROIBIÇÕES ABSOLUTAS:
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const parsedPayload = parseSessionPayload(await req.json());

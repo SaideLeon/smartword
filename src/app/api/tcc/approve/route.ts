@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { approveOutline, saveTccResearchBrief, saveContextType } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { requireAuth } from '@/lib/api-auth';
 import { generateResearchBrief } from '@/lib/research/brief';
 import { detectContextType } from '@/lib/tcc/context-detector';
 
@@ -13,6 +14,9 @@ const MAX_OUTLINE_CHARS = 15_000;
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:approve', maxRequests: 20, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const body = await req.json();

@@ -37,7 +37,15 @@ import { POST as coverExportPost } from '@/app/api/cover/export/route';
 import { POST as coverAbstractPost } from '@/app/api/cover/abstract/route';
 import { POST as coverAgentPost } from '@/app/api/cover/agent/route';
 import { POST as tccOutlinePost } from '@/app/api/tcc/outline/route';
+import { POST as tccApprovePost } from '@/app/api/tcc/approve/route';
+import { POST as tccDevelopPost } from '@/app/api/tcc/develop/route';
+import { GET as tccCompressGet, POST as tccCompressPost } from '@/app/api/tcc/compress/route';
+import { GET as tccSessionGet, DELETE as tccSessionDelete } from '@/app/api/tcc/session/route';
+import { POST as workApprovePost } from '@/app/api/work/approve/route';
+import { POST as workDevelopPost } from '@/app/api/work/develop/route';
 import { POST as workGeneratePost } from '@/app/api/work/generate/route';
+import { GET as workSessionGet, DELETE as workSessionDelete } from '@/app/api/work/session/route';
+import { POST as transcribePost } from '@/app/api/transcribe/route';
 
 describe('Security suite — R22/R16 auth em endpoints de IA', () => {
   beforeEach(() => {
@@ -118,6 +126,73 @@ describe('Security suite — R22/R16 auth em endpoints de IA', () => {
     });
 
     const res = await workGeneratePost(req);
+
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/tcc/approve retorna 401 sem autenticação', async () => {
+    const req = new Request('http://localhost/api/tcc/approve', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', outline: '## 1. Introdução' }),
+    });
+    const res = await tccApprovePost(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/tcc/develop retorna 401 sem autenticação', async () => {
+    const req = new Request('http://localhost/api/tcc/develop', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', sectionIndex: 1 }),
+    });
+    const res = await tccDevelopPost(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('GET/POST /api/tcc/compress retornam 401 sem autenticação', async () => {
+    const getRes = await tccCompressGet(new Request('http://localhost/api/tcc/compress?sessionId=abc'));
+    const postRes = await tccCompressPost(new Request('http://localhost/api/tcc/compress', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', targetSectionIndex: 1 }),
+    }));
+    expect(getRes.status).toBe(401);
+    expect(postRes.status).toBe(401);
+  });
+
+  it('GET/DELETE /api/tcc/session retornam 401 sem autenticação', async () => {
+    const getRes = await tccSessionGet(new Request('http://localhost/api/tcc/session?id=abc'));
+    const deleteRes = await tccSessionDelete(new Request('http://localhost/api/tcc/session?id=abc', { method: 'DELETE' }));
+    expect(getRes.status).toBe(401);
+    expect(deleteRes.status).toBe(401);
+  });
+
+  it('POST /api/work/approve e /api/work/develop retornam 401 sem autenticação', async () => {
+    const approveRes = await workApprovePost(new Request('http://localhost/api/work/approve', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', outline: '## Introdução' }),
+    }));
+    const developRes = await workDevelopPost(new Request('http://localhost/api/work/develop', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', sectionIndex: 1 }),
+    }));
+    expect(approveRes.status).toBe(401);
+    expect(developRes.status).toBe(401);
+  });
+
+  it('GET/DELETE /api/work/session retornam 401 sem autenticação', async () => {
+    const getRes = await workSessionGet(new Request('http://localhost/api/work/session?id=abc'));
+    const deleteRes = await workSessionDelete(new Request('http://localhost/api/work/session?id=abc', { method: 'DELETE' }));
+    expect(getRes.status).toBe(401);
+    expect(deleteRes.status).toBe(401);
+  });
+
+  it('POST /api/transcribe retorna 401 sem autenticação', async () => {
+    const form = new FormData();
+    form.append('audio', new File([new Uint8Array([1, 2])], 'audio.webm', { type: 'audio/webm' }));
+
+    const res = await transcribePost(new Request('http://localhost/api/transcribe', {
+      method: 'POST',
+      body: form,
+    }));
 
     expect(res.status).toBe(401);
   });
