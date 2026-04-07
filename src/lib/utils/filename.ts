@@ -1,10 +1,11 @@
 export function sanitizeExportFilename(input: unknown): string {
   if (typeof input !== 'string') return 'trabalho';
 
-  const normalized = input
+  const firstLineOnly = input.split(/[\r\n]+/, 1)[0] ?? '';
+  const normalized = firstLineOnly
     .normalize('NFKC')
     .replace(/[\u0000-\u001F\u007F]/g, '')
-    .replace(/[\/\\?%*:|"<>;\r\n]/g, '-')
+    .replace(/[\/\\?%*:|"<>;]/g, '-')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\.+|\.+$/g, '')

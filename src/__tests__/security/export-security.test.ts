@@ -53,9 +53,10 @@ describe('Security — /api/export (R09 + R22)', () => {
     const contentDisposition = res.headers.get('Content-Disposition') ?? '';
 
     expect(res.status).toBe(200);
-    expect(contentDisposition).toContain('attachment; filename="evil--X-Injected- yes.docx"');
+    expect(contentDisposition).toContain('attachment; filename="evil.docx"');
     expect(contentDisposition).not.toContain('\r');
     expect(contentDisposition).not.toContain('\n');
+    expect(contentDisposition).not.toContain('X-Injected');
   });
 
   it('retorna 401 quando utilizador não está autenticado', async () => {

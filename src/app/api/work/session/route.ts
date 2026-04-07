@@ -39,11 +39,11 @@ export async function POST(req: Request) {
 
     // Marcar secção como inserida no editor
     if (body._action === 'markInserted') {
-      const { sessionId, sectionIndex, sections } = body;
-      if (!sessionId || typeof sectionIndex !== 'number' || !Array.isArray(sections)) {
+      const { sessionId, sectionIndex } = body;
+      if (!sessionId || typeof sectionIndex !== 'number') {
         return NextResponse.json({ error: 'Dados inválidos para actualizar secção' }, { status: 400 });
       }
-      await markWorkSectionInserted(sessionId, sectionIndex, sections);
+      await markWorkSectionInserted(sessionId, sectionIndex);
       return NextResponse.json({ ok: true });
     }
 
