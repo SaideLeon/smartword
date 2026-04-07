@@ -7,6 +7,7 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseCoverAbstractPayload } from '@/lib/validation/input-guards';
 import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
+import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
 const SYSTEM = `${PROMPT_INJECTION_GUARD}
 
@@ -30,6 +31,12 @@ export async function POST(req: Request) {
     windowMs: 60_000,
   });
   if (limited) return limited;
+
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const planError = await requireFeatureAccess(user.id, 'cover');
+  if (planError) return planError;
 
   try {
     const parsedPayload = parseCoverAbstractPayload(await req.json());
