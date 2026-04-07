@@ -41,11 +41,11 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     if (body._action === 'markInserted') {
-      const { sessionId, sectionIndex, sections } = body;
-      if (!sessionId || typeof sectionIndex !== 'number' || !Array.isArray(sections)) {
+      const { sessionId, sectionIndex } = body;
+      if (!sessionId || typeof sectionIndex !== 'number') {
         return NextResponse.json({ error: 'Dados inválidos para actualizar secção' }, { status: 400 });
       }
-      await markSectionInserted(sessionId, sectionIndex, sections);
+      await markSectionInserted(sessionId, sectionIndex);
       return NextResponse.json({ ok: true });
     }
 

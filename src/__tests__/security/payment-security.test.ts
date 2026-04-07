@@ -320,8 +320,46 @@ describe('Security suite — /api/payment', () => {
 
     expect(res.status).toBe(200);
     expect(rpc).toHaveBeenCalledWith('confirm_payment', expect.objectContaining({
-      p_notes: 'teste ok',
+      p_notes: expect.stringContaining('teste ok'),
     }));
+    const sentNotes = rpc.mock.calls[0]?.[1]?.p_notes ?? '';
+    expect(sentNotes).not.toMatch(/javascript|script|onerror|<|>/i);
+  });
+
+
+
+  it('PATCH bloqueia payloads de bypass em notes (R11)', async () => {
+    const profileSingle = vi.fn().mockResolvedValue({ data: { role: 'admin' } });
+    const profileEq = vi.fn().mockReturnValue({ single: profileSingle });
+    const profileSelect = vi.fn().mockReturnValue({ eq: profileEq });
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, status: 'confirmed' }, error: null });
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-1' } } }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'profiles') return { select: profileSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await PATCH(
+      makeReq('http://localhost/api/payment', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          payment_id: '2b59e44a-e319-48b4-a63f-36350ea7fc77',
+          action: 'confirm',
+          notes: '<scr<script>ipt>alert(1)</script> java\u200bscript: &#106;avascript: ok',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const sentNotes = rpc.mock.calls[0]?.[1]?.p_notes ?? '';
+    expect(sentNotes).not.toMatch(/javascript|script|alert|<|>/i);
   });
 
   it('POST com fraude potencial regista via RPC e bloqueia pagamento (R21)', async () => {

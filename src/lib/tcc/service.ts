@@ -152,12 +152,20 @@ export async function saveSectionContent(
 
 // ─── Marcar secção como inserida no editor ────────────────────────────────────
 export async function markSectionInserted(
-  id:              string,
-  index:           number,
-  currentSections: TccSection[],
+  id: string,
+  index: number,
 ): Promise<void> {
   const supabase = await createClient();
 
+  const { data: session, error: fetchError } = await supabase
+    .from('tcc_sessions')
+    .select('sections')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !session) throw new Error('Sessão não encontrada');
+
+  const currentSections: TccSection[] = Array.isArray(session.sections) ? session.sections as TccSection[] : [];
   const updated = currentSections.map(s =>
     s.index === index ? { ...s, status: 'inserted' as const } : s,
   );
