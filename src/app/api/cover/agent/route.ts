@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
+import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 
 const MAX_TOPIC_CHARS = 500;
 const MAX_OUTLINE_CHARS = 15_000;
@@ -82,15 +83,10 @@ const COVER_TOOL_DECLARATION = {
   },
 };
 
-function buildSystemPrompt(topic: string, outline: string): string {
-  const outlineExcerpt = outline.slice(0, 600) + (outline.length > 600 ? '…' : '');
+function buildSystemPrompt(): string {
+  return `${PROMPT_INJECTION_GUARD}
 
-  return `És um assistente académico especializado em trabalhos escolares do ensino secundário/médio em Moçambique.
-
-O utilizador acabou de aprovar o esboço de um trabalho sobre: "${topic}"
-
-ESBOÇO APROVADO (resumo):
-${outlineExcerpt}
+És um assistente académico especializado em trabalhos escolares do ensino secundário/médio em Moçambique.
 
 A TUA ÚNICA TAREFA AGORA:
 Pergunta ao utilizador de forma clara e directa se deseja incluir capa e contracapa no trabalho, ou prefere iniciar directamente pela Introdução.
@@ -121,11 +117,18 @@ function buildGeminiContents(
   const contents = toGeminiContents(messages);
   if (contents.length > 0) return contents;
 
+  const outlineExcerpt = outline.slice(0, 600) + (outline.length > 600 ? '…' : '');
   return [
     {
       role: 'user' as const,
       parts: [{
-        text: `Contexto do trabalho: tema "${topic}". Esboço aprovado: ${outline.slice(0, 600)}. Inicia a conversa conforme as instruções do sistema.`,
+        text: [
+          'Contexto do trabalho a tratar:\n',
+          wrapUserInput('user_topic', topic),
+          '\nEsboço aprovado:\n',
+          wrapUserInput('user_outline', outlineExcerpt),
+          '\nInicia a conversa conforme as instruções do sistema.',
+        ].join(''),
       }],
     },
   ];
@@ -288,7 +291,7 @@ export async function POST(req: Request) {
           model: 'gemini-3.1-flash-lite-preview',
           contents: buildGeminiContents(messageList, normalizedTopic, normalizedOutline),
           config: {
-            systemInstruction: buildSystemPrompt(normalizedTopic, normalizedOutline),
+            systemInstruction: buildSystemPrompt(),
             temperature: 0.3,
             maxOutputTokens: 512,
             tools: [{ functionDeclarations: [COVER_TOOL_DECLARATION] }],
