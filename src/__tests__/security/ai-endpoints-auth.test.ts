@@ -213,4 +213,38 @@ describe('Security suite — R22/R16 auth em endpoints de IA', () => {
     expect(res.status).toBe(403);
     expect(mockRequireFeatureAccess).toHaveBeenCalledWith('u1', 'cover');
   });
+
+  it('POST /api/tcc/develop retorna 403 quando plano não permite TCC', async () => {
+    mockRequireAuth.mockResolvedValue({ user: { id: 'u1' }, error: null });
+    mockRequireFeatureAccess.mockResolvedValue(
+      Response.json({ error: 'Plano insuficiente para esta funcionalidade.' }, { status: 403 }),
+    );
+
+    const req = new Request('http://localhost/api/tcc/develop', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', sectionIndex: 1 }),
+    });
+
+    const res = await tccDevelopPost(req);
+
+    expect(res.status).toBe(403);
+    expect(mockRequireFeatureAccess).toHaveBeenCalledWith('u1', 'tcc');
+  });
+
+  it('POST /api/work/develop retorna 403 quando plano não permite criação de work', async () => {
+    mockRequireAuth.mockResolvedValue({ user: { id: 'u1' }, error: null });
+    mockRequireFeatureAccess.mockResolvedValue(
+      Response.json({ error: 'Plano insuficiente para esta funcionalidade.' }, { status: 403 }),
+    );
+
+    const req = new Request('http://localhost/api/work/develop', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'abc', sectionIndex: 1 }),
+    });
+
+    const res = await workDevelopPost(req);
+
+    expect(res.status).toBe(403);
+    expect(mockRequireFeatureAccess).toHaveBeenCalledWith('u1', 'create_work');
+  });
 });

@@ -23,7 +23,7 @@ export async function requireAuth(): Promise<ApiAuthResult> {
 
 export async function requireFeatureAccess(
   userId: string,
-  feature: 'cover' | 'ai_chat' | 'export_full' | 'tcc',
+  feature: 'cover' | 'ai_chat' | 'export_full' | 'tcc' | 'create_work',
 ): Promise<NextResponse | null> {
   const supabase = await createClient();
   const { data: hasAccess, error } = await supabase.rpc('check_user_access', {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { generateDocx } from '@/lib/docx';
+import { requireFeatureAccess } from '@/lib/api-auth';
+import { prepareMarkdownForExport } from '@/lib/docx/truncate-export';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { sanitizeExportFilename } from '@/lib/utils/filename';
 
@@ -64,6 +66,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
   }
 
+  const planError = await requireFeatureAccess(user.id, 'export_full');
+  const exportFull = !planError;
+
   try {
     const body = await req.json();
     const parsed = parseExportPayload(body);
@@ -71,7 +76,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payload inválido ou demasiado grande' }, { status: 400 });
     }
 
-    const buffer = await generateDocx(parsed.content);
+    const preparedContent = prepareMarkdownForExport(parsed.content, exportFull);
+    const buffer = await generateDocx(preparedContent);
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

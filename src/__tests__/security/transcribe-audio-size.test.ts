@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockRequireAuth = vi.fn();
+const mockEnforceRateLimit = vi.fn();
 
 vi.mock('@/lib/api-auth', () => ({
   requireAuth: mockRequireAuth,
+}));
+vi.mock('@/lib/rate-limit', () => ({
+  enforceRateLimit: mockEnforceRateLimit,
 }));
 
 import { POST } from '@/app/api/transcribe/route';
@@ -12,6 +16,7 @@ describe('Security suite — /api/transcribe (R07 tamanho áudio)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.GROQ_API_KEY = 'test-key';
+    mockEnforceRateLimit.mockResolvedValue(null);
     mockRequireAuth.mockResolvedValue({ user: { id: 'u1' }, error: null });
   });
 
