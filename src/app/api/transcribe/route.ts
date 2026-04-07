@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const ALLOWED_AUDIO_MIME_TYPES = new Set([
+  'audio/webm',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/ogg',
+  'audio/flac',
+]);
 
 function getGroqApiKey() {
   const collected: string[] = [];
@@ -33,6 +43,12 @@ export async function POST(request: Request) {
     const audio = form.get('audio');
     if (!(audio instanceof File)) {
       return NextResponse.json({ error: 'Ficheiro de áudio ausente.' }, { status: 400 });
+    }
+    if (!ALLOWED_AUDIO_MIME_TYPES.has(audio.type)) {
+      return NextResponse.json(
+        { error: 'Tipo MIME de áudio não suportado.' },
+        { status: 400 },
+      );
     }
     if (audio.size > MAX_AUDIO_BYTES) {
       return NextResponse.json(

@@ -28,4 +28,23 @@ describe('Security suite — /api/transcribe (R07 tamanho áudio)', () => {
     expect(res.status).toBe(400);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('rejeita MIME type não suportado', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const invalidMimeAudio = new File([new Uint8Array([1, 2, 3])], 'audio.bin', {
+      type: 'application/octet-stream',
+    });
+    const form = new FormData();
+    form.append('audio', invalidMimeAudio);
+
+    const req = new Request('http://localhost/api/transcribe', {
+      method: 'POST',
+      body: form,
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
