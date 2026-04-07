@@ -4,6 +4,7 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseOutlinePayload } from '@/lib/validation/input-guards';
 import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
+import { requireAuth } from '@/lib/api-auth';
 
 const OUTLINE_SYSTEM = `${PROMPT_INJECTION_GUARD}
 
@@ -35,6 +36,9 @@ Sê detalhado mas conciso em cada descrição. Não incluas texto de desenvolvim
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:outline', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const parsedPayload = parseOutlinePayload(await req.json());

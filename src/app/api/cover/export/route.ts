@@ -8,6 +8,7 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { validateBase64Image } from '@/lib/validation/image-validator';
 import { sanitizeExportFilename } from '@/lib/utils/filename';
+import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, {
@@ -16,6 +17,12 @@ export async function POST(req: Request) {
     windowMs: 60_000,
   });
   if (limited) return limited;
+
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const planError = await requireFeatureAccess(user.id, 'cover');
+  if (planError) return planError;
 
   try {
     const { coverData, markdown, filename = 'trabalho' } = await req.json();

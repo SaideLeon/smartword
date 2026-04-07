@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
 const COVER_TOOL_DECLARATION = {
   name: 'criar_capa',
@@ -197,6 +198,12 @@ export async function POST(req: Request) {
     console.warn('[cover:agent] rate_limited');
     return limited;
   }
+
+  const { user, error: authError } = await requireAuth();
+  if (authError) return authError;
+
+  const planError = await requireFeatureAccess(user.id, 'cover');
+  if (planError) return planError;
 
   try {
     const { topic, outline, messages, mode = 'unknown', phase = 'unknown' } = await req.json();
