@@ -61,6 +61,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="<sua_chave_anon>"
 - `npm run build` — build de produção
 - `npm run start` — iniciar build de produção
 - `npm run lint` — validação de lint
+- `npm run test:security` — executar apenas a suíte de testes de segurança (`src/__tests__/security`)
+- `npm run test:security:watch` — executar a suíte de segurança em modo watch
+- `npm run test:adversarial` — rodar testes adversariais de prompt injection contra `/api/work/generate`
 
 ## Estrutura resumida
 
@@ -69,3 +72,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="<sua_chave_anon>"
 - `app/api/*` — rotas API (export, chat, TCC, trabalho)
 - `lib/docx/*` — parsing e geração de .docx
 - `public/sw.js` — service worker da PWA
+
+
+## Testes adversariais (R25)
+
+O script `scripts/adversarial-test.mjs` executa payloads de prompt injection contra `/api/work/generate`.
+
+Uso recomendado:
+
+```bash
+APP_URL="http://localhost:3000" ADVERSARIAL_COOKIE="sb-..." npm run test:adversarial
+```
+
+- `APP_URL` aponta para o ambiente alvo (local/staging).
+- `ADVERSARIAL_COOKIE` é opcional, mas recomendado para endpoints autenticados.
+- O script falha (`exit 1`) se detectar possíveis vazamentos de marcadores sensíveis na resposta.
