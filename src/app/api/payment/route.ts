@@ -256,7 +256,7 @@ export async function GET(req: Request) {
   const isAdmin = profile?.role === 'admin';
 
   if (isAdmin) {
-    void supabase
+    const { error: auditError } = await supabase
       .from('audit_log')
       .insert({
         actor_id: user.id,
@@ -267,12 +267,15 @@ export async function GET(req: Request) {
           method: 'GET',
           queried_at: new Date().toISOString(),
         },
-      })
-      .then(({ error: auditError }) => {
-        if (auditError) {
-          console.error('[payment GET] Falha ao registrar auditoria admin:', auditError.message);
-        }
       });
+
+    if (auditError) {
+      console.error('[payment GET] Falha crítica ao registrar auditoria admin:', auditError.message);
+      return NextResponse.json(
+        { error: 'Falha no registo de auditoria. Operação bloqueada por segurança.' },
+        { status: 500 },
+      );
+    }
   }
 
   let paymentsQuery = supabase
