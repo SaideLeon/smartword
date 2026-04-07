@@ -4,6 +4,7 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseOutlinePayload } from '@/lib/validation/input-guards';
 import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
+import { requireAuth } from '@/lib/api-auth';
 
 const SYSTEM = `${PROMPT_INJECTION_GUARD}
 
@@ -45,6 +46,9 @@ Escreve em português europeu/moçambicano. Sê concreto e útil.`;
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
+
+  const { error: authError } = await requireAuth();
+  if (authError) return authError;
 
   try {
     const parsedPayload = parseOutlinePayload(await req.json());
