@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
 const ALLOWED_CATEGORIES = ['groq_api', 'supabase', 'hosting', 'domain', 'other'] as const;
+const UUID_V4_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function parseExpensePayload(body: unknown) {
   if (!body || typeof body !== 'object') return null;
@@ -103,7 +105,9 @@ export async function PATCH(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+  if (!id || !UUID_V4_PATTERN.test(id)) {
+    return NextResponse.json({ error: 'id inválido ou ausente' }, { status: 400 });
+  }
 
   const parsed = parseExpensePayload(await req.json());
   if (!parsed) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 });
@@ -129,7 +133,9 @@ export async function DELETE(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+  if (!id || !UUID_V4_PATTERN.test(id)) {
+    return NextResponse.json({ error: 'id inválido ou ausente' }, { status: 400 });
+  }
 
   const { error } = await supabase.from('expense_items').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

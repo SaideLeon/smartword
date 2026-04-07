@@ -5,7 +5,7 @@ import { getSession, saveSectionContent } from '@/lib/tcc/service';
 import { compressContextIfNeeded, buildOptimisedContext } from '@/lib/tcc/context-compressor';
 import type { TccSection } from '@/lib/tcc/types';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { buildContextInstruction, type ContextType } from '@/lib/tcc/context-detector';
 import { parseSessionPayload } from '@/lib/validation/input-guards';
@@ -362,8 +362,11 @@ export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'tcc:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
-  const { error: authError } = await requireAuth();
+  const { user, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  const planError = await requireFeatureAccess(user.id, 'tcc');
+  if (planError) return planError;
 
   let sessionId: string | null = null;
   let sectionIndex: number | null = null;
