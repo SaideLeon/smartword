@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseChatMessages } from '@/lib/validation/input-guards';
+import { wrapUserInput } from '@/lib/prompt-sanitizer';
 import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
 const SYSTEM_PROMPT = `És um assistente especialista em matemática e ciências.
@@ -31,11 +32,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'messages inválidas ou demasiado longas' }, { status: 400 });
     }
 
+    const safeMessages = parsedMessages.map(msg => ({
+      role: msg.role,
+      content: msg.role === 'user' ? wrapUserInput('user_message', msg.content) : msg.content,
+    }));
+
     const stream = await geminiGenerateTextStreamSSE({
       model: 'gemini-3.1-flash-lite-preview',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        ...parsedMessages,
+        ...safeMessages,
       ],
       maxOutputTokens: 4096,
       temperature: 0.7,
