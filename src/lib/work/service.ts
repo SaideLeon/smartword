@@ -126,10 +126,18 @@ export async function saveWorkSectionContent(
 export async function markWorkSectionInserted(
   id: string,
   index: number,
-  currentSections: WorkSection[],
 ): Promise<void> {
   const supabase = await createClient();
 
+  const { data: session, error: fetchError } = await supabase
+    .from('work_sessions')
+    .select('sections')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !session) throw new Error('Sessão não encontrada');
+
+  const currentSections: WorkSection[] = Array.isArray(session.sections) ? session.sections as WorkSection[] : [];
   const sections = currentSections.map(section =>
     section.index === index
       ? { ...section, status: 'inserted' as const }

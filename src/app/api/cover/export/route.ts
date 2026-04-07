@@ -7,21 +7,7 @@ import { generateDocxWithCover } from '@/lib/docx';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { validateBase64Image } from '@/lib/validation/image-validator';
-
-function sanitizeExportFilename(input: unknown): string {
-  if (typeof input !== 'string') return 'trabalho';
-
-  const normalized = input
-    .normalize('NFKC')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
-    .replace(/[\/\\?%*:|"<>;\r\n]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^\.+|\.+$/g, '')
-    .slice(0, 80);
-
-  return normalized || 'trabalho';
-}
+import { sanitizeExportFilename } from '@/lib/utils/filename';
 
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, {
