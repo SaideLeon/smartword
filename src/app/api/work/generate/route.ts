@@ -3,9 +3,11 @@ import { saveWorkOutlineDraft } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseOutlinePayload } from '@/lib/validation/input-guards';
-import { wrapUserInput } from '@/lib/prompt-sanitizer';
+import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 
-const SYSTEM = `És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
+const SYSTEM = `${PROMPT_INJECTION_GUARD}
+
+És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
 
 O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenhuma). A estrutura principal obrigatória é:

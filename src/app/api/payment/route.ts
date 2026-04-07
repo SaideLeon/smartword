@@ -54,11 +54,14 @@ type PaymentPatchInput = {
 
 function sanitizeNotes(input: string): string {
   return input
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
+    .normalize('NFKC')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+    .replace(/[<>"'`]/g, '')
+    .replace(/[^a-zA-Z0-9\s.,;:!?()[\]{}\-_@#/áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/g, '')
+    .replace(/\b(?:javascript|vbscript|data|script|on\w+|alert)\b[:=]?/gi, '')
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    .slice(0, 500);
 }
 
 function parsePaymentPatchBody(body: unknown): PaymentPatchInput | null {
