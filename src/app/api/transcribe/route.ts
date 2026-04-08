@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
+import { validateAudioMagicBytes } from '@/lib/validation/audio-validator';
 
 export const runtime = 'nodejs';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const MAGIC_BYTES_TO_READ = 12;
 const ALLOWED_AUDIO_MIME_TYPES = new Set([
   'audio/webm',
   'audio/wav',
@@ -65,6 +67,15 @@ export async function POST(request: Request) {
     if (audio.size > MAX_AUDIO_BYTES) {
       return NextResponse.json(
         { error: 'Ficheiro demasiado grande (máx 25 MB).' },
+        { status: 400 },
+      );
+    }
+
+    const audioArrayBuffer = await audio.slice(0, MAGIC_BYTES_TO_READ).arrayBuffer();
+    const audioHeader = new Uint8Array(audioArrayBuffer);
+    if (!validateAudioMagicBytes(audioHeader, audio.type)) {
+      return NextResponse.json(
+        { error: 'Ficheiro de áudio inválido: assinatura não corresponde ao tipo declarado.' },
         { status: 400 },
       );
     }
