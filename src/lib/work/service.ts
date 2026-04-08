@@ -22,11 +22,13 @@ export async function createWorkSession(topic: string): Promise<WorkSessionRecor
 
 export async function getWorkSession(id: string): Promise<WorkSessionRecord | null> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from('work_sessions')
     .select()
     .eq('id', id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
@@ -48,17 +50,20 @@ export async function listWorkSessions(): Promise<WorkSessionRecord[]> {
 
 export async function saveWorkOutlineDraft(id: string, outline: string): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('work_sessions')
     .update({ outline_draft: outline })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
 
 export async function approveWorkOutline(id: string, outline: string): Promise<WorkSessionRecord> {
   const supabase = await createClient();
+  const userId = await requireUserId();
   const sections = extractSections(outline);
 
   const { data, error } = await supabase
@@ -70,6 +75,7 @@ export async function approveWorkOutline(id: string, outline: string): Promise<W
       status: 'outline_approved',
     })
     .eq('id', id)
+    .eq('user_id', userId)
     .select()
     .single();
 
@@ -83,6 +89,7 @@ export async function saveWorkResearchBrief(
   brief: string,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('work_sessions')
@@ -91,7 +98,8 @@ export async function saveWorkResearchBrief(
       research_brief:         brief,
       research_generated_at:  new Date().toISOString(),
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -103,6 +111,7 @@ export async function saveWorkSectionContent(
   currentSections: WorkSection[],
 ): Promise<WorkSessionRecord> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const sections = currentSections.map(section =>
     section.index === index
@@ -116,6 +125,7 @@ export async function saveWorkSectionContent(
     .from('work_sessions')
     .update({ sections, status })
     .eq('id', id)
+    .eq('user_id', userId)
     .select()
     .single();
 
@@ -128,11 +138,13 @@ export async function markWorkSectionInserted(
   index: number,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { data: session, error: fetchError } = await supabase
     .from('work_sessions')
     .select('sections')
     .eq('id', id)
+    .eq('user_id', userId)
     .single();
 
   if (fetchError || !session) throw new Error('Sessão não encontrada');
@@ -147,7 +159,8 @@ export async function markWorkSectionInserted(
   const { error } = await supabase
     .from('work_sessions')
     .update({ sections })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -157,22 +170,26 @@ export async function saveWorkCoverData(
   coverData: CoverData | null,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('work_sessions')
     .update({ cover_data: coverData })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
 
 export async function deleteWorkSession(id: string): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('work_sessions')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }

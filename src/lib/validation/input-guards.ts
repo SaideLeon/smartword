@@ -15,9 +15,16 @@ const LIMITS = {
   sessionIdMax: 100,
 } as const;
 
+const UUID_V4_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function asTrimmedString(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   return value.trim();
+}
+
+export function isValidUUID(value: unknown): value is string {
+  return typeof value === 'string' && UUID_V4_PATTERN.test(value.trim());
 }
 
 export function parseSessionPayload(payload: unknown): { sessionId: string; sectionIndex: number } | null {
