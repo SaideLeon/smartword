@@ -9,6 +9,8 @@ import {
 } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuth } from '@/lib/api-auth';
+import { isValidUUID } from '@/lib/validation/input-guards';
+import { parseCoverDataPayload } from '@/lib/validation/cover-data-validator';
 
 export async function GET(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:session:get', maxRequests: 60, windowMs: 60_000 });
@@ -47,8 +49,8 @@ export async function POST(req: Request) {
     // Marcar secção como inserida no editor
     if (body._action === 'markInserted') {
       const { sessionId, sectionIndex } = body;
-      if (!sessionId || typeof sectionIndex !== 'number') {
-        return NextResponse.json({ error: 'Dados inválidos para actualizar secção' }, { status: 400 });
+      if (!isValidUUID(sessionId) || !Number.isInteger(sectionIndex) || sectionIndex < 0) {
+        return NextResponse.json({ error: 'sessionId ou sectionIndex inválido' }, { status: 400 });
       }
       await markWorkSectionInserted(sessionId, sectionIndex);
       return NextResponse.json({ ok: true });
@@ -57,10 +59,16 @@ export async function POST(req: Request) {
     // Persistir dados de capa (incluindo abstract)
     if (body._action === 'saveCoverData') {
       const { sessionId, coverData } = body;
-      if (!sessionId) {
-        return NextResponse.json({ error: 'sessionId é obrigatório' }, { status: 400 });
+      if (!isValidUUID(sessionId)) {
+        return NextResponse.json({ error: 'sessionId inválido' }, { status: 400 });
       }
-      await saveWorkCoverData(sessionId, coverData ?? null);
+
+      const parsedCoverData = parseCoverDataPayload(coverData ?? null);
+      if (parsedCoverData === null && coverData != null) {
+        return NextResponse.json({ error: 'coverData inválido ou demasiado grande' }, { status: 400 });
+      }
+
+      await saveWorkCoverData(sessionId, parsedCoverData);
       return NextResponse.json({ ok: true });
     }
 
