@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
 const ALLOWED_CATEGORIES = ['groq_api', 'supabase', 'hosting', 'domain', 'other'] as const;
+const MAX_EXPENSE_MZN = 1_000_000;
 const UUID_V4_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -18,7 +19,7 @@ function parseExpensePayload(body: unknown) {
 
   if (!ALLOWED_CATEGORIES.includes(category as typeof ALLOWED_CATEGORIES[number])) return null;
   if (typeof description !== 'string') return null;
-  if (typeof amountMzn !== 'number' || Number.isNaN(amountMzn) || amountMzn < 0) return null;
+  if (typeof amountMzn !== 'number' || Number.isNaN(amountMzn) || amountMzn < 0 || amountMzn > MAX_EXPENSE_MZN) return null;
   if (typeof periodMonth !== 'number' || !Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12) return null;
   if (typeof periodYear !== 'number' || !Number.isInteger(periodYear) || periodYear < 2020 || periodYear > 2100) return null;
 
