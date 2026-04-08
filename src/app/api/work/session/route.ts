@@ -73,8 +73,13 @@ export async function POST(req: Request) {
     }
 
     // Criar nova sessão
-    const topic = body.topic?.trim();
-    if (!topic) return NextResponse.json({ error: 'Tópico obrigatório' }, { status: 400 });
+    const topic = typeof body.topic === 'string' ? body.topic.trim() : '';
+    if (!topic || topic.length < 3) {
+      return NextResponse.json({ error: 'Tópico obrigatório (mínimo 3 caracteres)' }, { status: 400 });
+    }
+    if (topic.length > 500) {
+      return NextResponse.json({ error: 'Tópico demasiado longo (máx 500 caracteres)' }, { status: 400 });
+    }
 
     const session = await createWorkSession(topic);
     return NextResponse.json(session);

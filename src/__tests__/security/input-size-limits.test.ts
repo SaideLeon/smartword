@@ -10,6 +10,8 @@ const mockDetectContextType = vi.fn();
 const mockSaveWorkResearchBrief = vi.fn();
 const mockRequireAuth = vi.fn();
 const mockRequireFeatureAccess = vi.fn();
+const mockCreateSession = vi.fn();
+const mockCreateWorkSession = vi.fn();
 
 vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: mockEnforceRateLimit,
@@ -19,11 +21,23 @@ vi.mock('@/lib/tcc/service', () => ({
   approveOutline: mockApproveOutline,
   saveTccResearchBrief: mockSaveTccResearchBrief,
   saveContextType: mockSaveContextType,
+  createSession: mockCreateSession,
+  getSession: vi.fn(),
+  listSessions: vi.fn(),
+  deleteSession: vi.fn(),
+  markSectionInserted: vi.fn(),
+  saveTccCoverData: vi.fn(),
 }));
 
 vi.mock('@/lib/work/service', () => ({
   approveWorkOutline: mockApproveWorkOutline,
   saveWorkResearchBrief: mockSaveWorkResearchBrief,
+  createWorkSession: mockCreateWorkSession,
+  deleteWorkSession: vi.fn(),
+  getWorkSession: vi.fn(),
+  listWorkSessions: vi.fn(),
+  markWorkSectionInserted: vi.fn(),
+  saveWorkCoverData: vi.fn(),
 }));
 
 vi.mock('@/lib/research/brief', () => ({
@@ -51,6 +65,8 @@ vi.mock('@google/genai', () => ({
 import { POST as tccApprovePost } from '@/app/api/tcc/approve/route';
 import { POST as workApprovePost } from '@/app/api/work/approve/route';
 import { POST as coverAgentPost } from '@/app/api/cover/agent/route';
+import { POST as tccSessionPost } from '@/app/api/tcc/session/route';
+import { POST as workSessionPost } from '@/app/api/work/session/route';
 
 describe('Security suite — R07 limites de input', () => {
   beforeEach(() => {
@@ -62,6 +78,53 @@ describe('Security suite — R07 limites de input', () => {
     mockDetectContextType.mockReturnValue('comparative');
     mockRequireAuth.mockResolvedValue({ user: { id: 'u1' }, error: null });
     mockRequireFeatureAccess.mockResolvedValue(null);
+    mockCreateSession.mockResolvedValue({ id: 'tcc-1', topic: 'Tema válido' });
+    mockCreateWorkSession.mockResolvedValue({ id: 'work-1', topic: 'Tema válido' });
+  });
+
+  it.each([
+    ['tcc', tccSessionPost],
+    ['work', workSessionPost],
+  ])('rejeita topic < 3 em /api/%s/session', async (_scope, handler) => {
+    const req = new Request('http://localhost/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ topic: 'AB' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handler(req);
+
+    expect(res.status).toBe(400);
+  });
+
+  it.each([
+    ['tcc', tccSessionPost],
+    ['work', workSessionPost],
+  ])('rejeita topic > 500 em /api/%s/session', async (_scope, handler) => {
+    const req = new Request('http://localhost/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ topic: 'A'.repeat(501) }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handler(req);
+
+    expect(res.status).toBe(400);
+  });
+
+  it.each([
+    ['tcc', tccSessionPost],
+    ['work', workSessionPost],
+  ])('aceita topic válido em /api/%s/session', async (_scope, handler) => {
+    const req = new Request('http://localhost/api/session', {
+      method: 'POST',
+      body: JSON.stringify({ topic: 'Impacto da industrialização em Moçambique' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handler(req);
+
+    expect(res.status).toBe(200);
   });
 
   it('rejeita outline > 15000 em /api/tcc/approve', async () => {
