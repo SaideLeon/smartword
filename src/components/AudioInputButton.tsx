@@ -69,13 +69,18 @@ export function AudioInputButton({ onTranscription, disabled = false, className 
             method: 'POST',
             body: form,
           });
-          if (!res.ok) throw new Error('Falha na transcrição');
+          if (!res.ok) {
+            const payload = await res.json().catch(() => null);
+            const reason = typeof payload?.error === 'string' ? payload.error : 'Falha na transcrição';
+            const detail = payload?.details ? ` | detalhes: ${JSON.stringify(payload.details)}` : '';
+            throw new Error(`${reason} (HTTP ${res.status})${detail}`);
+          }
           const data = await res.json();
           if (typeof data.text === 'string' && data.text.trim()) {
             onTranscription(data.text.trim());
           }
         } catch (error) {
-          console.error(error);
+          console.error('[AudioInputButton] Erro ao transcrever áudio', error);
         } finally {
           setIsTranscribing(false);
           stopStream();
