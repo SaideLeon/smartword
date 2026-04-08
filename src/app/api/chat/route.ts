@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseChatMessages } from '@/lib/validation/input-guards';
-import { wrapUserInput } from '@/lib/prompt-sanitizer';
+import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
-const SYSTEM_PROMPT = `És um assistente especialista em matemática e ciências.
+const SYSTEM_PROMPT = `${PROMPT_INJECTION_GUARD}
+
+És um assistente especialista em matemática e ciências.
 Quando responderes, usa SEMPRE formatação Markdown bem estruturada:
 - Cabeçalhos com # ## ###
 - Equações inline com $...$ e em bloco com $$...$$

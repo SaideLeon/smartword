@@ -46,9 +46,11 @@ describe('Security — /api/chat (R24 wrapUserInput)', () => {
     expect(mockGeminiGenerateTextStreamSSE).toHaveBeenCalledTimes(1);
 
     const payload = mockGeminiGenerateTextStreamSSE.mock.calls[0]?.[0];
+    const systemMessage = payload.messages.find((message: { role: string }) => message.role === 'system');
     const userMessage = payload.messages.find((message: { role: string }) => message.role === 'user');
     const assistantMessage = payload.messages.find((message: { role: string }) => message.role === 'assistant');
 
+    expect(systemMessage.content).toContain('INSTRUÇÃO DE SEGURANÇA');
     expect(userMessage.content).toContain('<user_message>');
     expect(userMessage.content).toContain('</user_message>');
     expect(assistantMessage.content).toBe('ok');
