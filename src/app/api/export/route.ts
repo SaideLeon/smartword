@@ -7,7 +7,7 @@ import { prepareMarkdownForExport } from '@/lib/docx/truncate-export';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { sanitizeExportFilename } from '@/lib/utils/filename';
 
-const DEFAULT_MAX_CONTENT_BYTES = 500_000;
+const DEFAULT_MAX_CONTENT_BYTES = 3_000_000;
 
 function resolveMaxContentBytes(): number {
   const rawValue = process.env.EXPORT_MAX_CONTENT_BYTES;

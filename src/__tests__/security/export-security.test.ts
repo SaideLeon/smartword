@@ -37,11 +37,11 @@ describe('Security — /api/export (R09 + R22)', () => {
     mockPrepareMarkdownForExport.mockImplementation((content) => content);
   });
 
-  it('rejeita payload com content superior a 500 KB', async () => {
+  it('rejeita payload com content superior a 3 MB', async () => {
     const req = new Request('http://localhost/api/export', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: 'x'.repeat(600_000) }),
+      body: JSON.stringify({ content: 'x'.repeat(3_200_000) }),
     });
 
     const res = await POST(req);
