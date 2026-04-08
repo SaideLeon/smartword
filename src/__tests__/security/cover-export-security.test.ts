@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockEnforceRateLimit = vi.fn();
 const mockGenerateDocxWithCover = vi.fn();
-const mockValidateBase64Image = vi.fn();
 const mockRequireAuth = vi.fn();
 const mockRequireFeatureAccess = vi.fn();
 
@@ -14,9 +13,6 @@ vi.mock('@/lib/docx', () => ({
   generateDocxWithCover: mockGenerateDocxWithCover,
 }));
 
-vi.mock('@/lib/validation/image-validator', () => ({
-  validateBase64Image: mockValidateBase64Image,
-}));
 vi.mock('@/lib/api-auth', () => ({
   requireAuth: mockRequireAuth,
   requireFeatureAccess: mockRequireFeatureAccess,
@@ -29,7 +25,6 @@ describe('Security suite — /api/cover/export (R13)', () => {
     vi.clearAllMocks();
     mockEnforceRateLimit.mockResolvedValue(null);
     mockGenerateDocxWithCover.mockResolvedValue(new ArrayBuffer(16));
-    mockValidateBase64Image.mockReturnValue(new Uint8Array([0xff, 0xd8, 0xff]));
     mockRequireAuth.mockResolvedValue({ user: { id: 'u1' }, error: null });
     mockRequireFeatureAccess.mockResolvedValue(null);
   });
