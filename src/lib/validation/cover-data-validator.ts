@@ -1,9 +1,9 @@
 import type { CoverData } from '@/lib/docx/cover-types';
 
-const MAX_COVER_DATA_BYTES = 50_000;
+const MAX_COVER_DATA_BYTES = 8_000_000;
 const MAX_MEMBERS = 20;
 const MAX_MEMBER_LENGTH = 120;
-const MAX_LOGO_BASE64 = 45_000;
+const MAX_LOGO_BASE64 = 7_000_000;
 
 const STRING_LIMITS = {
   institution: 200,

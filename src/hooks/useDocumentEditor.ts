@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useEditorActions, useEditorContent, useEditorMeta, useExportPreferences } from '@/hooks/useEditorStore';
 import { formalizePreviewHeadings } from '@/lib/preview-heading-formalizer';
+import { showAppAlert } from '@/lib/ui-alert';
 
 const PREVIEW_DEBOUNCE_MS = 200;
 
@@ -62,7 +63,10 @@ export function useDocumentEditor() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error(error);
-      alert(`Erro ao exportar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      showAppAlert({
+        title: 'Erro ao exportar',
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
     } finally {
       setLoading(false);
     }
@@ -86,7 +90,10 @@ export function useDocumentEditor() {
       setFilename(normalizedName || 'documento');
     } catch (error) {
       console.error(error);
-      alert('Falha ao importar o ficheiro');
+      showAppAlert({
+        title: 'Importação falhou',
+        message: 'Falha ao importar o ficheiro.',
+      });
     }
   };
 

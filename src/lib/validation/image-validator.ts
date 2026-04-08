@@ -1,4 +1,4 @@
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const SUPPORTED_MEDIA_TYPES = ['image/png', 'image/jpeg'] as const;
 type SupportedMediaType = (typeof SUPPORTED_MEDIA_TYPES)[number];
