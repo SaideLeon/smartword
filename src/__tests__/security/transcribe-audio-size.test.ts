@@ -103,6 +103,47 @@ describe('Security suite — /api/transcribe (R07 tamanho áudio)', () => {
     expect(res.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('retorna detalhes do erro quando a API externa falha', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({
+        error: {
+          message: 'invalid audio payload',
+          code: 'bad_request',
+          type: 'invalid_request_error',
+          param: 'file',
+        },
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const validWebm = new File([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0x01, 0x00])], 'audio.webm', {
+      type: 'audio/webm',
+    });
+    const form = new FormData();
+    form.append('audio', validWebm);
+
+    const req = new Request('http://localhost/api/transcribe', {
+      method: 'POST',
+      body: form,
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body).toMatchObject({
+      error: 'invalid audio payload',
+      details: {
+        provider: 'groq',
+        status: 400,
+        code: 'bad_request',
+        type: 'invalid_request_error',
+        param: 'file',
+      },
+    });
+  });
 });
 
 describe('Security suite — validateAudioMagicBytes (R12)', () => {

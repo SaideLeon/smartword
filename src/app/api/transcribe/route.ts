@@ -17,6 +17,38 @@ const ALLOWED_AUDIO_MIME_TYPES = new Set([
   'audio/flac',
 ]);
 
+function asMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Erro desconhecido.';
+}
+
+function extractErrorDetails(error: unknown) {
+  const candidate = error as {
+    message?: unknown;
+    code?: unknown;
+    type?: unknown;
+    status?: unknown;
+    cause?: { message?: unknown; code?: unknown; status?: unknown };
+  };
+
+  const details: Record<string, string | number> = {};
+  const status = typeof candidate?.status === 'number'
+    ? candidate.status
+    : typeof candidate?.cause?.status === 'number'
+      ? candidate.cause.status
+      : null;
+
+  if (status) details.status = status;
+  if (typeof candidate?.code === 'string') details.code = candidate.code;
+  if (typeof candidate?.cause?.code === 'string' && !details.code) details.code = candidate.cause.code;
+  if (typeof candidate?.type === 'string') details.type = candidate.type;
+  if (typeof candidate?.message === 'string') details.message = candidate.message;
+  if (typeof candidate?.cause?.message === 'string' && !details.message) details.message = candidate.cause.message;
+
+  return details;
+}
+
 function getGroqApiKey() {
   const collected: string[] = [];
 
@@ -98,12 +130,29 @@ export async function POST(request: Request) {
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       const message = data?.error?.message ?? 'Falha ao transcrever áudio.';
-      return NextResponse.json({ error: message }, { status: response.status });
+      return NextResponse.json({
+        error: message,
+        details: {
+          provider: 'groq',
+          status: response.status,
+          code: data?.error?.code ?? null,
+          type: data?.error?.type ?? null,
+          param: data?.error?.param ?? null,
+        },
+      }, { status: response.status });
     }
 
     return NextResponse.json({ text: data?.text ?? '' });
   } catch (error) {
-    console.error('[api/transcribe] erro', error);
-    return NextResponse.json({ error: 'Erro interno no serviço de transcrição.' }, { status: 500 });
+    const details = extractErrorDetails(error);
+    const message = asMessage(error);
+    console.error('[api/transcribe] erro', { message, details, raw: error });
+    return NextResponse.json({
+      error: 'Erro interno no serviço de transcrição.',
+      details: {
+        ...details,
+        internalMessage: message,
+      },
+    }, { status: 500 });
   }
 }
