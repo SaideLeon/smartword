@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { showAppAlert } from '@/lib/ui-alert';
 
 interface Props {
   value: string;
@@ -70,7 +71,10 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
 
   const readFile = useCallback((file: File) => {
     if (!file.name.endsWith('.md') && !file.name.endsWith('.txt')) {
-      alert('Por favor, seleccione um ficheiro .md ou .txt');
+      showAppAlert({
+        title: 'Formato inválido',
+        message: 'Por favor, seleccione um ficheiro .md ou .txt.',
+      });
       return;
     }
     const reader = new FileReader();

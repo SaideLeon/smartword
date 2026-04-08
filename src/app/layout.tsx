@@ -1,5 +1,6 @@
 import type {Metadata, Viewport} from 'next';
 import {PwaRegistrar} from '@/components/PwaRegistrar';
+import { AppAlertModal } from '@/components/AppAlertModal';
 import 'temml/dist/Temml-Local.css';
 import './globals.css'; // Global styles
 
@@ -32,6 +33,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="pt-BR" data-theme="dark">
       <body suppressHydrationWarning>
         <PwaRegistrar />
+        <AppAlertModal />
         {children}
       </body>
     </html>
