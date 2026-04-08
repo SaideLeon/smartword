@@ -10,6 +10,7 @@ import {
 import { AudioInputButton } from '@/components/AudioInputButton';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { workTheme as C } from '@/lib/theme';
+import { showAppAlert } from '@/lib/ui-alert';
 
 interface Props {
   onSubmit: (data: CoverData) => void;
@@ -130,8 +131,16 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const mediaType =
-      file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+    if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
+      showAppAlert({
+        title: 'Formato de logo inválido',
+        message: 'Use apenas imagens PNG ou JPEG para o logotipo.',
+      });
+      e.target.value = '';
+      return;
+    }
+
+    const mediaType = file.type;
 
     const reader = new FileReader();
     reader.onload = ev => {
