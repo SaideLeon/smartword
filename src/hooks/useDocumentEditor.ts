@@ -38,7 +38,18 @@ export function useDocumentEditor() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Export failed');
+      if (!res.ok) {
+        const responseContentType = res.headers.get('content-type') ?? '';
+        const errorBody = responseContentType.includes('application/json')
+          ? await res.json().catch(() => ({}))
+          : {};
+
+        const errorMessage = typeof errorBody?.error === 'string'
+          ? errorBody.error
+          : 'Falha ao exportar o documento';
+
+        throw new Error(errorMessage);
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -51,7 +62,7 @@ export function useDocumentEditor() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error(error);
-      alert('Failed to export DOCX');
+      alert(`Erro ao exportar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
