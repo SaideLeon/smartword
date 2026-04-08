@@ -6,7 +6,6 @@ import { NextResponse } from 'next/server';
 import { generateDocxWithCover } from '@/lib/docx';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import type { CoverData } from '@/lib/docx/cover-types';
-import { validateBase64Image } from '@/lib/validation/image-validator';
 import { sanitizeExportFilename } from '@/lib/utils/filename';
 import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 
@@ -47,13 +46,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Logo inválido: tipo MIME não suportado' }, { status: 400 });
       }
 
-      const imageBuffer = validateBase64Image(coverData.logoBase64, coverData.logoMediaType);
-      if (!imageBuffer) {
-        return NextResponse.json(
-          { error: 'Logo inválido: magic bytes não correspondem ao tipo declarado' },
-          { status: 400 },
-        );
-      }
     }
 
     const buffer = await generateDocxWithCover(coverData as CoverData, normalizedMarkdown);
