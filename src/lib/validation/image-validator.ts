@@ -1,39 +1,27 @@
-const MAGIC_BYTES = {
-  'image/png': [0x89, 0x50, 0x4e, 0x47],
-  'image/jpeg': [0xff, 0xd8, 0xff],
-} as const;
-
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
-export function validateImageBuffer(
-  buffer: Buffer,
-  declaredMediaType: 'image/png' | 'image/jpeg',
-): boolean {
-  const expected = MAGIC_BYTES[declaredMediaType];
-  if (!expected) return false;
-  if (buffer.length < expected.length) return false;
-  return expected.every((byte, index) => buffer[index] === byte);
-}
+const SUPPORTED_MEDIA_TYPES = ['image/png', 'image/jpeg'] as const;
+type SupportedMediaType = (typeof SUPPORTED_MEDIA_TYPES)[number];
 
 export function validateBase64Image(
   base64: string,
-  mediaType: 'image/png' | 'image/jpeg',
+  mediaType: SupportedMediaType,
 ): Buffer | null {
   try {
-    const expectedPrefix = `data:${mediaType};base64,`;
-    if (!base64.startsWith(expectedPrefix)) {
-      return null;
+    if (!SUPPORTED_MEDIA_TYPES.includes(mediaType)) return null;
+
+    // Aceita tanto "data:image/...;base64," como string base64 pura
+    let rawBase64 = base64;
+    const dataUrlPrefix = `data:${mediaType};base64,`;
+    if (base64.startsWith('data:')) {
+      if (!base64.startsWith(dataUrlPrefix)) return null;
+      rawBase64 = base64.slice(dataUrlPrefix.length);
     }
 
-    const rawBase64 = base64.slice(expectedPrefix.length);
-    if (!rawBase64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(rawBase64)) {
-      return null;
-    }
+    if (!rawBase64) return null;
 
     const buffer = Buffer.from(rawBase64, 'base64');
-
     if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) return null;
-    if (!validateImageBuffer(buffer, mediaType)) return null;
 
     return buffer;
   } catch {

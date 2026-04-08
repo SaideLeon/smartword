@@ -11,18 +11,28 @@ const AUDIO_MAGIC_BYTES: Record<string, Array<number | null>> = {
 
 const MP3_ID3_MAGIC = [0x49, 0x44, 0x33];
 
+/**
+ * Normaliza o MIME type removendo parâmetros como ";codecs=opus".
+ * O browser MediaRecorder frequentemente reporta "audio/webm;codecs=opus"
+ * em vez de simplesmente "audio/webm".
+ */
+function normalizeAudioMime(mimeType: string): string {
+  return mimeType.split(';')[0].trim().toLowerCase();
+}
+
 export function validateAudioMagicBytes(
   buffer: Uint8Array,
   declaredMimeType: string,
 ): boolean {
-  const magic = AUDIO_MAGIC_BYTES[declaredMimeType];
+  const normalized = normalizeAudioMime(declaredMimeType);
+  const magic = AUDIO_MAGIC_BYTES[normalized];
 
   if (!magic) return false;
   if (buffer.length < magic.length) return false;
 
   const matches = magic.every((byte, index) => byte === null || buffer[index] === byte);
 
-  if (!matches && (declaredMimeType === 'audio/mpeg' || declaredMimeType === 'audio/mp3')) {
+  if (!matches && (normalized === 'audio/mpeg' || normalized === 'audio/mp3')) {
     return MP3_ID3_MAGIC.every((byte, index) => buffer[index] === byte);
   }
 
