@@ -25,11 +25,13 @@ export async function createSession(topic: string): Promise<TccSession> {
 // ─── Buscar sessão por ID ─────────────────────────────────────────────────────
 export async function getSession(id: string): Promise<TccSession | null> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from('tcc_sessions')
     .select()
     .eq('id', id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
@@ -53,11 +55,13 @@ export async function listSessions(): Promise<TccSession[]> {
 // ─── Guardar esboço rascunho ──────────────────────────────────────────────────
 export async function saveOutlineDraft(id: string, outline: string): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('tcc_sessions')
     .update({ outline_draft: outline })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -68,6 +72,7 @@ export async function approveOutline(
   outline: string,
 ): Promise<TccSession> {
   const supabase = await createClient();
+  const userId = await requireUserId();
   const sections = extractSections(outline);
 
   const { data, error } = await supabase
@@ -79,6 +84,7 @@ export async function approveOutline(
       status: 'outline_approved',
     })
     .eq('id', id)
+    .eq('user_id', userId)
     .select()
     .single();
 
@@ -93,6 +99,7 @@ export async function saveTccResearchBrief(
   brief: string,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('tcc_sessions')
@@ -101,7 +108,8 @@ export async function saveTccResearchBrief(
       research_brief:         brief,
       research_generated_at:  new Date().toISOString(),
     })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -112,11 +120,13 @@ export async function saveContextType(
   contextType: ContextType,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('tcc_sessions')
     .update({ context_type: contextType })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -129,6 +139,7 @@ export async function saveSectionContent(
   currentSections: TccSection[],
 ): Promise<TccSession> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const updated = currentSections.map(s =>
     s.index === index
@@ -143,6 +154,7 @@ export async function saveSectionContent(
     .from('tcc_sessions')
     .update({ sections: updated, status })
     .eq('id', id)
+    .eq('user_id', userId)
     .select()
     .single();
 
@@ -156,11 +168,13 @@ export async function markSectionInserted(
   index: number,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { data: session, error: fetchError } = await supabase
     .from('tcc_sessions')
     .select('sections')
     .eq('id', id)
+    .eq('user_id', userId)
     .single();
 
   if (fetchError || !session) throw new Error('Sessão não encontrada');
@@ -173,7 +187,8 @@ export async function markSectionInserted(
   const { error } = await supabase
     .from('tcc_sessions')
     .update({ sections: updated })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -184,11 +199,13 @@ export async function saveTccCoverData(
   coverData: CoverData | null,
 ): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('tcc_sessions')
     .update({ cover_data: coverData })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
@@ -196,11 +213,13 @@ export async function saveTccCoverData(
 // ─── Eliminar sessão ──────────────────────────────────────────────────────────
 export async function deleteSession(id: string): Promise<void> {
   const supabase = await createClient();
+  const userId = await requireUserId();
 
   const { error } = await supabase
     .from('tcc_sessions')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', userId);
 
   if (error) throw new Error(error.message);
 }
