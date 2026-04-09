@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = new Set([
+  '/',
   '/landing',
   '/planos',
   '/auth/login',
