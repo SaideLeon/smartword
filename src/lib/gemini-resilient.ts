@@ -149,3 +149,119 @@ export async function geminiGenerateTextStreamSSE(options: GeminiOptions): Promi
 
   throw new Error(lastErrorMessage);
 }
+
+// ── Embeddings com gemini-embedding-2-preview ─────────────────────────────────
+//
+// O modelo gemini-embedding-2-preview NÃO suporta o campo `taskType`.
+// Em vez disso, a tarefa é declarada como PREFIXO DE TEXTO no próprio conteúdo.
+//
+// Formato assimétrico (RAG):
+//   Query:     "task: search result | query: {texto}"
+//   Documento: "title: {título} | text: {texto}"
+//
+// Os espaços de embedding entre gemini-embedding-001 e gemini-embedding-2-preview
+// são INCOMPATÍVEIS — nunca misturar vectores dos dois modelos na mesma tabela.
+
+const EMBED_MODEL = 'gemini-embedding-2-preview';
+const EMBED_DIMS  = 768; // Suportado: 128–3072. Recomendado: 768, 1536, 3072.
+
+/**
+ * Normaliza um vector para norma unitária.
+ * OBRIGATÓRIO quando outputDimensionality < 3072 (o padrão 3072 já sai normalizado).
+ */
+function normalizeVector(values: number[]): number[] {
+  const norm = Math.sqrt(values.reduce((sum, v) => sum + v * v, 0));
+  return norm === 0 ? values : values.map(v => v / norm);
+}
+
+/**
+ * Gera embedding de um CHUNK DE DOCUMENTO para guardar na BD.
+ * Usa o prefixo "title: ... | text: ..." conforme docs Google para recuperação.
+ */
+export async function geminiEmbedDocument(
+  text: string,
+  title = 'none',
+): Promise<number[]> {
+  const keys = collectGeminiKeys();
+  if (keys.length === 0) throw new Error('GEMINI_API_KEY não configurada.');
+
+  const formattedContent = `title: ${title} | text: ${text}`;
+
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: keys[i] });
+      const result = await ai.models.embedContent({
+        model: EMBED_MODEL,
+        contents: formattedContent,
+        config: { outputDimensionality: EMBED_DIMS },
+      });
+
+      const values = result.embeddings[0].values;
+      return normalizeVector(values);
+    } catch (error: any) {
+      const status = extractStatusFromError(error);
+      if (i < keys.length - 1 && canRetryWithNextKey(status)) continue;
+      throw new Error(error?.message ?? 'Erro ao gerar embedding de documento.');
+    }
+  }
+
+  throw new Error('Falha ao gerar embedding de documento.');
+}
+
+/**
+ * Gera embedding de uma QUERY DE BUSCA (ex: título de secção + tema).
+ * Usa o prefixo "task: search result | query: ..." conforme docs Google.
+ * DIFERENTE do embedDocument — os dois prefixos são assimétricos propositalmente.
+ */
+export async function geminiEmbedQuery(query: string): Promise<number[]> {
+  const keys = collectGeminiKeys();
+  if (keys.length === 0) throw new Error('GEMINI_API_KEY não configurada.');
+
+  const formattedContent = `task: search result | query: ${query}`;
+
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: keys[i] });
+      const result = await ai.models.embedContent({
+        model: EMBED_MODEL,
+        contents: formattedContent,
+        config: { outputDimensionality: EMBED_DIMS },
+      });
+
+      const values = result.embeddings[0].values;
+      return normalizeVector(values);
+    } catch (error: any) {
+      const status = extractStatusFromError(error);
+      if (i < keys.length - 1 && canRetryWithNextKey(status)) continue;
+      throw new Error(error?.message ?? 'Erro ao gerar embedding de query.');
+    }
+  }
+
+  throw new Error('Falha ao gerar embedding de query.');
+}
+
+/**
+ * Embed em batch de vários chunks de documento (para upload de ficheiros).
+ * Respeita rate limiting com sleep entre lotes.
+ */
+export async function geminiEmbedDocumentBatch(
+  chunks: Array<{ text: string; title?: string }>,
+  batchSize = 10,
+): Promise<number[][]> {
+  const embeddings: number[][] = [];
+
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batch = chunks.slice(i, i + batchSize);
+
+    for (const chunk of batch) {
+      const embedding = await geminiEmbedDocument(chunk.text, chunk.title);
+      embeddings.push(embedding);
+    }
+
+    if (i + batchSize < chunks.length) {
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  return embeddings;
+}
