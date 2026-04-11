@@ -685,10 +685,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
            coverAgent.step === 'generating_abstract' && (
             <div className="animate-in slide-in-from-bottom-1 fade-in duration-300 flex flex-col gap-3 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-3">
               <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--panel-gold)] opacity-50" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--panel-gold)]" />
-                </span>
+                <ProcessingBars className="shrink-0" height={10} barColor="#c9a96e" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">
                   A gerar resumo
                 </span>
@@ -703,18 +700,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 </span>
               </p>
 
-              <div className="flex h-5 items-end gap-[3px]">
-                {[40, 70, 55, 90, 45].map((h, i) => (
-                  <div
-                    key={i}
-                    className="w-[3px] rounded-sm bg-[var(--panel-gold)]"
-                    style={{
-                      height: `${h}%`,
-                      animation: `cover-summary-pulse 1.8s ${i * 0.3}s infinite ease-in-out`,
-                    }}
-                  />
-                ))}
-              </div>
+              <ProcessingBars className="justify-start" height={16} barColor="#c9a96e" />
 
               {coverAgent.streamingAbstract && (
                 <div className="border-t border-[var(--panel-border)] pt-2.5">
