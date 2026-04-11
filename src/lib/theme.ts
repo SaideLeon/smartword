@@ -13,32 +13,32 @@
 
 export const colors = {
   // Fundos
-  ink:        '#131313',
-  surface:    '#1c1c1c',
-  surfaceAlt: '#232323',
-  overlay:    '#1c1c1c',
+  ink:        '#0f0e0d',
+  surface:    '#171412',
+  surfaceAlt: '#1d1916',
+  overlay:    '#171412',
 
   // Ouro — cor de destaque primária
-  gold:       '#f59e0b',
-  goldDark:   '#f97316',
-  goldDim:    '#f59e0b22',
-  goldFaint:  '#f59e0b11',
+  gold:       '#d4b37b',
+  goldDark:   '#c9a96e',
+  goldDim:    '#d4b37b22',
+  goldFaint:  '#d4b37b11',
 
   // Texto
-  textPrimary:  '#e8e8e8',
-  textSecondary:'#9a9a9a',
-  textMuted:    '#606060',
-  textFaint:    '#4f4f4f',
-  textVeryFaint:'#404040',
-  textDim:      '#505050',
+  textPrimary:  '#f1e8da',
+  textSecondary:'#c8bfb4',
+  textMuted:    '#8a7d6e',
+  textFaint:    '#756858',
+  textVeryFaint:'#665b4d',
+  textDim:      '#7f7364',
 
   // Bordas
-  borderStrong: '#2f2f2f',
-  borderSubtle: '#252525',
+  borderStrong: '#2c2721',
+  borderSubtle: '#211d19',
 
   // Estado — sucesso/verde (editor, exportação)
-  green:       '#00d6a0',
-  greenBright: '#00d6a0',
+  green:       '#6ea886',
+  greenBright: '#61aa9d',
 
   // Estado — erro
   errorBg:    '#3a0a0a',
@@ -52,33 +52,33 @@ export const colors = {
 // ─── Tema do painel TCC (verde escuro) ───────────────────────────────────────
 
 export const tccTheme = {
-  bg:         '#1c1c1c',
-  surface:    '#232323',
-  border:     '#2f2f2f',
-  accent:     '#00d6a0',
-  accentDim:  '#00d6a044',
-  accentFaint:'#00d6a011',
-  muted:      '#9a9a9a',
-  text:       '#e8e8e8',
-  textDim:    '#9a9a9a',
-  textFaint:  '#606060',
+  bg:         '#171412',
+  surface:    '#1d1916',
+  border:     '#2c2721',
+  accent:     '#6ea886',
+  accentDim:  '#6ea88644',
+  accentFaint:'#6ea88611',
+  muted:      '#c8bfb4',
+  text:       '#f1e8da',
+  textDim:    '#c8bfb4',
+  textFaint:  '#8a7d6e',
   gold:       colors.gold,
-  goldDim:    '#f59e0b33',
+  goldDim:    '#d4b37b33',
 } as const;
 
 // ─── Tema do painel Trabalho Escolar (teal) ───────────────────────────────────
 
 export const workTheme = {
-  bg:         '#1c1c1c',
-  surface:    '#232323',
-  border:     '#2f2f2f',
-  accent:     '#00d6a0',
-  accentDim:  '#00d6a044',
-  accentFaint:'#00d6a011',
-  muted:      '#9a9a9a',
-  text:       '#e8e8e8',
-  textDim:    '#9a9a9a',
-  textFaint:  '#606060',
+  bg:         '#171412',
+  surface:    '#1d1916',
+  border:     '#2c2721',
+  accent:     '#61aa9d',
+  accentDim:  '#61aa9d44',
+  accentFaint:'#61aa9d11',
+  muted:      '#c8bfb4',
+  text:       '#f1e8da',
+  textDim:    '#c8bfb4',
+  textFaint:  '#8a7d6e',
   gold:       colors.gold,
 } as const;
 
@@ -103,25 +103,25 @@ export const editorTheme = {
 // ─── Tema do chat IA (ouro/escuro) ────────────────────────────────────────────
 
 export const chatTheme = {
-  bg:         '#1c1c1c',
-  surface:    '#232323',
+  bg:         '#171412',
+  surface:    '#1d1916',
   border:     colors.borderStrong,
   borderAlt:  colors.borderSubtle,
   accent:     colors.gold,
   accentDim:  colors.goldDim,
-  text:       '#e8e8e8',
-  textMuted:  '#9a9a9a',
-  textFaint:  '#606060',
-  userBg:     '#2c2c2c',
-  assistantBg:'#232323',
+  text:       '#f1e8da',
+  textMuted:  '#c8bfb4',
+  textFaint:  '#8a7d6e',
+  userBg:     '#28231f',
+  assistantBg:'#1d1916',
 } as const;
 
 // ─── Gradientes ───────────────────────────────────────────────────────────────
 
 export const gradients = {
-  gold:        'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-  goldHover:   'linear-gradient(135deg, #f7ac2a 0%, #fb8b36 100%)',
-  logoIcon:    'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
+  gold:        'linear-gradient(135deg, #d4b37b 0%, #c9a96e 100%)',
+  goldHover:   'linear-gradient(135deg, #dcc08f 0%, #d2b27b 100%)',
+  logoIcon:    'linear-gradient(135deg, #d4b37b 0%, #c9a96e 100%)',
   tccProgress: `linear-gradient(90deg, ${tccTheme.muted}, ${tccTheme.accent})`,
   workProgress:`linear-gradient(90deg, ${workTheme.muted}, ${workTheme.accent})`,
 } as const;
@@ -129,7 +129,7 @@ export const gradients = {
 // ─── Tipografia ───────────────────────────────────────────────────────────────
 
 export const fonts = {
-  serif:  "'Manrope', sans-serif",
+  serif:  "Georgia, 'Times New Roman', serif",
   mono:   "'JetBrains Mono', monospace",
   label:  "'JetBrains Mono', monospace",
 } as const;

@@ -2,23 +2,33 @@
 @import "tailwindcss";
 
 :root {
-  --bg-base: #131313;
-  --bg-surface: #1c1c1c;
-  --bg-card: #232323;
-  --bg-card-hover: #2a2a2a;
-  --bg-active: #2c2c2c;
-  --border: #2f2f2f;
-  --border-subtle: #252525;
-  --text-primary: #e8e8e8;
-  --text-secondary: #9a9a9a;
-  --text-muted: #606060;
-  --accent-teal: #00d6a0;
-  --accent-orange: #f97316;
-  --accent-amber: #f59e0b;
-  --status-done: #00d6a0;
-  --status-pending: #f97316;
-  --btn-action: #2e2e2e;
-  --btn-action-hover: #383838;
+  --ink: #f1e8da;
+  --parchment: #0f0e0d;
+  --gold: #d4b37b;
+  --gold2: #c9a96e;
+  --muted: #c8bfb4;
+  --faint: #8a7d6e;
+  --green: #6ea886;
+  --teal: #61aa9d;
+  --heroRight: #090908;
+
+  --bg-base: var(--parchment);
+  --bg-surface: #171412;
+  --bg-card: #1d1916;
+  --bg-card-hover: #231f1b;
+  --bg-active: #28231f;
+  --border: #2c2721;
+  --border-subtle: #211d19;
+  --text-primary: var(--ink);
+  --text-secondary: var(--muted);
+  --text-muted: var(--faint);
+  --accent-teal: var(--teal);
+  --accent-orange: #c9a96e;
+  --accent-amber: #d4b37b;
+  --status-done: var(--green);
+  --status-pending: #c9a96e;
+  --btn-action: #2a2420;
+  --btn-action-hover: #332c26;
 }
 
 @theme {
@@ -74,7 +84,7 @@ body {
   position: absolute;
   inset: -1px;
   border-radius: inherit;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.12) 35%, rgba(245, 158, 11, 0) 72%);
+  background: radial-gradient(circle, rgba(212, 179, 123, 0.22) 0%, rgba(212, 179, 123, 0.12) 35%, rgba(212, 179, 123, 0) 72%);
   opacity: 0;
   transform: scale(0.72);
   pointer-events: none;

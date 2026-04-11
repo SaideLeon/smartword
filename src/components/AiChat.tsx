@@ -602,10 +602,10 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           --ac-active:        #1a2b1e;
 
           /* Cores principais */
-          --ac-accent:        #f59e0b;
-          --ac-accent-dim:    rgba(245,158,11,0.13);
-          --ac-green:         #22d3a0;
-          --ac-green-dim:     rgba(34,211,160,0.12);
+          --ac-accent:        #d4b37b;
+          --ac-accent-dim:    rgba(212,179,123,0.13);
+          --ac-green:         #6ea886;
+          --ac-green-dim:     rgba(110,168,134,0.12);
           --ac-red:           #f87171;
 
           /* Texto — contraste elevado */
@@ -620,8 +620,8 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           --ac-ai-border:     #28283a;
 
           /* Labels */
-          --ac-user-label:    #22d3a0;
-          --ac-ai-label:      #f59e0b;
+          --ac-user-label:    #6ea886;
+          --ac-ai-label:      #d4b37b;
 
           /* Math */
           --math-bg:          #14141a;
@@ -640,7 +640,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           /* Send */
           --send-stop-bg:     #2d1515;
           --send-stop-fg:     #f87171;
-          --send-ready-bg:    #f59e0b;
+          --send-ready-bg:    #d4b37b;
           --send-ready-fg:    #0d0d0f;
 
           background: var(--ac-bg);

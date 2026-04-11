@@ -22,7 +22,7 @@ export function AppAlertModal() {
           <button
             type="button"
             onClick={() => setAlertState(null)}
-            className="rounded-lg bg-[#f59e0b] px-5 py-2 text-base font-bold text-black transition hover:brightness-110"
+            className="rounded-lg bg-[#d4b37b] px-5 py-2 text-base font-bold text-black transition hover:brightness-110"
           >
             OK
           </button>

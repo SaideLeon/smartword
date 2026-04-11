@@ -175,7 +175,7 @@ function renderInlineMarkdown(text: string): ReactNode[] {
         borderRadius: 4,
         background: 'var(--inline-code-bg, #2a2a2a)',
         border: '1px solid var(--chat-border, #2f2f2f)',
-        color: 'var(--chat-accent, #f59e0b)',
+        color: 'var(--chat-accent, #d4b37b)',
       }}>{m[4]}</code>
     );
     last = RE.lastIndex;
@@ -337,7 +337,7 @@ function renderTextBlock(raw: string): ReactNode {
     if (line.startsWith('> ')) {
       nodes.push(
         <blockquote key={key++} style={{
-          borderLeft: '3px solid var(--chat-accent, #f59e0b)',
+          borderLeft: '3px solid var(--chat-accent, #d4b37b)',
           paddingLeft: 10,
           margin: '6px 0',
           color: 'var(--chat-text-muted, #b5b5b5)',
@@ -364,7 +364,7 @@ function renderTextBlock(raw: string): ReactNode {
           <span style={{
             position: 'absolute',
             left: 0,
-            color: 'var(--chat-accent, #f59e0b)',
+            color: 'var(--chat-accent, #d4b37b)',
             fontSize: '0.7em',
             top: '0.35em',
           }}>◆</span>
@@ -389,7 +389,7 @@ function renderTextBlock(raw: string): ReactNode {
           <span style={{
             position: 'absolute',
             left: 0,
-            color: 'var(--chat-accent, #f59e0b)',
+            color: 'var(--chat-accent, #d4b37b)',
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: '0.8em',
             top: '0.15em',
@@ -440,7 +440,7 @@ function RenderTable({ headers, aligns, rows }: Omit<TableBlock, 'type'>) {
               <th key={`th-${index}`} style={{
                 textAlign: aligns[index] ?? 'left',
                 padding: '14px 14px',
-                color: 'var(--ac-primary, #f59e0b)',
+                color: 'var(--ac-primary, #d4b37b)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
                 fontSize: '0.72em',
@@ -511,7 +511,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: 10,
             letterSpacing: '0.06em',
-            color: 'var(--chat-accent, #f59e0b)',
+            color: 'var(--chat-accent, #d4b37b)',
             textTransform: 'uppercase',
           }}>{lang}</span>
         </div>

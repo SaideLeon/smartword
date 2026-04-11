@@ -12,7 +12,7 @@ interface ProcessingBarsProps {
 export function ProcessingBars({
   className,
   barClassName,
-  barColor = '#f59e0b',
+  barColor = '#d4b37b',
   height = 18,
 }: ProcessingBarsProps) {
   return (
