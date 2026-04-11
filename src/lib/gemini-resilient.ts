@@ -294,6 +294,9 @@ export async function geminiEmbedMultimodal(part: InlineDataPart): Promise<numbe
         config: { outputDimensionality: EMBED_DIMS },
       });
 
+      if (!result.embeddings?.[0]?.values) {
+        throw new Error('Resposta de embedding inválida ou vazia.');
+      }
       const values = result.embeddings[0].values;
       return normalizeVector(values);
     } catch (error: any) {
