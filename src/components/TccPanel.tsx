@@ -22,11 +22,6 @@ interface Props {
   editorMarkdown?: string;
 }
 
-interface AgentMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, editorMarkdown }: Props) {
   const {
     step, session, outline, streamingText, activeSectionIdx, error,
@@ -43,9 +38,6 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const [isApprovingOutline, setIsApprovingOutline] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
-  const [agentMessages, setAgentMessages] = useState<AgentMessage[]>([]);
-  const [agentInput, setAgentInput] = useState('');
-  const [agentSending, setAgentSending] = useState(false);
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
@@ -55,7 +47,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [streamingText, step, agentMessages, coverAgent.streamingAbstract]);
+  }, [streamingText, step, coverAgent.streamingAbstract]);
 
   useEffect(() => {
     if (step === 'review_outline') {
@@ -123,13 +115,6 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
       return;
     }
 
-    setAgentMessages([]);
-    coverAgent.askAboutCover(
-      session.topic,
-      session.outline_approved ?? session.outline_draft ?? '',
-      (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
-      { mode: 'tcc' },
-    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, session?.id]);
 
@@ -185,31 +170,8 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const handleResetSession = () => {
     coverAgent.reset();
     resetExportPreferences();
-    setAgentMessages([]);
-    setAgentInput('');
     setShowCoverModal(false);
     reset();
-  };
-
-  const handleAgentSend = async () => {
-    const text = agentInput.trim();
-    if (!text || agentSending || !session) return;
-
-    setAgentMessages(prev => [...prev, { role: 'user', content: text }]);
-    setAgentInput('');
-    setAgentSending(true);
-
-    await coverAgent.handleUserResponse(
-      text,
-      session.topic,
-      session.outline_approved ?? session.outline_draft ?? '',
-      agentMessages,
-      (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
-      () => setShowCoverModal(true),
-      { mode: 'tcc' },
-    );
-
-    setAgentSending(false);
   };
 
   const handleCoverSubmit = async (coverData: CoverData) => {
@@ -220,7 +182,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
       coverData,
       session.topic,
       session.outline_approved ?? session.outline_draft ?? '',
-      (role, content) => setAgentMessages(prev => [...prev, { role, content }]),
+      () => {},
     );
 
     if (!finalData) return;
@@ -400,65 +362,53 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
           </div>
         )}
 
-        {step === 'outline_approved' &&
-         coverAgent.step !== 'idle' &&
-         coverAgent.step !== 'done_with_cover' &&
-         coverAgent.step !== 'done_without_cover' && (
-          <div className="flex flex-col gap-3">
-            {agentMessages.map((msg, i) => (
-              <div key={i} className={`rounded border px-3 py-2.5 ${msg.role === 'assistant' ? 'border-[var(--panel-border)] bg-[var(--panel-surface)]' : 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/25'}`}>
-                <span className={`mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] ${msg.role === 'assistant' ? 'text-[var(--panel-accent)]' : 'text-[var(--panel-muted)]'}`}>
-                  {msg.role === 'assistant' ? '✦ Assistente' : 'Tu'}
-                </span>
-                <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-text)]">{msg.content}</p>
-              </div>
-            ))}
-
-            {coverAgent.step === 'generating_abstract' && coverAgent.streamingAbstract && (
-              <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2.5">
-                <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">A gerar resumo…</span>
-                <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-text)]">{coverAgent.streamingAbstract}</p>
-              </div>
-            )}
-
-            {(coverAgent.step === 'asking' || coverAgent.step === 'awaiting_form') && (
-              <div className="flex items-end gap-2">
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    value={agentInput}
-                    onChange={e => setAgentInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAgentSend(); }}
-                    placeholder="Responde ao assistente…"
-                    disabled={agentSending}
-                    className="flex-1 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[11px] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)] disabled:opacity-50"
-                  />
-                  <AudioInputButton
-                    onTranscription={text => setAgentInput(prev => (prev ? `${prev} ${text}` : text))}
-                    disabled={agentSending}
-                    className="py-2"
-                  />
-                </div>
-                <button
-                  onClick={handleAgentSend}
-                  disabled={agentSending || !agentInput.trim()}
-                  className="h-8 w-8 rounded border border-[var(--panel-accent-dim)] font-mono text-[13px] text-[var(--panel-accent)] transition-all hover:bg-[var(--panel-accent-dim)] disabled:opacity-40"
-                  aria-label="Enviar resposta ao agente de capa"
-                >
-                  {agentSending ? '⋯' : '↑'}
-                </button>
-              </div>
-            )}
-
-            {coverAgent.step === 'asking' && agentMessages.length > 0 && (
+        {step === 'outline_approved' && coverAgent.step === 'idle' && (
+          <div className="flex flex-col gap-3 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-3">
+            <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-text)]">
+              Deseja incluir capa e contracapa no seu trabalho?
+            </p>
+            <div className="flex flex-col gap-2">
+              <Btn color={C.accent} flex onClick={() => { coverAgent.chooseCover(); setShowCoverModal(true); }}>
+                ✦ Incluir capa e contracapa
+              </Btn>
               <button
-                onClick={() => {
-                  setAgentMessages(prev => [...prev, { role: 'assistant', content: 'Entendido. Podes desenvolver as secções directamente.' }]);
-                  coverAgent.chooseWithoutCover();
-                }}
-                className="font-mono text-[10px] text-[var(--panel-text-faint)] hover:text-[var(--panel-muted)] transition-colors underline"
+                onClick={() => coverAgent.chooseWithoutCover()}
+                className="text-left font-mono text-[10px] text-[var(--panel-text-faint)] underline transition-colors hover:text-[var(--panel-muted)]"
               >
                 Saltar — desenvolver sem capa
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'outline_approved' &&
+         coverAgent.step === 'generating_abstract' && (
+          <div className="animate-in slide-in-from-bottom-1 fade-in duration-300 flex flex-col gap-3 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-3">
+            <div className="flex items-center gap-2">
+              <ProcessingBars className="shrink-0" height={10} barColor="#c9a96e" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">
+                A gerar resumo
+              </span>
+            </div>
+
+            <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-muted)]">
+              A criar o resumo para a contracapa do teu trabalho
+              <span className="ml-1 inline-flex align-middle gap-[3px]">
+                <span className="h-[4px] w-[4px] animate-[bounce_.9s_.0s_infinite] rounded-full bg-current" />
+                <span className="h-[4px] w-[4px] animate-[bounce_.9s_.15s_infinite] rounded-full bg-current" />
+                <span className="h-[4px] w-[4px] animate-[bounce_.9s_.3s_infinite] rounded-full bg-current" />
+              </span>
+            </p>
+
+            <ProcessingBars className="justify-start" height={16} barColor="#c9a96e" />
+
+            {coverAgent.streamingAbstract && (
+              <div className="border-t border-[var(--panel-border)] pt-2.5">
+                <p className="font-mono text-[11px] leading-[1.7] text-[var(--panel-text)]">
+                  {coverAgent.streamingAbstract}
+                  <span className="ml-[2px] inline-block h-[13px] w-[2px] animate-[cover-cursor-blink_1s_step-end_infinite] align-middle bg-[var(--panel-gold)]" />
+                </p>
+              </div>
             )}
           </div>
         )}
@@ -577,7 +527,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
       {showCoverModal && (
         <CoverFormModal
           onSubmit={handleCoverSubmit}
-          onCancel={() => setShowCoverModal(false)}
+          onCancel={() => { setShowCoverModal(false); coverAgent.reset(); }}
           isMobile={isMobile}
         />
       )}
