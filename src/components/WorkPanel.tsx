@@ -682,11 +682,48 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
 
           {/* ── Streaming do abstract ── */}
           {step === 'outline_approved' &&
-           coverAgent.step === 'generating_abstract' &&
-           coverAgent.streamingAbstract && (
-            <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2.5">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">A gerar resumo…</span>
-              <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-text)]">{coverAgent.streamingAbstract}</p>
+           coverAgent.step === 'generating_abstract' && (
+            <div className="animate-in slide-in-from-bottom-1 fade-in duration-300 flex flex-col gap-3 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-3">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--panel-gold)] opacity-50" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--panel-gold)]" />
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--panel-gold)]">
+                  A gerar resumo
+                </span>
+              </div>
+
+              <p className="font-mono text-[11px] leading-[1.6] text-[var(--panel-muted)]">
+                A criar o resumo para a contracapa do teu trabalho
+                <span className="ml-1 inline-flex align-middle gap-[3px]">
+                  <span className="h-[4px] w-[4px] animate-[bounce_.9s_.0s_infinite] rounded-full bg-current" />
+                  <span className="h-[4px] w-[4px] animate-[bounce_.9s_.15s_infinite] rounded-full bg-current" />
+                  <span className="h-[4px] w-[4px] animate-[bounce_.9s_.3s_infinite] rounded-full bg-current" />
+                </span>
+              </p>
+
+              <div className="flex h-5 items-end gap-[3px]">
+                {[40, 70, 55, 90, 45].map((h, i) => (
+                  <div
+                    key={i}
+                    className="w-[3px] rounded-sm bg-[var(--panel-gold)]"
+                    style={{
+                      height: `${h}%`,
+                      animation: `cover-summary-pulse 1.8s ${i * 0.3}s infinite ease-in-out`,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {coverAgent.streamingAbstract && (
+                <div className="border-t border-[var(--panel-border)] pt-2.5">
+                  <p className="font-mono text-[11px] leading-[1.7] text-[var(--panel-text)]">
+                    {coverAgent.streamingAbstract}
+                    <span className="ml-[2px] inline-block h-[13px] w-[2px] animate-[cover-cursor-blink_1s_step-end_infinite] align-middle bg-[var(--panel-gold)]" />
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
