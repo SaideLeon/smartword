@@ -28,6 +28,9 @@ interface CoverAgentContext {
   mode: 'tcc' | 'work';
 }
 
+const COVER_INITIAL_QUESTION =
+  'Deseja incluir capa e contracapa no seu trabalho, ou prefere iniciar directamente pela Introdução?';
+
 // ── JSON Schema da tool ───────────────────────────────────────────────────────
 // IMPORTANTE: não usar "nullable: true" — manter schema simples para compatibilidade.
 // Campos opcionais são simplesmente omitidos do array "required".
@@ -129,35 +132,14 @@ export function useCoverAgent() {
 
   // ── Iniciar: perguntar sobre capa ─────────────────────────────────────────
 
-  const askAboutCover = useCallback(async (
-    topic: string,
-    outline: string,
+  const askAboutCover = useCallback((
+    _topic: string,
+    _outline: string,
     appendMessage: (role: 'assistant', content: string) => void,
-    context?: CoverAgentContext,
+    _context?: CoverAgentContext,
   ) => {
     setState(prev => ({ ...prev, step: 'asking', error: null }));
-
-    try {
-      const res = await fetch('/api/cover/agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          outline,
-          messages: [],
-          mode: context?.mode ?? 'work',
-          phase: 'ask',
-        }),
-      });
-
-      if (!res.ok) throw new Error('Erro no agente de capa');
-      const data = await res.json();
-      const message = data.choices?.[0]?.message?.content ?? '';
-
-      if (message) appendMessage('assistant', message);
-    } catch (e: any) {
-      setState(prev => ({ ...prev, step: 'error', error: e.message }));
-    }
+    appendMessage('assistant', COVER_INITIAL_QUESTION);
   }, []);
 
   // ── Processar resposta do utilizador (sim/não) ────────────────────────────
@@ -183,7 +165,6 @@ export function useCoverAgent() {
             { role: 'user', content: userMessage },
           ],
           mode: context?.mode ?? 'work',
-          phase: 'reply',
         }),
       });
 
@@ -288,12 +269,21 @@ export function useCoverAgent() {
     }));
   }, []);
 
+  const chooseCover = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      step: 'awaiting_form',
+      error: null,
+    }));
+  }, []);
+
   return {
     ...state,
     askAboutCover,
     handleUserResponse,
     submitCoverData,
     restoreCoverData,
+    chooseCover,
     chooseWithoutCover,
     reset,
   };
