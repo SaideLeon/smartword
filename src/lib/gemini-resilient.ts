@@ -174,6 +174,14 @@ function normalizeVector(values: number[]): number[] {
   return norm === 0 ? values : values.map(v => v / norm);
 }
 
+function extractEmbeddingValues(result: { embeddings?: Array<{ values?: number[] }> }): number[] {
+  const values = result.embeddings?.[0]?.values;
+  if (!values || values.length === 0) {
+    throw new Error('Resposta de embedding inválida do Gemini.');
+  }
+  return values;
+}
+
 /**
  * Gera embedding de um CHUNK DE DOCUMENTO para guardar na BD.
  * Usa o prefixo "title: ... | text: ..." conforme docs Google para recuperação.
@@ -196,7 +204,7 @@ export async function geminiEmbedDocument(
         config: { outputDimensionality: EMBED_DIMS },
       });
 
-      const values = result.embeddings[0].values;
+      const values = extractEmbeddingValues(result);
       return normalizeVector(values);
     } catch (error: any) {
       const status = extractStatusFromError(error);
@@ -228,7 +236,7 @@ export async function geminiEmbedQuery(query: string): Promise<number[]> {
         config: { outputDimensionality: EMBED_DIMS },
       });
 
-      const values = result.embeddings[0].values;
+      const values = extractEmbeddingValues(result);
       return normalizeVector(values);
     } catch (error: any) {
       const status = extractStatusFromError(error);
