@@ -44,6 +44,7 @@ import { useEditorActions } from '@/hooks/useEditorStore';
 import { CoverFormModal } from '@/components/CoverFormModal';
 import { AudioInputButton } from '@/components/AudioInputButton';
 import { ProcessingBars } from '@/components/ProcessingBars';
+import { ResourceUploadStep } from '@/components/ResourceUploadStep';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
 import type { WorkSection } from '@/lib/work/types';
@@ -203,6 +204,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession, isSectionRegenerated,
+    skipResources, confirmResources, uploadRagFile, uploadingRag,
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
@@ -673,8 +675,18 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 />
                 <AudioInputButton onTranscription={text => setTopicInput(prev => (prev ? `${prev} ${text}` : text))} className="py-2" />
               </div>
-              <Btn onClick={handleTopicSubmit} color={C.accent} disabled={!topicInput.trim()} processing={isProcessing('submit-topic')}>✦ Gerar esboço orientador</Btn>
+                <Btn onClick={handleTopicSubmit} color={C.accent} disabled={!topicInput.trim()} processing={isProcessing('submit-topic')}>✦ Continuar para recursos</Btn>
             </div>
+          )}
+
+          {step === 'resource_upload' && session && (
+            <ResourceUploadStep
+              sessionId={session.id}
+              onUpload={uploadRagFile}
+              onConfirm={confirmResources}
+              onSkip={skipResources}
+              uploading={uploadingRag}
+            />
           )}
 
           {/* ── GENERATING OUTLINE ── */}

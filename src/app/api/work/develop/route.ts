@@ -10,6 +10,7 @@ import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { generateResearchBrief } from '@/lib/research/brief';
 import { parseSessionPayload } from '@/lib/validation/input-guards';
 import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
+import { semanticSearch, generateRagFicha } from '@/lib/work/rag-service';
 
 // ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
 
@@ -216,6 +217,36 @@ export async function POST(req: Request) {
       ? `\n[FICHA DE PESQUISA]\n${wrapUserInput('user_research_brief', session.research_brief)}\n`
       : '\n[FICHA DE PESQUISA]\n(não disponível)\n';
 
+    let ragContext = '';
+    if (session.rag_enabled) {
+      if (!session.rag_ficha) {
+        const supabase = await (await import('@/lib/supabase')).createClient();
+        const ficha = await generateRagFicha(session.id, session.topic);
+        await supabase
+          .from('work_sessions')
+          .update({ rag_ficha: ficha })
+          .eq('id', session.id)
+          .eq('user_id', user.id);
+        session.rag_ficha = ficha;
+      }
+
+      const sectionQuery = `${section.title} ${session.topic}`;
+      const ragChunks = await semanticSearch(session.id, sectionQuery, 8);
+      if (ragChunks.length > 0) {
+        const ficha = session.rag_ficha as any;
+        const fichaTxt = ficha
+          ? `FICHA TÉCNICA:\nAutores: ${ficha.autores?.join('; ') ?? ''}\nObras: ${ficha.obras?.join('; ') ?? ''}\nConceitos: ${ficha.conceitos_chave?.join(', ') ?? ''}\n`
+          : '';
+        const chunksTxt = ragChunks
+          .map((c, i) => `[Excerto ${i + 1}]\n${c.chunk_text}`)
+          .join('\n\n---\n\n');
+
+        ragContext = `\n[BASE DE CONHECIMENTO — DOCUMENTOS CARREGADOS]\n${fichaTxt}\nEXCERTOS RELEVANTES PARA ESTA SECÇÃO:\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos desta secção nos excertos acima\n- Cita os autores reais da ficha técnica (formato APA 7.ª)\n- Não inventes referências nem autores — usa APENAS os listados\n- Se houver normas institucionais, respeita a estrutura e linguagem prescritas\n`;
+      }
+    }
+
+    const fullContext = researchContext + ragContext;
+
     const isSubsection = /^\d+\.\d+/.test(section.title);
     const normalizedName = normalizeTitle(section.title);
     const specificInstruction = getSectionInstruction(normalizedName, isSubsection);
@@ -248,7 +279,7 @@ ${wrapUserInput('user_topic', session.topic)}
 [ESBOÇO ORIENTADOR]
 ${wrapUserInput('user_outline', outline)}
 ${previousContext}
-${researchContext}
+${fullContext}
 
 REGRAS DE ADEQUAÇÃO AO CONTEXTO MOÇAMBICANO
 ===========================================
