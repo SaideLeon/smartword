@@ -214,7 +214,7 @@ export async function POST(req: Request) {
   if (planError) return planError;
 
   try {
-    const { topic, outline, messages, mode = 'unknown', phase = 'unknown' } = await req.json();
+    const { topic, outline, messages, mode = 'unknown' } = await req.json();
     const normalizedTopic = typeof topic === 'string' ? topic.trim() : '';
     const normalizedOutline = typeof outline === 'string' && outline.trim()
       ? outline.trim()
@@ -222,7 +222,7 @@ export async function POST(req: Request) {
     const messageList = Array.isArray(messages) ? messages : null;
 
     if (!normalizedTopic || normalizedTopic.length > MAX_TOPIC_CHARS) {
-      console.warn('[cover:agent] bad_request missing_topic', { mode, phase });
+      console.warn('[cover:agent] bad_request missing_topic', { mode });
       return NextResponse.json(
         { error: 'topic inválido ou demasiado longo' },
         { status: 400 },
@@ -273,7 +273,6 @@ export async function POST(req: Request) {
 
     console.info('[cover:agent] request', {
       mode,
-      phase,
       topicPreview: normalizedTopic.slice(0, 120),
       outlineChars: normalizedOutline.length,
       messagesCount: messageList.length,
@@ -335,7 +334,6 @@ export async function POST(req: Request) {
 
     console.info('[cover:agent] response', {
       mode,
-      phase,
       finishReason: candidate?.finishReason ?? null,
       hasToolCalls: functionCalls.length > 0,
       toolNames,
