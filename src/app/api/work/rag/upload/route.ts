@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase';
 import { parseUploadedFile, chunkText } from '@/lib/work/rag-parser';
 import { storeDocumentChunks } from '@/lib/work/rag-service';
 
+const MAX_PER_FILE = 10 * 1024 * 1024;   // 10 MB por ficheiro
+const MAX_TOTAL    = 50 * 1024 * 1024;   // 50 MB total por pedido
+
 export async function POST(req: Request) {
   const { user, error: authError } = await requireAuth();
   if (authError || !user) return authError;
@@ -13,66 +16,96 @@ export async function POST(req: Request) {
 
   try {
     const formData = await req.formData();
-    const file = formData.get('file') as File | null;
-    const sessionId = formData.get('sessionId') as string | null;
+    const sessionId  = formData.get('sessionId') as string | null;
     const sourceType = (formData.get('sourceType') as string) ?? 'reference';
 
-    if (!file || !sessionId) {
-      return NextResponse.json({ error: 'file e sessionId obrigatórios' }, { status: 400 });
+    if (!sessionId) {
+      return NextResponse.json({ error: 'sessionId obrigatório' }, { status: 400 });
     }
 
-    const MAX_SIZE = 10 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'Ficheiro demasiado grande (máx 10MB)' }, { status: 413 });
+    // Recolher todos os ficheiros enviados (campo 'file' ou 'files[]')
+    const rawFiles = [
+      ...formData.getAll('file'),
+      ...formData.getAll('files[]'),
+    ].filter((v): v is File => v instanceof File);
+
+    if (rawFiles.length === 0) {
+      return NextResponse.json({ error: 'Nenhum ficheiro enviado' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = await parseUploadedFile(buffer, file.name);
-    const chunks = chunkText(parsed.text);
+    // Validar tamanho total (50 MB)
+    const totalSize = rawFiles.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > MAX_TOTAL) {
+      return NextResponse.json(
+        {
+          error: `Total dos ficheiros excede 50 MB (${(totalSize / 1024 / 1024).toFixed(1)} MB enviados)`,
+        },
+        { status: 413 },
+      );
+    }
 
     const supabase = await createClient();
-    const { data: source, error: srcErr } = await supabase
-      .from('work_rag_sources')
-      .insert({
-        session_id: sessionId,
-        user_id: user.id,
-        filename: file.name,
-        file_type: parsed.fileType,
-        source_type: sourceType,
-        char_count: parsed.charCount,
-      })
-      .select('id')
-      .single();
-    if (srcErr || !source) throw new Error(srcErr?.message ?? 'Erro ao criar fonte RAG');
 
-    await storeDocumentChunks(
-      sessionId,
-      user.id,
-      source.id,
-      chunks,
-      { filename: file.name, source_type: sourceType },
+    // Processar todos em paralelo
+    const results = await Promise.all(
+      rawFiles.map(async (file) => {
+        if (file.size > MAX_PER_FILE) {
+          return { ok: false, filename: file.name, error: 'Ficheiro excede 10 MB' };
+        }
+
+        try {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const parsed = await parseUploadedFile(buffer, file.name);
+          const chunks  = chunkText(parsed.text);
+
+          const { data: source, error: srcErr } = await supabase
+            .from('work_rag_sources')
+            .insert({
+              session_id:  sessionId,
+              user_id:     user.id,
+              filename:    file.name,
+              file_type:   parsed.fileType,
+              source_type: sourceType,
+              char_count:  parsed.charCount,
+            })
+            .select('id')
+            .single();
+
+          if (srcErr || !source) throw new Error(srcErr?.message ?? 'Erro ao criar fonte RAG');
+
+          await storeDocumentChunks(
+            sessionId,
+            user.id,
+            source.id,
+            chunks,
+            { filename: file.name, source_type: sourceType },
+          );
+
+          if (sourceType === 'institution_rules') {
+            await supabase
+              .from('work_sessions')
+              .update({ institution_rules: parsed.text.slice(0, 8000) })
+              .eq('id', sessionId)
+              .eq('user_id', user.id);
+          }
+
+          return { ok: true, sourceId: source.id, chunksStored: chunks.length, filename: file.name };
+        } catch (err: any) {
+          return { ok: false, filename: file.name, error: err.message ?? 'Erro interno' };
+        }
+      }),
     );
 
-    if (sourceType === 'institution_rules') {
+    // Activar RAG se pelo menos um ficheiro foi guardado
+    if (results.some(r => r.ok)) {
       await supabase
         .from('work_sessions')
-        .update({ institution_rules: parsed.text.slice(0, 8000) })
+        .update({ rag_enabled: true })
         .eq('id', sessionId)
         .eq('user_id', user.id);
     }
 
-    await supabase
-      .from('work_sessions')
-      .update({ rag_enabled: true })
-      .eq('id', sessionId)
-      .eq('user_id', user.id);
-
-    return NextResponse.json({
-      ok: true,
-      sourceId: source.id,
-      chunksStored: chunks.length,
-      filename: file.name,
-    });
+    return NextResponse.json({ results });
   } catch (err: any) {
     console.error('[rag/upload]', err);
     return NextResponse.json({ error: err.message ?? 'Erro interno' }, { status: 500 });

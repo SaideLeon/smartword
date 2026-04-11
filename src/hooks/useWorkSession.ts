@@ -373,32 +373,78 @@ export function useWorkSession() {
     await generateOutline(session.topic, { sessionId: session.id });
   }, [generateOutline, session]);
 
+  /**
+   * Upload de múltiplos ficheiros em simultâneo.
+   * Limite total: 50 MB por chamada.
+   * Retorna array com o resultado de cada ficheiro ({ ok, filename, sourceId?, chunksStored?, error? }).
+   */
+  const uploadRagFiles = useCallback(async (
+    files: File[],
+    sessionId: string,
+    sourceType: 'reference' | 'institution_rules' = 'reference',
+  ) => {
+    if (files.length === 0) return [];
+
+    const MAX_TOTAL = 50 * 1024 * 1024;
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > MAX_TOTAL) {
+      throw new Error(
+        `Total dos ficheiros excede 50 MB (${(totalSize / 1024 / 1024).toFixed(1)} MB seleccionados)`,
+      );
+    }
+
+    setUploadingRag(true);
+    try {
+      const formData = new FormData();
+      formData.append('sessionId', sessionId);
+      formData.append('sourceType', sourceType);
+      for (const file of files) {
+        formData.append('files[]', file);
+      }
+
+      const res = await fetch('/api/work/rag/upload', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? 'Erro ao carregar ficheiros');
+      }
+
+      const data = await res.json() as { results: Array<{
+        ok: boolean;
+        filename: string;
+        sourceId?: string;
+        chunksStored?: number;
+        error?: string;
+      }> };
+
+      setRagSources(prev => [
+        ...prev,
+        ...data.results
+          .filter(r => r.ok && r.sourceId)
+          .map(r => ({
+            id:         r.sourceId!,
+            filename:   r.filename,
+            chunks:     r.chunksStored ?? 0,
+            sourceType,
+          })),
+      ]);
+
+      return data.results;
+    } finally {
+      setUploadingRag(false);
+    }
+  }, []);
+
+  /** @deprecated Use uploadRagFiles (aceita array). Mantido por retrocompatibilidade. */
   const uploadRagFile = useCallback(async (
     file: File,
     sessionId: string,
     sourceType: 'reference' | 'institution_rules' = 'reference',
   ) => {
-    setUploadingRag(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', sessionId);
-      formData.append('sourceType', sourceType);
-
-      const res = await fetch('/api/work/rag/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Erro ao carregar ficheiro');
-      const data = await res.json();
-      setRagSources(prev => [...prev, {
-        id: data.sourceId,
-        filename: file.name,
-        chunks: data.chunksStored,
-        sourceType,
-      }]);
-      return data;
-    } finally {
-      setUploadingRag(false);
-    }
-  }, []);
+    const results = await uploadRagFiles([file], sessionId, sourceType);
+    const r = results[0];
+    if (!r?.ok) throw new Error(r?.error ?? 'Erro ao carregar ficheiro');
+    return { ok: true, sourceId: r.sourceId, chunksStored: r.chunksStored };
+  }, [uploadRagFiles]);
 
   const approveOutline = useCallback(async (outline: string) => {
     if (!session) return;
@@ -597,7 +643,7 @@ export function useWorkSession() {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession,
-    isSectionRegenerated, ragSources, uploadingRag, uploadRagFile,
+    isSectionRegenerated, ragSources, uploadingRag, uploadRagFile, uploadRagFiles,
     startWithResources, skipResources, confirmResources,
   };
 }

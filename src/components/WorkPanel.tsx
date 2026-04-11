@@ -204,7 +204,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession, isSectionRegenerated,
-    skipResources, confirmResources, uploadRagFile, uploadingRag,
+    skipResources, confirmResources, uploadRagFile, uploadRagFiles, uploadingRag,
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
@@ -682,7 +682,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {step === 'resource_upload' && session && (
             <ResourceUploadStep
               sessionId={session.id}
-              onUpload={uploadRagFile}
+              onUploadMany={uploadRagFiles}
               onConfirm={confirmResources}
               onSkip={skipResources}
               uploading={uploadingRag}
