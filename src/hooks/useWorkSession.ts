@@ -19,6 +19,7 @@ import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
 
 export type WorkStep =
   | 'idle'
+  | 'resource_upload'
   | 'topic_input'
   | 'generating_outline'
   | 'review_outline'
@@ -215,6 +216,13 @@ export function useWorkSession() {
     Pick<WorkSessionRecord, 'id' | 'topic' | 'status' | 'created_at' | 'updated_at'>[]
   >([]);
   const [regeneratedSections, setRegeneratedSections] = useState<Set<number>>(new Set());
+  const [uploadingRag, setUploadingRag] = useState(false);
+  const [ragSources, setRagSources] = useState<Array<{
+    id: string;
+    filename: string;
+    chunks: number;
+    sourceType: 'reference' | 'institution_rules';
+  }>>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
@@ -225,10 +233,17 @@ export function useWorkSession() {
     setActiveSectionIdx(null);
     setError(null);
     setRegeneratedSections(new Set());
+    setRagSources([]);
+    setUploadingRag(false);
   }, []);
 
   const startNew = useCallback(() => {
     setStep('topic_input');
+    setError(null);
+  }, []);
+
+  const startWithResources = useCallback(() => {
+    setStep('resource_upload');
     setError(null);
   }, []);
 
@@ -329,8 +344,61 @@ export function useWorkSession() {
   }, []);
 
   const submitTopic = useCallback(async (topic: string) => {
-    await generateOutline(topic);
-  }, [generateOutline]);
+    setError(null);
+    try {
+      const sessionRes = await fetch('/api/work/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic }),
+      });
+      if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
+      const newSession: WorkSessionRecord = await sessionRes.json();
+      setSession(newSession);
+      setStep('resource_upload');
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, []);
+
+  const confirmResources = useCallback(async () => {
+    if (!session) return;
+    await generateOutline(session.topic, { sessionId: session.id });
+  }, [generateOutline, session]);
+
+  const skipResources = useCallback(async () => {
+    if (!session) {
+      setStep('topic_input');
+      return;
+    }
+    await generateOutline(session.topic, { sessionId: session.id });
+  }, [generateOutline, session]);
+
+  const uploadRagFile = useCallback(async (
+    file: File,
+    sessionId: string,
+    sourceType: 'reference' | 'institution_rules' = 'reference',
+  ) => {
+    setUploadingRag(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionId', sessionId);
+      formData.append('sourceType', sourceType);
+
+      const res = await fetch('/api/work/rag/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Erro ao carregar ficheiro');
+      const data = await res.json();
+      setRagSources(prev => [...prev, {
+        id: data.sourceId,
+        filename: file.name,
+        chunks: data.chunksStored,
+        sourceType,
+      }]);
+      return data;
+    } finally {
+      setUploadingRag(false);
+    }
+  }, []);
 
   const approveOutline = useCallback(async (outline: string) => {
     if (!session) return;
@@ -529,6 +597,7 @@ export function useWorkSession() {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession,
-    isSectionRegenerated,
+    isSectionRegenerated, ragSources, uploadingRag, uploadRagFile,
+    startWithResources, skipResources, confirmResources,
   };
 }

@@ -25,4 +25,13 @@ export interface WorkSessionRecord {
   research_generated_at: string | null;
   /** Dados de capa persistidos — restaurados automaticamente ao retomar a sessão. */
   cover_data: CoverData | null;
+  rag_enabled?: boolean;
+  rag_ficha?: {
+    autores?: string[];
+    obras?: string[];
+    conceitos_chave?: string[];
+    normas_institucionais?: string[];
+    resumo_fontes?: string;
+  } | null;
+  institution_rules?: string | null;
 }
