@@ -269,12 +269,21 @@ export function useCoverAgent() {
     }));
   }, []);
 
+  const chooseCover = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      step: 'awaiting_form',
+      error: null,
+    }));
+  }, []);
+
   return {
     ...state,
     askAboutCover,
     handleUserResponse,
     submitCoverData,
     restoreCoverData,
+    chooseCover,
     chooseWithoutCover,
     reset,
   };
