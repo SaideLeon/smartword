@@ -149,7 +149,7 @@ export function ResourceUploadStep({ sessionId, onUploadMany, onConfirm, onSkip,
           {isUploading ? 'A processar…' : 'Clica para seleccionar ficheiros'}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          PDF, DOCX ou TXT — até {MAX_TOTAL_MB} MB no total
+          PDF, DOCX, TXT, MD, PNG, JPG, MP3 ou WAV — até {MAX_TOTAL_MB} MB no total
         </p>
         {totalBytes > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
@@ -160,7 +160,7 @@ export function ResourceUploadStep({ sessionId, onUploadMany, onConfirm, onSkip,
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.docx,.txt,.md"
+          accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.mp3,.wav"
           onChange={handleFileChange}
           className="hidden"
           disabled={isUploading || uploading}

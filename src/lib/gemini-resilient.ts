@@ -265,3 +265,35 @@ export async function geminiEmbedDocumentBatch(
 
   return embeddings;
 }
+
+export interface InlineDataPart {
+  inlineData: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+export async function geminiEmbedMultimodal(part: InlineDataPart): Promise<number[]> {
+  const keys = collectGeminiKeys();
+  if (keys.length === 0) throw new Error('GEMINI_API_KEY não configurada.');
+
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: keys[i] });
+      const result = await ai.models.embedContent({
+        model: EMBED_MODEL,
+        contents: part,
+        config: { outputDimensionality: EMBED_DIMS },
+      });
+
+      const values = result.embeddings[0].values;
+      return normalizeVector(values);
+    } catch (error: any) {
+      const status = extractStatusFromError(error);
+      if (i < keys.length - 1 && canRetryWithNextKey(status)) continue;
+      throw new Error(error?.message ?? 'Erro ao gerar embedding multimodal.');
+    }
+  }
+
+  throw new Error('Falha ao gerar embedding multimodal.');
+}

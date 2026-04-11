@@ -1,11 +1,31 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, requireFeatureAccess } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase';
-import { parseUploadedFile, chunkText } from '@/lib/work/rag-parser';
-import { storeDocumentChunks } from '@/lib/work/rag-service';
+import { parseUploadedFile } from '@/lib/work/rag-parser';
+import { storeDocumentSource } from '@/lib/work/rag-service';
 
 const MAX_PER_FILE = 10 * 1024 * 1024;   // 10 MB por ficheiro
 const MAX_TOTAL    = 50 * 1024 * 1024;   // 50 MB total por pedido
+
+
+const ACCEPTED_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/markdown',
+  'image/png',
+  'image/jpeg',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/x-wav',
+]);
+
+function isAcceptedFile(file: File): boolean {
+  if (file.type && ACCEPTED_TYPES.has(file.type)) return true;
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return ['pdf', 'docx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'mp3', 'wav'].includes(ext);
+}
+
 
 export async function POST(req: Request) {
   const { user, error: authError } = await requireAuth();
@@ -55,8 +75,11 @@ export async function POST(req: Request) {
 
         try {
           const buffer = Buffer.from(await file.arrayBuffer());
+          if (!isAcceptedFile(file)) {
+            return { ok: false, filename: file.name, error: `Tipo não suportado: ${file.type || 'desconhecido'}` };
+          }
+
           const parsed = await parseUploadedFile(buffer, file.name);
-          const chunks  = chunkText(parsed.text);
 
           const { data: source, error: srcErr } = await supabase
             .from('work_rag_sources')
@@ -73,23 +96,28 @@ export async function POST(req: Request) {
 
           if (srcErr || !source) throw new Error(srcErr?.message ?? 'Erro ao criar fonte RAG');
 
-          await storeDocumentChunks(
+          await storeDocumentSource(
             sessionId,
             user.id,
             source.id,
-            chunks,
-            { filename: file.name, source_type: sourceType },
+            parsed,
+            { filename: file.name, source_type: sourceType as 'reference' | 'institution_rules' },
           );
 
-          if (sourceType === 'institution_rules') {
+          if (sourceType === 'institution_rules' && parsed.type === 'text' && parsed.textChunks?.length) {
             await supabase
               .from('work_sessions')
-              .update({ institution_rules: parsed.text.slice(0, 8000) })
+              .update({ institution_rules: parsed.textChunks.join('\n\n').slice(0, 8000) })
               .eq('id', sessionId)
               .eq('user_id', user.id);
           }
 
-          return { ok: true, sourceId: source.id, chunksStored: chunks.length, filename: file.name };
+          return {
+            ok: true,
+            sourceId: source.id,
+            chunksStored: parsed.textChunks?.length ?? parsed.binaryChunks?.length ?? 0,
+            filename: file.name,
+          };
         } catch (err: any) {
           return { ok: false, filename: file.name, error: err.message ?? 'Erro interno' };
         }

@@ -1,72 +1,80 @@
-import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase';
+import { geminiEmbedDocument, geminiEmbedMultimodal, geminiEmbedQuery, geminiGenerateText } from '@/lib/gemini-resilient';
+import type { ParsedSource, RagChunkMetadata, RagChunkResult } from './rag-types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-
-function normalizeVector(values: number[]): number[] {
-  const norm = Math.sqrt(values.reduce((sum, v) => sum + v * v, 0));
-  if (norm === 0) return values;
-  return values.map(v => v / norm);
-}
-
-export async function embedDocument(text: string): Promise<number[]> {
-  const result = await ai.models.embedContent({
-    model: 'gemini-embedding-001',
-    contents: text,
-    config: {
-      taskType: 'RETRIEVAL_DOCUMENT',
-      outputDimensionality: 768,
-    },
-  });
-
-  return normalizeVector(result.embeddings?.[0]?.values ?? []);
-}
-
-export async function embedQuery(text: string): Promise<number[]> {
-  const result = await ai.models.embedContent({
-    model: 'gemini-embedding-001',
-    contents: text,
-    config: {
-      taskType: 'RETRIEVAL_QUERY',
-      outputDimensionality: 768,
-    },
-  });
-
-  return normalizeVector(result.embeddings?.[0]?.values ?? []);
-}
-
-export async function storeDocumentChunks(
+export async function storeDocumentSource(
   sessionId: string,
   userId: string,
   sourceId: string,
-  chunks: string[],
-  metadata: Record<string, unknown>,
+  parsed: ParsedSource,
+  baseMeta: Pick<RagChunkMetadata, 'filename' | 'source_type'>,
 ): Promise<void> {
   const supabase = await createClient();
 
-  for (let i = 0; i < chunks.length; i++) {
-    const embedding = await embedDocument(chunks[i]);
-    const { error } = await supabase.from('work_rag_chunks').insert({
-      source_id: sourceId,
-      session_id: sessionId,
-      user_id: userId,
-      chunk_index: i,
-      chunk_text: chunks[i],
-      embedding: `[${embedding.join(',')}]`,
-      metadata,
-    });
-    if (error) throw new Error(error.message);
+  if (parsed.type === 'text' && parsed.textChunks) {
+    for (let i = 0; i < parsed.textChunks.length; i++) {
+      const chunkText = parsed.textChunks[i];
+      const embedding = await geminiEmbedDocument(chunkText, baseMeta.filename);
 
-    if (i > 0 && i % 10 === 0) {
-      await new Promise(r => setTimeout(r, 150));
+      const meta: RagChunkMetadata = {
+        ...baseMeta,
+        modal_type: 'text',
+      };
+
+      const { error } = await supabase.from('work_rag_chunks').insert({
+        source_id: sourceId,
+        session_id: sessionId,
+        user_id: userId,
+        chunk_index: i,
+        chunk_text: chunkText,
+        embedding: `[${embedding.join(',')}]`,
+        metadata: meta,
+      });
+
+      if (error) throw new Error(error.message);
+
+      if (i > 0 && i % 10 === 0) {
+        await new Promise(r => setTimeout(r, 150));
+      }
+    }
+
+    return;
+  }
+
+  if (parsed.binaryChunks) {
+    const modalType: RagChunkMetadata['modal_type'] =
+      parsed.type === 'pdf_pages' ? 'pdf_visual' : parsed.type === 'image' ? 'image' : 'audio';
+
+    for (let i = 0; i < parsed.binaryChunks.length; i++) {
+      const chunk = parsed.binaryChunks[i];
+      const embedding = await geminiEmbedMultimodal({
+        inlineData: {
+          mimeType: chunk.mimeType,
+          data: chunk.data,
+        },
+      });
+
+      const meta: RagChunkMetadata = {
+        ...baseMeta,
+        modal_type: modalType,
+        page_group: chunk.pageGroup,
+      };
+
+      const { error } = await supabase.from('work_rag_chunks').insert({
+        source_id: sourceId,
+        session_id: sessionId,
+        user_id: userId,
+        chunk_index: i,
+        chunk_text: `[${modalType.toUpperCase()}] ${chunk.label} — ${baseMeta.filename}`,
+        embedding: `[${embedding.join(',')}]`,
+        metadata: meta,
+      });
+
+      if (error) throw new Error(error.message);
+
+      await new Promise(r => setTimeout(r, 300));
     }
   }
-}
-
-export interface RagChunkResult {
-  chunk_text: string;
-  score: number;
-  metadata: Record<string, unknown>;
 }
 
 export async function semanticSearch(
@@ -75,7 +83,7 @@ export async function semanticSearch(
   topK = 8,
 ): Promise<RagChunkResult[]> {
   const supabase = await createClient();
-  const queryEmbedding = await embedQuery(query);
+  const queryEmbedding = await geminiEmbedQuery(query);
 
   const { data, error } = await supabase.rpc('match_rag_chunks', {
     p_session_id: sessionId,
@@ -101,7 +109,6 @@ export async function generateRagFicha(
 ): Promise<RagFicha> {
   const chunks = await semanticSearch(sessionId, topic, 20);
   const context = chunks.map(c => c.chunk_text).join('\n\n---\n\n');
-  const { geminiGenerateText } = await import('@/lib/gemini-resilient');
 
   const prompt = `
 Analisa os seguintes excertos de documentos académicos sobre o tema "${topic}".

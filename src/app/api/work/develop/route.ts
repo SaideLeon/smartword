@@ -238,10 +238,16 @@ export async function POST(req: Request) {
           ? `FICHA TÉCNICA:\nAutores: ${ficha.autores?.join('; ') ?? ''}\nObras: ${ficha.obras?.join('; ') ?? ''}\nConceitos: ${ficha.conceitos_chave?.join(', ') ?? ''}\n`
           : '';
         const chunksTxt = ragChunks
-          .map((c, i) => `[Excerto ${i + 1}]\n${c.chunk_text}`)
+          .map((c, i) => {
+            const icon =
+              c.metadata?.modal_type === 'image' ? '[FIGURA]' :
+              c.metadata?.modal_type === 'pdf_visual' ? '[PDF VISUAL]' :
+              c.metadata?.modal_type === 'audio' ? '[ÁUDIO]' : '[TEXTO]';
+            return `${icon} Excerto ${i + 1}:\n${c.chunk_text}`;
+          })
           .join('\n\n---\n\n');
 
-        ragContext = `\n[BASE DE CONHECIMENTO — DOCUMENTOS CARREGADOS]\n${fichaTxt}\nEXCERTOS RELEVANTES PARA ESTA SECÇÃO:\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos desta secção nos excertos acima\n- Cita os autores reais da ficha técnica (formato APA 7.ª)\n- Não inventes referências nem autores — usa APENAS os listados\n- Se houver normas institucionais, respeita a estrutura e linguagem prescritas\n`;
+        ragContext = `\n[BASE DE CONHECIMENTO MULTIMODAL — DOCUMENTOS CARREGADOS]\n${fichaTxt}\nEXCERTOS RELEVANTES (incluindo conteúdo visual e áudio indexado):\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos nos excertos acima\n- [FIGURA] e [PDF VISUAL] indicam que o conteúdo foi extraído visualmente\n- [ÁUDIO] indica que foi extraído de gravação de voz ou conferência\n- Cita os autores reais da ficha técnica (APA 7.ª)\n- Não inventes referências — usa APENAS as listadas\n`;
       }
     }
 
