@@ -41,7 +41,12 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
+  const [autoMode, setAutoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const autoModeRef = useRef(false);
+  const handleInsertRef = useRef<(idx: number) => void>(() => {});
+  const developSectionRef = useRef<(idx: number) => void>(() => {});
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionsRegionId = 'tcc-recent-sessions';
   const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
 
@@ -59,6 +64,10 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   useEffect(() => {
     if (showSessions) loadSessions();
   }, [showSessions, loadSessions]);
+
+  useEffect(() => {
+    autoModeRef.current = autoMode;
+  }, [autoMode]);
 
   useEffect(() => {
     if (!processingButtonId) return;
@@ -168,6 +177,9 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   };
 
   const handleResetSession = () => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    autoModeRef.current = false;
+    setAutoMode(false);
     coverAgent.reset();
     resetExportPreferences();
     setShowCoverModal(false);
@@ -217,11 +229,60 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
     });
   }, [session, insertSection, onInsert, editorMarkdown, setContent]);
 
+  useEffect(() => {
+    handleInsertRef.current = handleInsertSection;
+  }, [handleInsertSection]);
+
+  useEffect(() => {
+    developSectionRef.current = developSection;
+  }, [developSection]);
+
+  useEffect(() => {
+    if (!autoModeRef.current || step !== 'section_ready' || activeSectionIdx === null) return;
+    handleInsertRef.current(activeSectionIdx);
+  }, [step, activeSectionIdx]);
+
+  useEffect(() => {
+    if (!autoModeRef.current || step !== 'outline_approved' || !session) return;
+
+    const nextPending = session.sections.find(s => s.status === 'pending');
+    if (nextPending) {
+      autoTimerRef.current = setTimeout(() => {
+        if (!autoModeRef.current) return;
+        setProcessingButtonId(`develop-section-${nextPending.index}`);
+        developSectionRef.current(nextPending.index);
+      }, 900);
+
+      return () => {
+        if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+      };
+    }
+
+    autoModeRef.current = false;
+    setAutoMode(false);
+  }, [step, session]);
+
   const statusLabel = (s: TccSection) => {
     if (s.status === 'inserted') return { label: 'Inserido ✓', color: C.gold };
     if (s.status === 'developed') return { label: 'Desenvolvido', color: C.accent };
     return { label: 'Pendente', color: C.muted };
   };
+
+  const startAutoGenerate = useCallback(() => {
+    if (!session) return;
+    const firstPending = session.sections.find(s => s.status === 'pending');
+    if (!firstPending) return;
+    autoModeRef.current = true;
+    setAutoMode(true);
+    setProcessingButtonId(`develop-section-${firstPending.index}`);
+    developSection(firstPending.index);
+  }, [session, developSection]);
+
+  const cancelAutoGenerate = useCallback(() => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    autoModeRef.current = false;
+    setAutoMode(false);
+  }, []);
 
   return (
     <div
@@ -280,7 +341,14 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
               <span className="text-[11px] text-[var(--panel-text-faint)]">Compressão de contexto automática — sem limites de janela.</span>
             </p>
             <div className="flex flex-col gap-2.5">
-              <Btn onClick={() => { setProcessingButtonId('start-new'); startNew(); setShowSessions(false); }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar novo TCC</Btn>
+              <Btn onClick={() => {
+                setProcessingButtonId('start-new');
+                if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+                autoModeRef.current = false;
+                setAutoMode(false);
+                startNew();
+                setShowSessions(false);
+              }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar novo TCC</Btn>
               <Btn onClick={() => { setProcessingButtonId('toggle-sessions'); setShowSessions((v) => !v); }} color={C.muted} outline processing={isProcessing('toggle-sessions')} ariaLabel={showSessions ? 'Ocultar lista de sessões anteriores de TCC' : 'Mostrar lista de sessões anteriores de TCC'} ariaExpanded={showSessions} ariaControls={sessionsRegionId}>↩ Retomar sessão anterior</Btn>
             </div>
 
@@ -423,7 +491,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
           </div>
         )}
 
-        {(step === 'outline_approved' || step === 'section_ready') &&
+        {(step === 'outline_approved' || step === 'developing' || step === 'section_ready') &&
          (coverAgent.step === 'done_with_cover' || coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') &&
          session && (
           <div className="flex flex-col gap-2">
@@ -433,6 +501,34 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
             <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
               ↕ Cada secção principal começa numa nova página. Subsecções (1.1, 1.2…) fluem juntas no mesmo bloco.
             </div>
+
+            {autoMode ? (
+              <div className="flex items-center justify-between rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/10 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <ProcessingBars height={12} />
+                  <span className="font-mono text-[10px] text-[var(--panel-accent)]">
+                    A gerar automaticamente…
+                  </span>
+                </div>
+                <button
+                  onClick={cancelAutoGenerate}
+                  className="font-mono text-[10px] text-[var(--panel-text-faint)] underline transition-colors hover:text-[var(--panel-muted)]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              session.sections.some(s => s.status === 'pending') && (
+                <Btn
+                  color={C.gold}
+                  flex
+                  onClick={startAutoGenerate}
+                  disabled={step === 'developing'}
+                >
+                  ▶ Gerar todas as secções automaticamente
+                </Btn>
+              )
+            )}
 
             {session.sections.map((sec) => {
               const { label, color } = statusLabel(sec);
