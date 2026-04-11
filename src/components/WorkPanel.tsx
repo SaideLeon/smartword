@@ -217,8 +217,13 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [resumeRestoreSessionId, setResumeRestoreSessionId] = useState<string | null>(null);
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [autoMode, setAutoMode] = useState(false);
   const sessionsTopRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const autoModeRef = useRef(false);
+  const handleInsertRef = useRef<(idx: number) => void>(() => {});
+  const developSectionRef = useRef<(idx: number) => void>(() => {});
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionsRegionId = 'work-recent-sessions';
   const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
 
@@ -269,6 +274,10 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (!showSessions) return;
     sessionsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [showSessions, recentSessions.length]);
+
+  useEffect(() => {
+    autoModeRef.current = autoMode;
+  }, [autoMode]);
 
   // ── Restaurar sessão retomada ─────────────────────────────────────────────
   // Usa buildReconstructedContent para incluir headings pai automaticamente
@@ -419,6 +428,39 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   }, [session, editorMarkdown, isSectionRegenerated, insertSection, onInsert, setContent]);
 
   useEffect(() => {
+    handleInsertRef.current = handleInsertSection;
+  }, [handleInsertSection]);
+
+  useEffect(() => {
+    developSectionRef.current = developSection;
+  }, [developSection]);
+
+  useEffect(() => {
+    if (!autoModeRef.current || step !== 'section_ready' || activeSectionIdx === null) return;
+    handleInsertRef.current(activeSectionIdx);
+  }, [step, activeSectionIdx]);
+
+  useEffect(() => {
+    if (!autoModeRef.current || step !== 'outline_approved' || !session) return;
+
+    const nextPending = session.sections.find(s => s.status === 'pending');
+    if (nextPending) {
+      autoTimerRef.current = setTimeout(() => {
+        if (!autoModeRef.current) return;
+        setProcessingButtonId(`develop-section-${nextPending.index}`);
+        developSectionRef.current(nextPending.index);
+      }, 900);
+
+      return () => {
+        if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+      };
+    }
+
+    autoModeRef.current = false;
+    setAutoMode(false);
+  }, [step, session]);
+
+  useEffect(() => {
     if (!processingButtonId) return;
 
     const shouldClear =
@@ -441,6 +483,22 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (status === 'developed') return { label: 'Desenvolvido', color: C.accent };
     return { label: 'Pendente', color: C.muted };
   };
+
+  const startAutoGenerate = useCallback(() => {
+    if (!session) return;
+    const firstPending = session.sections.find(s => s.status === 'pending');
+    if (!firstPending) return;
+    autoModeRef.current = true;
+    setAutoMode(true);
+    setProcessingButtonId(`develop-section-${firstPending.index}`);
+    developSection(firstPending.index);
+  }, [session, developSection]);
+
+  const cancelAutoGenerate = useCallback(() => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    autoModeRef.current = false;
+    setAutoMode(false);
+  }, []);
 
   return (
     <>
@@ -468,7 +526,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           <div className="flex gap-2">
             {session && (
               <button
-                onClick={() => { setProcessingButtonId('reset-work'); coverAgent.reset(); reset(); resetExportPreferences(); }}
+                onClick={() => {
+                  setProcessingButtonId('reset-work');
+                  if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+                  autoModeRef.current = false;
+                  setAutoMode(false);
+                  coverAgent.reset();
+                  reset();
+                  resetExportPreferences();
+                }}
                 className={`rounded px-1.5 py-0.5 font-mono text-lg leading-none text-[var(--panel-muted)] ${isProcessing('reset-work') ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                 title="Novo trabalho"
                 aria-label="Iniciar novo trabalho"
@@ -567,7 +633,14 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 ))}
               </div>
               <div className="flex flex-col gap-2.5">
-                <Btn onClick={() => { setProcessingButtonId('start-new'); startNew(); setShowSessions(false); }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar trabalho</Btn>
+                <Btn onClick={() => {
+                  setProcessingButtonId('start-new');
+                  if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+                  autoModeRef.current = false;
+                  setAutoMode(false);
+                  startNew();
+                  setShowSessions(false);
+                }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar trabalho</Btn>
                 <Btn
                   onClick={() => { setProcessingButtonId('toggle-sessions'); setShowSessions(v => !v); }}
                   color={C.muted}
@@ -740,6 +813,34 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
                 ↕ Cada secção principal começa numa nova página. O título "Desenvolvimento Teórico" é inserido automaticamente com a primeira subsecção.
               </div>
+
+              {autoMode ? (
+                <div className="flex items-center justify-between rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/10 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <ProcessingBars height={12} />
+                    <span className="font-mono text-[10px] text-[var(--panel-accent)]">
+                      A gerar automaticamente…
+                    </span>
+                  </div>
+                  <button
+                    onClick={cancelAutoGenerate}
+                    className="font-mono text-[10px] text-[var(--panel-text-faint)] underline transition-colors hover:text-[var(--panel-muted)]"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                session.sections.some(s => s.status === 'pending') && (
+                  <Btn
+                    color={C.gold}
+                    flex
+                    onClick={startAutoGenerate}
+                    disabled={step === 'developing'}
+                  >
+                    ▶ Gerar todas as secções automaticamente
+                  </Btn>
+                )
+              )}
 
               {session.sections.map(sec => {
                 const { label, color } = statusLabel(sec.status);
