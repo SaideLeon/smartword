@@ -101,7 +101,7 @@ export async function generateRagFicha(
 ): Promise<RagFicha> {
   const chunks = await semanticSearch(sessionId, topic, 20);
   const context = chunks.map(c => c.chunk_text).join('\n\n---\n\n');
-  const { geminiGenerateJSON } = await import('@/lib/gemini-resilient');
+  const { geminiGenerateText } = await import('@/lib/gemini-resilient');
 
   const prompt = `
 Analisa os seguintes excertos de documentos académicos sobre o tema "${topic}".
@@ -121,5 +121,23 @@ ${context}
 Responde APENAS com o JSON, sem explicação nem markdown.
 `;
 
-  return await geminiGenerateJSON<RagFicha>(prompt);
+  const raw = await geminiGenerateText({
+    messages: [
+      { role: 'system', content: 'Responde apenas com JSON válido.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.2,
+    maxOutputTokens: 1200,
+  });
+
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+  const parsed = JSON.parse(cleaned) as Partial<RagFicha>;
+
+  return {
+    autores: Array.isArray(parsed.autores) ? parsed.autores : [],
+    obras: Array.isArray(parsed.obras) ? parsed.obras : [],
+    conceitos_chave: Array.isArray(parsed.conceitos_chave) ? parsed.conceitos_chave : [],
+    normas_institucionais: Array.isArray(parsed.normas_institucionais) ? parsed.normas_institucionais : [],
+    resumo_fontes: typeof parsed.resumo_fontes === 'string' ? parsed.resumo_fontes : '',
+  };
 }
