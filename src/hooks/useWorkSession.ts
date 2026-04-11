@@ -408,17 +408,60 @@ export function useWorkSession() {
         throw new Error(body.error ?? 'Erro ao carregar ficheiros');
       }
 
-      const data = await res.json() as { results: Array<{
+      if (!res.body) {
+        throw new Error('Sem stream de resposta para upload');
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let donePayload: null | { results: Array<{
         ok: boolean;
         filename: string;
         sourceId?: string;
         chunksStored?: number;
         error?: string;
-      }> };
+      }> } = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split('\n\n');
+        buffer = chunks.pop() ?? '';
+
+        for (const entry of chunks) {
+          if (!entry.startsWith('data: ')) continue;
+          const event = JSON.parse(entry.slice(6)) as {
+            type?: string;
+            error?: string;
+            results?: Array<{
+              ok: boolean;
+              filename: string;
+              sourceId?: string;
+              chunksStored?: number;
+              error?: string;
+            }>;
+          };
+
+          if (event.type === 'fatal_error') {
+            throw new Error(event.error ?? 'Erro ao carregar ficheiros');
+          }
+
+          if (event.type === 'done' && event.results) {
+            donePayload = { results: event.results };
+          }
+        }
+      }
+
+      if (!donePayload) {
+        throw new Error('Upload concluído sem evento final');
+      }
 
       setRagSources(prev => [
         ...prev,
-        ...data.results
+        ...donePayload.results
           .filter(r => r.ok && r.sourceId)
           .map(r => ({
             id:         r.sourceId!,
@@ -428,7 +471,7 @@ export function useWorkSession() {
           })),
       ]);
 
-      return data.results;
+      return donePayload.results;
     } finally {
       setUploadingRag(false);
     }

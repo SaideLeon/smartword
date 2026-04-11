@@ -8,11 +8,14 @@ export async function storeDocumentSource(
   sourceId: string,
   parsed: ParsedSource,
   baseMeta: Pick<RagChunkMetadata, 'filename' | 'source_type'>,
+  onChunk?: (index: number, total: number) => void,
 ): Promise<void> {
   const supabase = await createClient();
 
   if (parsed.type === 'text' && parsed.textChunks) {
-    for (let i = 0; i < parsed.textChunks.length; i++) {
+    const total = parsed.textChunks.length;
+
+    for (let i = 0; i < total; i++) {
       const chunkText = parsed.textChunks[i];
       const embedding = await geminiEmbedDocument(chunkText, baseMeta.filename);
 
@@ -32,6 +35,7 @@ export async function storeDocumentSource(
       });
 
       if (error) throw new Error(error.message);
+      onChunk?.(i, total);
 
       if (i > 0 && i % 10 === 0) {
         await new Promise(r => setTimeout(r, 150));
@@ -42,10 +46,11 @@ export async function storeDocumentSource(
   }
 
   if (parsed.binaryChunks) {
+    const total = parsed.binaryChunks.length;
     const modalType: RagChunkMetadata['modal_type'] =
       parsed.type === 'pdf_pages' ? 'pdf_visual' : parsed.type === 'image' ? 'image' : 'audio';
 
-    for (let i = 0; i < parsed.binaryChunks.length; i++) {
+    for (let i = 0; i < total; i++) {
       const chunk = parsed.binaryChunks[i];
       const embedding = await geminiEmbedMultimodal({
         inlineData: {
@@ -71,6 +76,7 @@ export async function storeDocumentSource(
       });
 
       if (error) throw new Error(error.message);
+      onChunk?.(i, total);
 
       await new Promise(r => setTimeout(r, 300));
     }
