@@ -1,3 +1,4 @@
+import { PDFPage } from 'pdf-lib';
 import type { ParsedSource } from './rag-types';
 
 const PAGES_PER_CHUNK = 6;
@@ -29,7 +30,7 @@ async function splitPdfByPages(
       srcDoc,
       Array.from({ length: end - start }, (_, i) => start + i),
     );
-    pages.forEach(p => subDoc.addPage(p));
+    pages.forEach((p: PDFPage) => subDoc.addPage(p));
     const bytes = await subDoc.save();
     groups.push({
       data: Buffer.from(bytes),
