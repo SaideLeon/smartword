@@ -274,7 +274,6 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
             children: [
               new TextRun({
                 text: h.text,
-                bold: true,
                 font: FONT,
                 size: FONT_SIZE,
                 color: BLACK,
@@ -288,7 +287,6 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
           }),
           new TextRun({
             text: String(entryCounter),
-            bold: true,
             font: FONT,
             size: FONT_SIZE,
             color: BLACK,
