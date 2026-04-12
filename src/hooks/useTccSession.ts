@@ -402,7 +402,8 @@ export function useTccSession(): UseTccSession {
       outline: currentOutline,
     });
 
-    onInsert(textToInsert);
+    const finalText = isFirstInEditor ? `{toc}\n\n${textToInsert}` : textToInsert;
+    onInsert(finalText);
 
     // Marca como inserida no servidor
     try {
