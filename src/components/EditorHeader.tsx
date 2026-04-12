@@ -18,7 +18,16 @@ interface Props {
   onToggleTheme: () => void;
 }
 
-export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo, themeMode, onToggleTheme }: Props) {
+export function EditorHeader({
+  sidePanel,
+  canUndo,
+  canRedo,
+  onTogglePanel,
+  onUndo,
+  onRedo,
+  themeMode,
+  onToggleTheme,
+}: Props) {
   const { user, profile, plan, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);

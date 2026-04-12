@@ -3,11 +3,24 @@
 import {
   BookOpen, FileText, Building2, Clock, Users, Download,
   GraduationCap, Library, Briefcase, ThumbsUp, Sun, Moon,
-  ChevronRight, ArrowDown,
+  ChevronRight, ArrowDown, Maximize, Minimize,
 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
-function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light'; onToggleTheme: () => void }) {
+function LandingNav({
+  themeMode,
+  onToggleTheme,
+  onToggleFullscreen,
+  isFullscreen,
+  fullscreenSupported,
+}: {
+  themeMode: 'dark' | 'light';
+  onToggleTheme: () => void;
+  onToggleFullscreen: () => void;
+  isFullscreen: boolean;
+  fullscreenSupported: boolean;
+}) {
   return (
     <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-4 py-3 backdrop-blur md:px-12 md:py-4">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
@@ -17,6 +30,16 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
             <span className="font-serif text-xl italic text-[var(--gold2)]">Muneri</span>
           </div>
           <div className="flex items-center gap-2 md:hidden">
+            {fullscreenSupported && (
+              <button
+                type="button"
+                onClick={onToggleFullscreen}
+                className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+                aria-label={isFullscreen ? 'Sair de ecrã inteiro' : 'Entrar em ecrã inteiro'}
+              >
+                {isFullscreen ? <Minimize size={11} /> : <Maximize size={11} />}
+              </button>
+            )}
             <button
               type="button"
               onClick={onToggleTheme}
@@ -41,6 +64,17 @@ function LandingNav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light';
         </ul>
 
         <div className="hidden items-center gap-2 md:flex">
+          {fullscreenSupported && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+              aria-label={isFullscreen ? 'Sair de ecrã inteiro' : 'Entrar em ecrã inteiro'}
+            >
+              {isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
+              {isFullscreen ? 'Sair ecrã inteiro' : 'Ecrã inteiro'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onToggleTheme}
@@ -79,6 +113,27 @@ const features: [React.ReactNode, string, string][] = [
 
 export default function LandingPage() {
   const { themeMode, toggleThemeMode } = useThemeMode();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenSupported, setFullscreenSupported] = useState(false);
+
+  useEffect(() => {
+    setFullscreenSupported(typeof document !== 'undefined' && !!document.documentElement.requestFullscreen);
+    const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    syncFullscreenState();
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+    };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    if (!fullscreenSupported) return;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await document.documentElement.requestFullscreen();
+  }, [fullscreenSupported]);
 
   const themeVars = themeMode === 'dark'
     ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--gold:#d4b37b] [--gold2:#c9a96e] [--muted:#c8bfb4] [--faint:#8a7d6e] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--navBg:#0f0e0d] [--heroRight:#090908]'
@@ -86,7 +141,13 @@ export default function LandingPage() {
 
   return (
     <main className={`${themeVars} min-h-screen bg-[var(--parchment)] text-[var(--ink)]`}>
-      <LandingNav themeMode={themeMode} onToggleTheme={toggleThemeMode} />
+      <LandingNav
+        themeMode={themeMode}
+        onToggleTheme={toggleThemeMode}
+        onToggleFullscreen={handleToggleFullscreen}
+        isFullscreen={isFullscreen}
+        fullscreenSupported={fullscreenSupported}
+      />
 
       {/* ── HERO ── */}
       <section className="mx-auto grid w-full max-w-7xl gap-8 overflow-hidden px-5 py-10 sm:px-6 md:grid-cols-2 md:px-12 md:py-20">
