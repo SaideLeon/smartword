@@ -295,27 +295,12 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
       });
     });
 
-  // ── Nota de rodapé do índice ──────────────────────────────────────────────
-  const noteParagraph = new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: 320, after: 0, line: LINE_SPACING, lineRule: LINE_RULE },
-    children: [
-      new TextRun({
-        text: 'Índice automático · os números de página são actualizados ao abrir no Word (prima F9)',
-        italics: true,
-        size: 20,
-        color: '666666',
-        font: FONT,
-      }),
-    ],
-  });
-
   // ── Quebra de página após o índice ────────────────────────────────────────
   const pageBreakAfterToc = new Paragraph({
     children: [new PageBreak()],
   });
 
-  return [titleParagraph, separator, ...entries, noteParagraph, pageBreakAfterToc];
+  return [titleParagraph, separator, ...entries, pageBreakAfterToc];
 }
 
 // ── Nós inline ───────────────────────────────────────────────────────────────
