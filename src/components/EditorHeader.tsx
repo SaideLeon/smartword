@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Menu, Moon, Settings, Sun, X } from 'lucide-react';
+import { Maximize, Minimize, Menu, Moon, Settings, Sun, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,24 @@ interface Props {
   onRedo: () => void;
   themeMode: ThemeMode;
   onToggleTheme: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+  fullscreenSupported: boolean;
 }
 
-export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUndo, onRedo, themeMode, onToggleTheme }: Props) {
+export function EditorHeader({
+  sidePanel,
+  canUndo,
+  canRedo,
+  onTogglePanel,
+  onUndo,
+  onRedo,
+  themeMode,
+  onToggleTheme,
+  isFullscreen,
+  onToggleFullscreen,
+  fullscreenSupported,
+}: Props) {
   const { user, profile, plan, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -57,6 +72,16 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
 
         {/* Tema + status */}
         <div className="ml-1.5 flex items-center gap-1.5 border-l border-[var(--border)] pl-2">
+          {fullscreenSupported && (
+            <button
+              type="button"
+              aria-label={isFullscreen ? 'Sair de ecrã inteiro' : 'Entrar em ecrã inteiro'}
+              onClick={onToggleFullscreen}
+              className="press-feedback flex h-[30px] w-[30px] items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+            >
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </button>
+          )}
           <button
             type="button"
             aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
@@ -151,6 +176,16 @@ export function EditorHeader({ sidePanel, canUndo, canRedo, onTogglePanel, onUnd
           <div className="mt-3 flex items-center gap-2">
             <IconBtn aria-label="Desfazer" disabled={!canUndo} onClick={onUndo}>↶</IconBtn>
             <IconBtn aria-label="Refazer"  disabled={!canRedo} onClick={onRedo}>↷</IconBtn>
+            {fullscreenSupported && (
+              <button
+                type="button"
+                aria-label={isFullscreen ? 'Sair de ecrã inteiro' : 'Entrar em ecrã inteiro'}
+                onClick={onToggleFullscreen}
+                className="press-feedback flex h-[30px] w-[30px] items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+              >
+                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </button>
+            )}
             <button
               type="button"
               aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
