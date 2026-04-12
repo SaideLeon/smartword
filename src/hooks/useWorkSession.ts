@@ -133,7 +133,8 @@ function buildReconstructedContent(
     parts.push(parts.length === 0 ? body : `{pagebreak}\n\n${body}`);
   }
 
-  return parts.join('\n\n');
+  const body = parts.join('\n\n');
+  return body ? `{toc}\n\n${body}` : body;
 }
 
 // ── Secções fixas de fallback ─────────────────────────────────────────────────
