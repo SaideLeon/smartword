@@ -3,7 +3,7 @@ import {
   ExternalHyperlink, InternalHyperlink, Bookmark, IParagraphOptions, AlignmentType,
   convertMillimetersToTwip,
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
-  PageBreak, Footer, PageNumber, NumberFormat, SectionType,
+  PageBreak, Footer, PageNumber, NumberFormat, SectionType, TabStopType,
 } from 'docx';
 import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
 import { convertLatexToOmml } from './math-converter';
@@ -189,69 +189,84 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
 // e para documentos digitais os hyperlinks são a forma correcta de navegar.
 
 function buildStaticToc(headings: HeadingEntry[]): any[] {
+  // ── Constantes tipográficas ────────────────────────────────────────────────
+  const FONT = 'Times New Roman';
+  const FONT_SIZE = 24;
+  const LINE_SPACING = 360;
+  const LINE_RULE = 'auto' as any;
+  const BLACK = '000000';
+
+  // ── Título "Índice" ────────────────────────────────────────────────────────
   const titleParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 0, after: 360, line: 240, lineRule: 'auto' as any },
+    spacing: { before: 0, after: 440, line: LINE_SPACING, lineRule: LINE_RULE },
     children: [
       new TextRun({
-        text: 'ÍNDICE',
+        text: 'Índice',
         bold: true,
-        size: 24,
-        font: 'Times New Roman',
+        size: FONT_SIZE,
+        font: FONT,
+        color: BLACK,
       }),
     ],
   });
 
-  const separatorParagraph = new Paragraph({
-    spacing: { before: 0, after: 240, line: 240, lineRule: 'auto' as any },
+  // ── Linha separadora abaixo do título ─────────────────────────────────────
+  const separator = new Paragraph({
+    spacing: { before: 0, after: 200, line: LINE_SPACING, lineRule: LINE_RULE },
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: 6, color: 'AAAAAA', space: 4 },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: BLACK, space: 4 },
     },
     children: [],
   });
 
+  // ── Caso vazio ────────────────────────────────────────────────────────────
   if (headings.length === 0) {
     return [
       titleParagraph,
-      separatorParagraph,
+      separator,
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 120, after: 0, line: 240, lineRule: 'auto' as any },
+        spacing: { before: 120, after: 0, line: LINE_SPACING, lineRule: LINE_RULE },
         children: [
           new TextRun({
             text: '[Nenhuma secção encontrada no documento]',
             italics: true,
-            size: 20,
-            color: '888888',
-            font: 'Times New Roman',
+            size: FONT_SIZE,
+            color: BLACK,
+            font: FONT,
           }),
         ],
       }),
+      new Paragraph({ children: [new PageBreak()] }),
     ];
   }
 
-  const indentByLevel: Record<number, number> = {
-    1: 0,
-    2: convertMillimetersToTwip(6),
-    3: convertMillimetersToTwip(12),
-    4: convertMillimetersToTwip(18),
-    5: convertMillimetersToTwip(18),
-    6: convertMillimetersToTwip(18),
-  };
+  // ── Entradas do índice ─────────────────────────────────────────────────────
+  const INDENT_PER_LEVEL_MM = 6;
+
+  let entryCounter = 0;
 
   const entries = headings
     .filter(h => h.level <= 4)
     .map(h => {
-      const indent  = indentByLevel[h.level] ?? 0;
-      const isBold  = h.level === 1;
-      const fontSize = h.level === 1 ? 22 : 20;
+      entryCounter += 1;
+      const indentTwips = (h.level - 1) * convertMillimetersToTwip(INDENT_PER_LEVEL_MM);
 
       return new Paragraph({
-        indent: indent > 0 ? { left: indent } : undefined,
+        indent: indentTwips > 0 ? { left: indentTwips } : undefined,
+        tabStops: [
+          {
+            type: TabStopType.RIGHT,
+            position: PAGE_CONTENT_WIDTH_DXA,
+            leader: 'dot' as any,
+          },
+        ],
         spacing: {
-          before: isBold ? 120 : 60,
-          after:  isBold ? 60  : 40,
-          line: 240, lineRule: 'auto' as any,
+          before: h.level === 1 ? 200 : h.level === 2 ? 120 : 80,
+          after: h.level === 1 ? 60 : 40,
+          line: LINE_SPACING,
+          lineRule: LINE_RULE,
         },
         children: [
           new InternalHyperlink({
@@ -259,18 +274,50 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
             children: [
               new TextRun({
                 text: h.text,
-                bold: isBold,
-                font: 'Times New Roman',
-                size: fontSize,
-                color: '000000',
+                bold: true,
+                font: FONT,
+                size: FONT_SIZE,
+                color: BLACK,
               }),
             ],
+          }),
+          new TextRun({
+            text: '\t',
+            font: FONT,
+            size: FONT_SIZE,
+          }),
+          new TextRun({
+            text: String(entryCounter),
+            bold: true,
+            font: FONT,
+            size: FONT_SIZE,
+            color: BLACK,
           }),
         ],
       });
     });
 
-  return [titleParagraph, separatorParagraph, ...entries];
+  // ── Nota de rodapé do índice ──────────────────────────────────────────────
+  const noteParagraph = new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 320, after: 0, line: LINE_SPACING, lineRule: LINE_RULE },
+    children: [
+      new TextRun({
+        text: 'Índice automático · os números de página são actualizados ao abrir no Word (prima F9)',
+        italics: true,
+        size: 20,
+        color: '666666',
+        font: FONT,
+      }),
+    ],
+  });
+
+  // ── Quebra de página após o índice ────────────────────────────────────────
+  const pageBreakAfterToc = new Paragraph({
+    children: [new PageBreak()],
+  });
+
+  return [titleParagraph, separator, ...entries, noteParagraph, pageBreakAfterToc];
 }
 
 // ── Nós inline ───────────────────────────────────────────────────────────────

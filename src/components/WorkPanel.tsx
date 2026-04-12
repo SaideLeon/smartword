@@ -150,7 +150,8 @@ function buildReconstructedContent(
     parts.push(parts.length === 0 ? body : `{pagebreak}\n\n${body}`);
   }
 
-  return parts.join('\n\n');
+  const body = parts.join('\n\n');
+  return body ? `{toc}\n\n${body}` : body;
 }
 
 /**
@@ -425,7 +426,8 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
       }
 
       const textToInsert = buildSectionMarkdown(sec.title, sec.content, isFirstInEditor, parentTitle);
-      insertSection(sectionIndex, () => onInsert(textToInsert));
+      const finalText = isFirstInEditor ? `{toc}\n\n${textToInsert}` : textToInsert;
+      insertSection(sectionIndex, () => onInsert(finalText));
     }
   }, [session, editorMarkdown, isSectionRegenerated, insertSection, onInsert, setContent]);
 
