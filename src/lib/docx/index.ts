@@ -20,8 +20,9 @@ export async function generateDocx(markdown: string): Promise<Buffer> {
  *   Página 2 — Contra-capa (sem logo, com resumo opcional, docente centrado)
  *   Página 3+ — Conteúdo do trabalho em markdown, com rodapé de paginação
  *
- * CRÍTICO: features.updateFields = true é obrigatório para que o Word
- * processe os campos TOC ({toc}) e mostre as entradas do índice ao abrir.
+ * O índice ({toc}) é gerado estaticamente — sem campos Word, sem TOC nativo.
+ * O documento é autossuficiente: funciona em qualquer leitor DOCX (mobile,
+ * LibreOffice, Google Docs, WPS) sem necessidade do Microsoft Word.
  */
 export async function generateDocxWithCover(
   coverData: CoverData,
@@ -33,7 +34,7 @@ export async function generateDocxWithCover(
   const contentSections = await buildContentSections(ast);
 
   const doc = new Document({
-    features: { updateFields: true },   // ← faz o Word actualizar o TOC ao abrir
+    // updateFields removido — não necessário com índice estático
     styles:    SHARED_STYLES,
     numbering: SHARED_NUMBERING,
     sections:  [...coverSections, ...contentSections] as any[],

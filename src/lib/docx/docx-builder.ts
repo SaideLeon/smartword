@@ -1,6 +1,7 @@
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, ImportedXmlComponent,
-  ExternalHyperlink, IParagraphOptions, AlignmentType, convertMillimetersToTwip,
+  ExternalHyperlink, InternalHyperlink, Bookmark, IParagraphOptions, AlignmentType,
+  convertMillimetersToTwip,
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
   PageBreak, Footer, PageNumber, NumberFormat, SectionType,
 } from 'docx';
@@ -28,15 +29,25 @@ const PAGE_MARGIN = {
   right:  convertMillimetersToTwip(20),
 };
 
-// Aplana recursivamente apenas arrays — preserva objetos docx (TableOfContents, Paragraph, etc.)
+// ── Contexto de construção ────────────────────────────────────────────────────
+interface HeadingEntry {
+  id: string;
+  level: number;
+  text: string;
+}
+
+interface BuildContext {
+  headings: HeadingEntry[];
+  headingIndex: { value: number };
+}
+
+// ── Utilidades ───────────────────────────────────────────────────────────────
+
 function deepFlat(arr: any[]): any[] {
   const result: any[] = [];
   for (const item of arr) {
-    if (Array.isArray(item)) {
-      result.push(...deepFlat(item));
-    } else {
-      result.push(item);
-    }
+    if (Array.isArray(item)) result.push(...deepFlat(item));
+    else result.push(item);
   }
   return result;
 }
@@ -46,12 +57,41 @@ function getTextRunText(run: TextRun): string | null {
   return typeof directText === 'string' ? directText : null;
 }
 
+function inlineToText(nodes: InlineNode[]): string {
+  return nodes.map(n => {
+    switch (n.type) {
+      case 'text':        return n.value;
+      case 'inline_code': return n.value;
+      case 'strong':
+      case 'emphasis':
+      case 'link':        return inlineToText(n.children);
+      default:            return '';
+    }
+  }).join('');
+}
+
+// ── Extração de headings (1.ª passagem) ─────────────────────────────────────
+function extractHeadings(ast: DocumentNode[]): HeadingEntry[] {
+  const headings: HeadingEntry[] = [];
+  let counter = 0;
+  for (const node of ast) {
+    if (node.type === 'heading') {
+      headings.push({
+        id:    `sec-${counter++}`,
+        level: node.level,
+        text:  inlineToText(node.children),
+      });
+    }
+  }
+  return headings;
+}
+
+// ── Tabelas ──────────────────────────────────────────────────────────────────
+
 const CELL_BORDER = { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER };
 const CELL_BORDERS = {
-  top:    CELL_BORDER,
-  bottom: CELL_BORDER,
-  left:   CELL_BORDER,
-  right:  CELL_BORDER,
+  top: CELL_BORDER, bottom: CELL_BORDER,
+  left: CELL_BORDER, right: CELL_BORDER,
 };
 
 function cellAlignment(align: TableAlign | null): (typeof AlignmentType)[keyof typeof AlignmentType] {
@@ -131,29 +171,27 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
   });
 }
 
-// ── Índice automático (TOC nativo do Word via campo direto) ──────────────────
+// ── Índice estático automático ────────────────────────────────────────────────
 //
-// Não usamos TableOfContents da biblioteca docx porque esta envolve o campo
-// num <w:sdt> (Structured Document Tag) que impede o Word de processar
-// automaticamente o campo TOC ao abrir o documento.
+// Gerado inteiramente a partir dos headings do AST — sem campos Word, sem TOC
+// nativo, sem dependência do Microsoft Word.
 //
-// Em vez disso, injectamos o XML do campo directamente via ImportedXmlComponent,
-// produzindo w:fldChar + w:instrText sem wrapper sdt — idêntico ao que o Word
-// gera quando inseres um índice nativo via Referências → Índice.
+// Cada entrada é um parágrafo com InternalHyperlink que aponta para o Bookmark
+// inserido no próprio parágrafo de heading. Funciona em qualquer leitor DOCX:
+//   ✓ Word Desktop (Windows/Mac)
+//   ✓ Word Mobile (iOS/Android)
+//   ✓ LibreOffice / OpenOffice
+//   ✓ Google Docs
+//   ✓ WPS Office
+//   ✓ Qualquer visualizador DOCX
 //
-// Instrução TOC:
-//   \h  → entradas com hiperligação (Ctrl+click para navegar)
-//   \o "1-3" → captura Heading 1, 2 e 3
-//   \z  → oculta nº de página no Web Layout (opcional, boa prática)
-//   \u  → usa os estilos de parágrafo usados no documento
-//
-// REQUISITO: o Document DEVE ter features: { updateFields: true }
+// Não inclui números de página: impossíveis de calcular antes da renderização,
+// e para documentos digitais os hyperlinks são a forma correcta de navegar.
 
-function buildToc(): any[] {
-  // Título "ÍNDICE" centrado e em maiúsculas
+function buildStaticToc(headings: HeadingEntry[]): any[] {
   const titleParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 0, after: 240, line: 240, lineRule: 'auto' as any },
+    spacing: { before: 0, after: 360, line: 240, lineRule: 'auto' as any },
     children: [
       new TextRun({
         text: 'ÍNDICE',
@@ -164,45 +202,78 @@ function buildToc(): any[] {
     ],
   });
 
-  // Campo TOC injectado como XML puro — sem w:sdt.
-  //
-  // O Word processa este campo ao abrir com updateFields=true e preenche
-  // as entradas automaticamente com base nos headings do documento.
-  // O texto "— Índice será gerado..." é o placeholder visível antes da atualização.
-  const tocXml =
-    `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
-      `<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>` +
-      `<w:r><w:instrText xml:space="preserve"> TOC \\h \\o &quot;1-3&quot; \\z \\u </w:instrText></w:r>` +
-      `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
-      `<w:r>` +
-        `<w:rPr><w:color w:val="888888"/><w:sz w:val="20"/></w:rPr>` +
-        `<w:t xml:space="preserve">&#x2014; Abrir no Word e clicar em Actualizar &#x2014;</w:t>` +
-      `</w:r>` +
-      `<w:r><w:fldChar w:fldCharType="end"/></w:r>` +
-    `</w:p>`;
-
-  const tocComponent = ImportedXmlComponent.fromXmlString(tocXml);
-
-  // Nota de instrução ao utilizador
-  const noteParagraph = new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: 120, after: 0, line: 240, lineRule: 'auto' as any },
-    children: [
-      new TextRun({
-        text: '[Ao abrir no Word: clique com o botão direito no índice → Actualizar campo]',
-        italics: true,
-        size: 18,
-        color: '888888',
-        font: 'Times New Roman',
-      }),
-    ],
+  const separatorParagraph = new Paragraph({
+    spacing: { before: 0, after: 240, line: 240, lineRule: 'auto' as any },
+    border: {
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: 'AAAAAA', space: 4 },
+    },
+    children: [],
   });
 
-  // Extrair o nó XML do componente (equivalente a como math-converter.ts faz)
-  return [titleParagraph, (tocComponent as any).root[0], noteParagraph];
+  if (headings.length === 0) {
+    return [
+      titleParagraph,
+      separatorParagraph,
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 120, after: 0, line: 240, lineRule: 'auto' as any },
+        children: [
+          new TextRun({
+            text: '[Nenhuma secção encontrada no documento]',
+            italics: true,
+            size: 20,
+            color: '888888',
+            font: 'Times New Roman',
+          }),
+        ],
+      }),
+    ];
+  }
+
+  const indentByLevel: Record<number, number> = {
+    1: 0,
+    2: convertMillimetersToTwip(6),
+    3: convertMillimetersToTwip(12),
+    4: convertMillimetersToTwip(18),
+    5: convertMillimetersToTwip(18),
+    6: convertMillimetersToTwip(18),
+  };
+
+  const entries = headings
+    .filter(h => h.level <= 4)
+    .map(h => {
+      const indent  = indentByLevel[h.level] ?? 0;
+      const isBold  = h.level === 1;
+      const fontSize = h.level === 1 ? 22 : 20;
+
+      return new Paragraph({
+        indent: indent > 0 ? { left: indent } : undefined,
+        spacing: {
+          before: isBold ? 120 : 60,
+          after:  isBold ? 60  : 40,
+          line: 240, lineRule: 'auto' as any,
+        },
+        children: [
+          new InternalHyperlink({
+            anchor: h.id,
+            children: [
+              new TextRun({
+                text: h.text,
+                bold: isBold,
+                font: 'Times New Roman',
+                size: fontSize,
+                color: '000000',
+              }),
+            ],
+          }),
+        ],
+      });
+    });
+
+  return [titleParagraph, separatorParagraph, ...entries];
 }
 
-// ── Inline nodes ─────────────────────────────────────────────────────────────
+// ── Nós inline ───────────────────────────────────────────────────────────────
 
 interface TextOptions {
   bold?: boolean;
@@ -236,19 +307,25 @@ async function buildInline(node: InlineNode, options: TextOptions = {}): Promise
   }
 }
 
-// ── Block nodes ──────────────────────────────────────────────────────────────
+// ── Nós de bloco ─────────────────────────────────────────────────────────────
 
-async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): Promise<any> {
+async function buildBlock(
+  node: DocumentNode,
+  ctx: BuildContext,
+  options: IParagraphOptions = {},
+): Promise<any> {
   switch (node.type) {
     case 'paragraph': {
       const children = await Promise.all(node.children.map(c => buildInline(c)));
       return new Paragraph({ ...options, children: children.flat() });
     }
+
     case 'math_block': {
       const omml = await convertLatexToOmml(node.latex, true);
       const comp = ImportedXmlComponent.fromXmlString(omml);
       return new Paragraph({ ...options, children: [(comp as any).root[0]] });
     }
+
     case 'heading': {
       const headingMap: Record<number, any> = {
         1: HeadingLevel.HEADING_1, 2: HeadingLevel.HEADING_2,
@@ -256,13 +333,23 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
         5: HeadingLevel.HEADING_5, 6: HeadingLevel.HEADING_6,
       };
 
-      const children = await Promise.all(
+      // Obtém o ID de bookmark correspondente a este heading (ordem de aparecimento)
+      const entry = ctx.headings[ctx.headingIndex.value];
+      ctx.headingIndex.value++;
+
+      const inlineChildren = await Promise.all(
         node.children.map(c => buildInline(c, { bold: true, color: '000000' }))
       );
+      const flatChildren = deepFlat(inlineChildren);
+
+      // Insere Bookmark para que os InternalHyperlinks do índice funcionem
+      const children = entry
+        ? [new Bookmark({ id: entry.id, children: flatChildren })]
+        : flatChildren;
 
       return new Paragraph({
         ...options,
-        children: children.flat(),
+        children,
         heading: headingMap[node.level],
       });
     }
@@ -273,7 +360,7 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
       const items = await Promise.all(node.items.map(async (itemBlocks) => {
         const blocks = await Promise.all(itemBlocks.map((block, i) => {
           if (i === 0) {
-            return buildBlock(block, {
+            return buildBlock(block, ctx, {
               ...options,
               bullet: node.ordered ? undefined : { level: currentLevel },
               numbering: node.ordered
@@ -282,7 +369,7 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
               ...(({ __nestLevel: _, ...rest }) => rest)(options as any),
             });
           }
-          return buildBlock(block, { ...options, __nestLevel: currentLevel + 1 } as any);
+          return buildBlock(block, ctx, { ...options, __nestLevel: currentLevel + 1 } as any);
         }));
         return deepFlat(blocks);
       }));
@@ -291,7 +378,7 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
     }
 
     case 'blockquote': {
-      const children = await Promise.all(node.children.map(c => buildBlock(c, { ...options, style: 'Quote' })));
+      const children = await Promise.all(node.children.map(c => buildBlock(c, ctx, { ...options, style: 'Quote' })));
       return deepFlat(children);
     }
 
@@ -304,9 +391,10 @@ async function buildBlock(node: DocumentNode, options: IParagraphOptions = {}): 
     case 'chart':
       return buildChart(node);
 
-    // ── Índice automático ──────────────────────────────────────────────────
+    // ── Índice estático ────────────────────────────────────────────────────
+    // Autossuficiente: não depende de Word, campos TOC, ou ação do utilizador.
     case 'toc':
-      return buildToc();
+      return buildStaticToc(ctx.headings);
 
     case 'section_break':
       return null;
@@ -347,10 +435,7 @@ export const SHARED_STYLES = {
   },
   paragraphStyles: [
     {
-      id: 'Quote',
-      name: 'Quote',
-      basedOn: 'Normal',
-      next: 'Normal',
+      id: 'Quote', name: 'Quote', basedOn: 'Normal', next: 'Normal',
       run: { size: 20 },
       paragraph: {
         spacing: { line: 240, lineRule: 'auto' as const },
@@ -360,32 +445,32 @@ export const SHARED_STYLES = {
     {
       id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal',
       run: { bold: true, color: '000000', size: 24 },
-      paragraph: { spacing: { before: 240, after: 120 } },
+      paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 0 },
     },
     {
       id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal',
       run: { bold: true, color: '000000', size: 24 },
-      paragraph: { spacing: { before: 200, after: 100 } },
+      paragraph: { spacing: { before: 200, after: 100 }, outlineLevel: 1 },
     },
     {
       id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal',
       run: { bold: true, color: '000000', size: 24 },
-      paragraph: { spacing: { before: 160, after: 80 } },
+      paragraph: { spacing: { before: 160, after: 80 }, outlineLevel: 2 },
     },
     {
       id: 'Heading4', name: 'Heading 4', basedOn: 'Normal', next: 'Normal',
       run: { bold: true, color: '000000', size: 24 },
-      paragraph: { spacing: { before: 120, after: 60 } },
+      paragraph: { spacing: { before: 120, after: 60 }, outlineLevel: 3 },
     },
     {
       id: 'Heading5', name: 'Heading 5', basedOn: 'Normal', next: 'Normal',
       run: { bold: true, color: '000000', size: 24 },
-      paragraph: { spacing: { before: 120, after: 60 } },
+      paragraph: { spacing: { before: 120, after: 60 }, outlineLevel: 4 },
     },
     {
       id: 'Heading6', name: 'Heading 6', basedOn: 'Normal', next: 'Normal',
       run: { bold: true, color: '000000', size: 24 },
-      paragraph: { spacing: { before: 120, after: 60 } },
+      paragraph: { spacing: { before: 120, after: 60 }, outlineLevel: 5 },
     },
   ],
 };
@@ -409,6 +494,13 @@ export const SHARED_NUMBERING = {
 // ── Secções de conteúdo ───────────────────────────────────────────────────────
 
 export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> {
+  // 1.ª passagem: extrair headings e atribuir IDs de bookmark
+  const headings = extractHeadings(ast);
+  const ctx: BuildContext = {
+    headings,
+    headingIndex: { value: 0 },
+  };
+
   const sectionAsts: DocumentNode[][] = [[]];
 
   for (const node of ast) {
@@ -420,7 +512,7 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
   }
 
   return Promise.all(
-    sectionAsts.map(async (nodes, sectionIndex) => {
+    sectionAsts.map(async (nodes) => {
       const children: any[] = [];
 
       for (const node of nodes) {
@@ -429,7 +521,7 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
           continue;
         }
 
-        const built = await buildBlock(node);
+        const built = await buildBlock(node, ctx);
         if (built !== null && built !== undefined) {
           children.push(...deepFlat(Array.isArray(built) ? built : [built]));
         }
@@ -458,14 +550,16 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
 
 // ── Documento completo ────────────────────────────────────────────────────────
 //
-// CRÍTICO: features.updateFields = true é obrigatório para que o Word
-// processe o campo {TOC} e mostre as entradas do índice ao abrir o documento.
+// O documento é agora AUTOSSUFICIENTE:
+//   • O índice é gerado estaticamente — sem campos Word, sem TOC nativo
+//   • Não requer Microsoft Word para ser aberto/utilizado correctamente
+//   • Funciona em mobile, LibreOffice, Google Docs, e qualquer leitor DOCX
+//   • features.updateFields foi removido — não é necessário com índice estático
 
 export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> {
   const sections = await buildContentSections(ast);
 
   return new Document({
-    features: { updateFields: true },   // ← faz o Word actualizar o TOC ao abrir
     styles:    SHARED_STYLES,
     numbering: SHARED_NUMBERING,
     sections,
