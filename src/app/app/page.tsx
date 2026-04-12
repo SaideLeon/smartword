@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorActions, useEditorMeta, usePanelActions, useSidePanel } from '@/hooks/useEditorStore';
@@ -24,6 +24,8 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [showEditor, setShowEditor] = useState(false);
   const { themeMode, toggleThemeMode } = useThemeMode();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenSupported, setFullscreenSupported] = useState(false);
 
   const themeVars =
     themeMode === 'dark'
@@ -52,6 +54,25 @@ export default function Home() {
     [clearDefaultMarkdown, togglePanel],
   );
 
+  useEffect(() => {
+    setFullscreenSupported(typeof document !== 'undefined' && !!document.documentElement.requestFullscreen);
+    const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    syncFullscreenState();
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+    };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    if (!fullscreenSupported) return;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await document.documentElement.requestFullscreen();
+  }, [fullscreenSupported]);
+
   return (
     <main
       className={`${themeVars} flex h-dvh min-h-screen flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}
@@ -65,6 +86,9 @@ export default function Home() {
         onTogglePanel={handleTogglePanel}
         themeMode={themeMode}
         onToggleTheme={toggleThemeMode}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
+        fullscreenSupported={fullscreenSupported}
       />
 
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
