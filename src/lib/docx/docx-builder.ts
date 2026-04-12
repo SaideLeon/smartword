@@ -189,26 +189,33 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
 // e para documentos digitais os hyperlinks são a forma correcta de navegar.
 
 function buildStaticToc(headings: HeadingEntry[]): any[] {
-  // ── Título "Índice" ───────────────────────────────────────────────────────
+  // ── Constantes tipográficas ────────────────────────────────────────────────
+  const FONT = 'Times New Roman';
+  const FONT_SIZE = 24;
+  const LINE_SPACING = 360;
+  const LINE_RULE = 'auto' as any;
+  const BLACK = '000000';
+
+  // ── Título "Índice" ────────────────────────────────────────────────────────
   const titleParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 0, after: 440, line: 276, lineRule: 'auto' as any },
+    spacing: { before: 0, after: 440, line: LINE_SPACING, lineRule: LINE_RULE },
     children: [
       new TextRun({
         text: 'Índice',
         bold: true,
-        size: 28,
-        font: 'Times New Roman',
-        color: '1F3367',
+        size: FONT_SIZE,
+        font: FONT,
+        color: BLACK,
       }),
     ],
   });
 
   // ── Linha separadora abaixo do título ─────────────────────────────────────
   const separator = new Paragraph({
-    spacing: { before: 0, after: 200, line: 240, lineRule: 'auto' as any },
+    spacing: { before: 0, after: 200, line: LINE_SPACING, lineRule: LINE_RULE },
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: 6, color: '1F3367', space: 4 },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: BLACK, space: 4 },
     },
     children: [],
   });
@@ -220,14 +227,14 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
       separator,
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: 120, after: 0, line: 240, lineRule: 'auto' as any },
+        spacing: { before: 120, after: 0, line: LINE_SPACING, lineRule: LINE_RULE },
         children: [
           new TextRun({
             text: '[Nenhuma secção encontrada no documento]',
             italics: true,
-            size: 20,
-            color: '888888',
-            font: 'Times New Roman',
+            size: FONT_SIZE,
+            color: BLACK,
+            font: FONT,
           }),
         ],
       }),
@@ -235,16 +242,16 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
     ];
   }
 
-  // ── Entradas do índice com reticências ────────────────────────────────────
+  // ── Entradas do índice ─────────────────────────────────────────────────────
   const INDENT_PER_LEVEL_MM = 6;
+
+  let entryCounter = 0;
 
   const entries = headings
     .filter(h => h.level <= 4)
     .map(h => {
+      entryCounter += 1;
       const indentTwips = (h.level - 1) * convertMillimetersToTwip(INDENT_PER_LEVEL_MM);
-      const isBold = h.level <= 2;
-      const fontSize = h.level === 1 ? 24 : h.level === 2 ? 22 : 20;
-      const color = h.level <= 2 ? '1F3367' : '2E2E2E';
 
       return new Paragraph({
         indent: indentTwips > 0 ? { left: indentTwips } : undefined,
@@ -256,10 +263,10 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
           },
         ],
         spacing: {
-          before: h.level === 1 ? 220 : h.level === 2 ? 140 : 80,
+          before: h.level === 1 ? 200 : h.level === 2 ? 120 : 80,
           after: h.level === 1 ? 60 : 40,
-          line: 240,
-          lineRule: 'auto' as any,
+          line: LINE_SPACING,
+          lineRule: LINE_RULE,
         },
         children: [
           new InternalHyperlink({
@@ -267,44 +274,45 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
             children: [
               new TextRun({
                 text: h.text,
-                bold: isBold,
-                font: 'Times New Roman',
-                size: fontSize,
-                color,
+                bold: true,
+                font: FONT,
+                size: FONT_SIZE,
+                color: BLACK,
               }),
             ],
           }),
           new TextRun({
             text: '\t',
-            font: 'Times New Roman',
-            size: fontSize,
+            font: FONT,
+            size: FONT_SIZE,
           }),
           new TextRun({
-            text: '–',
-            font: 'Times New Roman',
-            size: fontSize,
-            color: 'AAAAAA',
+            text: String(entryCounter),
+            bold: true,
+            font: FONT,
+            size: FONT_SIZE,
+            color: BLACK,
           }),
         ],
       });
     });
 
-  // ── Nota sobre números de página ──────────────────────────────────────────
+  // ── Nota de rodapé do índice ──────────────────────────────────────────────
   const noteParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 320, after: 0, line: 240, lineRule: 'auto' as any },
+    spacing: { before: 320, after: 0, line: LINE_SPACING, lineRule: LINE_RULE },
     children: [
       new TextRun({
         text: 'Índice automático · os números de página são actualizados ao abrir no Word (prima F9)',
         italics: true,
-        size: 16,
-        color: 'AAAAAA',
-        font: 'Times New Roman',
+        size: 20,
+        color: '666666',
+        font: FONT,
       }),
     ],
   });
 
-  // ── Quebra de página — garante que a Introdução começa numa página nova ──
+  // ── Quebra de página após o índice ────────────────────────────────────────
   const pageBreakAfterToc = new Paragraph({
     children: [new PageBreak()],
   });
