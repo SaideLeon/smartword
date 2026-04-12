@@ -30,9 +30,6 @@ export function EditorHeader({
   onRedo,
   themeMode,
   onToggleTheme,
-  isFullscreen,
-  onToggleFullscreen,
-  fullscreenSupported,
 }: Props) {
   const { user, profile, plan, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);

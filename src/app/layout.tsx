@@ -1,6 +1,7 @@
 import type {Metadata, Viewport} from 'next';
 import {PwaRegistrar} from '@/components/PwaRegistrar';
 import { AppAlertModal } from '@/components/AppAlertModal';
+import { GlobalFullscreenToggle } from '@/components/GlobalFullscreenToggle';
 import 'temml/dist/Temml-Local.css';
 import './globals.css'; // Global styles
 
@@ -34,6 +35,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       <body suppressHydrationWarning>
         <PwaRegistrar />
         <AppAlertModal />
+        <GlobalFullscreenToggle />
         {children}
       </body>
     </html>
