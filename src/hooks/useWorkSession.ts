@@ -1,18 +1,12 @@
 'use client';
 
-// hooks/useWorkSession.ts
+// hooks/useWorkSession.ts  — versão com agente revisor de 2 passes
 //
-// REGRA DE PAGEBREAK:
-// O conteúdo guardado no Supabase é SEMPRE puro — sem {pagebreak} nem {section}.
-// Os {pagebreak} são adicionados APENAS quando o conteúdo é inserido no editor,
-// pelas funções buildSectionMarkdown e buildReconstructedContent em WorkPanel.tsx.
-//
-// REGRA DO HEADING PAI:
-// O heading "## 1. Desenvolvimento Teórico" não existe nas sections (é filtrado do esboço).
-// É inserido automaticamente pelo WorkPanel quando a primeira subsecção do grupo
-// (ex: "1.1 X") é inserida no editor.
-// A função buildReconstructedContent neste ficheiro replica essa lógica para o
-// caso de reset/rebuild de todo o conteúdo do editor (ex: regeneração de secção).
+// NOVIDADES vs versão anterior:
+//   - DevelopPhase: 'idle' | 'drafting' | 'reviewing' | 'refining'
+//   - reviewMeta: { sourceCount, usedWeb, ragCount } por ciclo de desenvolvimento
+//   - sourceEnhancedSections: Set<number> — secções que passaram pelo revisor
+//   - Parsing de SSE custom events: {"type":"phase","phase":"reviewing",...}
 
 import { useState, useCallback, useRef } from 'react';
 import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
@@ -26,6 +20,15 @@ export type WorkStep =
   | 'outline_approved'
   | 'developing'
   | 'section_ready';
+
+// ── Fases do desenvolvimento (2 passes + revisor) ────────────────────────────
+export type DevelopPhase = 'idle' | 'drafting' | 'reviewing' | 'refining';
+
+export interface ReviewMeta {
+  sourceCount: number;
+  usedWeb: boolean;
+  ragCount: number;
+}
 
 // ── Helpers de normalização ───────────────────────────────────────────────────
 
@@ -58,45 +61,16 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
   );
 }
 
-// ── Helper: extrai heading pai do esboço ─────────────────────────────────────
-
-/**
- * Extrai o título do capítulo pai (## N. Título) a partir do esboço.
- * parentNum: string com o número pai, ex: "1"
- */
 function getParentTitleFromOutline(outline: string, parentNum: string): string | null {
   for (const line of outline.split('\n')) {
     const match = line.match(/^##\s+(\d+)\.?\s+(.+)/);
-    if (match && match[1] === parentNum) {
-      return `${match[1]}. ${match[2].trim()}`;
-    }
+    if (match && match[1] === parentNum) return `${match[1]}. ${match[2].trim()}`;
   }
   return null;
 }
 
-// ── Reconstrução do conteúdo do editor com headings pai ───────────────────────
-
-/**
- * Reconstrói o conteúdo completo do editor a partir das secções desenvolvidas,
- * inserindo automaticamente os headings pai para grupos de subsecções.
- *
- * Usado no reset do editor quando uma secção é regenerada e o editor precisa
- * de ser reconstruído do zero com todas as secções já inseridas.
- *
- * Regras:
- *   - Subsecções numéricas (1.1, 1.2…): o heading pai (## 1. Desenvolvimento Teórico)
- *     é inserido antes da primeira subsecção do grupo, com {pagebreak} se necessário.
- *   - Subsecções seguintes do mesmo grupo fluem sem pagebreak.
- *   - Secções autónomas (Introdução, Conclusão…) recebem {pagebreak} entre si.
- */
-function buildReconstructedContent(
-  sections: WorkSection[],
-  outline: string | null,
-): string {
-  const sorted = [...sections]
-    .filter(s => s.content.trim())
-    .sort((a, b) => a.index - b.index);
-
+function buildReconstructedContent(sections: WorkSection[], outline: string | null): string {
+  const sorted = [...sections].filter(s => s.content.trim()).sort((a, b) => a.index - b.index);
   const parts: string[] = [];
   const insertedParentNums = new Set<string>();
 
@@ -104,16 +78,12 @@ function buildReconstructedContent(
     const isSubsection = /^\d+\.\d+/.test(section.title);
     const heading = isSubsection ? '###' : '##';
     const hasHeading = contentStartsWithTitle(section.content, section.title);
-    const body = hasHeading
-      ? section.content
-      : `${heading} ${section.title}\n\n${section.content}`;
+    const body = hasHeading ? section.content : `${heading} ${section.title}\n\n${section.content}`;
 
     if (isSubsection && outline) {
       const parentMatch = section.title.match(/^(\d+)\.\d+/);
       if (parentMatch) {
         const parentNum = parentMatch[1];
-
-        // Insere o heading pai antes da primeira subsecção do grupo
         if (!insertedParentNums.has(parentNum)) {
           const parentTitle = getParentTitleFromOutline(outline, parentNum);
           if (parentTitle) {
@@ -122,22 +92,16 @@ function buildReconstructedContent(
             insertedParentNums.add(parentNum);
           }
         }
-
-        // Subsecção flui sem pagebreak após o heading pai
         parts.push(body);
         continue;
       }
     }
-
-    // Secção autónoma (Introdução, Objectivos, Metodologia, Conclusão, Referências…)
     parts.push(parts.length === 0 ? body : `{pagebreak}\n\n${body}`);
   }
 
   const body = parts.join('\n\n');
   return body ? `{toc}\n\n${body}` : body;
 }
-
-// ── Secções fixas de fallback ─────────────────────────────────────────────────
 
 const FALLBACK_SECTIONS = [
   'I. Introdução',
@@ -148,23 +112,8 @@ const FALLBACK_SECTIONS = [
 ];
 
 function buildFallbackSections(): WorkSection[] {
-  return FALLBACK_SECTIONS.map((title, index) => ({
-    index,
-    title,
-    content: '',
-    status: 'pending' as const,
-  }));
+  return FALLBACK_SECTIONS.map((title, index) => ({ index, title, content: '', status: 'pending' as const }));
 }
-
-// ── Parse do esboço em secções accionáveis ────────────────────────────────────
-//
-// Regras:
-//  - ## com ### filhos → o ## pai não é accionável (apenas os ### filhos)
-//  - ## sem ### filhos → accionável directamente
-//  - Prefixos romanos (I., II., III.) e numéricos (1.1) são mantidos no título
-//
-// Nota: o ## pai (ex: "1. Desenvolvimento Teórico") é filtrado aqui mas
-// inserido automaticamente pelo WorkPanel na função buildSectionMarkdown.
 
 function parseOutlineSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
@@ -173,14 +122,8 @@ function parseOutlineSections(outline: string): WorkSection[] {
   for (const line of lines) {
     const h2 = line.match(/^##\s+(.+)/);
     const h3 = line.match(/^###\s+(.+)/);
-
-    if (h2) {
-      const title = h2[1].trim();
-      if (!isAutomaticIndex(title)) raw.push({ title, level: 2 });
-    } else if (h3) {
-      const title = h3[1].trim();
-      if (!isAutomaticIndex(title)) raw.push({ title, level: 3 });
-    }
+    if (h2) { const title = h2[1].trim(); if (!isAutomaticIndex(title)) raw.push({ title, level: 2 }); }
+    else if (h3) { const title = h3[1].trim(); if (!isAutomaticIndex(title)) raw.push({ title, level: 3 }); }
   }
 
   if (raw.length === 0) return buildFallbackSections();
@@ -191,14 +134,9 @@ function parseOutlineSections(outline: string): WorkSection[] {
   for (let i = 0; i < raw.length; i++) {
     if (raw[i].level === 2) {
       const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
-      if (!nextIsH3) {
-        sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
-        index++;
-      }
-      // ## com filhos ### → não accionável (heading pai inserido automaticamente)
+      if (!nextIsH3) { sections.push({ index, title: raw[i].title, content: '', status: 'pending' }); index++; }
     } else {
-      sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
-      index++;
+      sections.push({ index, title: raw[i].title, content: '', status: 'pending' }); index++;
     }
   }
 
@@ -219,11 +157,14 @@ export function useWorkSession() {
   const [regeneratedSections, setRegeneratedSections] = useState<Set<number>>(new Set());
   const [uploadingRag, setUploadingRag] = useState(false);
   const [ragSources, setRagSources] = useState<Array<{
-    id: string;
-    filename: string;
-    chunks: number;
-    sourceType: 'reference' | 'institution_rules';
+    id: string; filename: string; chunks: number; sourceType: 'reference' | 'institution_rules';
   }>>([]);
+
+  // ── Novo estado do agente revisor ─────────────────────────────────────────
+  const [developPhase, setDevelopPhase] = useState<DevelopPhase>('idle');
+  const [reviewMeta, setReviewMeta] = useState<ReviewMeta | null>(null);
+  const [sourceEnhancedSections, setSourceEnhancedSections] = useState<Set<number>>(new Set());
+
   const abortRef = useRef<AbortController | null>(null);
 
   const reset = useCallback(() => {
@@ -236,23 +177,15 @@ export function useWorkSession() {
     setRegeneratedSections(new Set());
     setRagSources([]);
     setUploadingRag(false);
+    setDevelopPhase('idle');
+    setReviewMeta(null);
+    setSourceEnhancedSections(new Set());
   }, []);
 
-  const startNew = useCallback(() => {
-    setStep('topic_input');
-    setError(null);
-  }, []);
-
-  const startWithResources = useCallback(() => {
-    setStep('resource_upload');
-    setError(null);
-  }, []);
+  const startNew = useCallback(() => { setStep('topic_input'); setError(null); }, []);
 
   const loadSessions = useCallback(async () => {
-    try {
-      const res = await fetch('/api/work/session');
-      if (res.ok) setRecentSessions(await res.json());
-    } catch { /* ignorar */ }
+    try { const res = await fetch('/api/work/session'); if (res.ok) setRecentSessions(await res.json()); } catch { /* ignorar */ }
   }, []);
 
   const resumeSession = useCallback(async (id: string) => {
@@ -263,15 +196,11 @@ export function useWorkSession() {
       const data: WorkSessionRecord = await res.json();
       setSession(data);
       setStep(
-        data.status === 'outline_approved' ||
-        data.status === 'in_progress' ||
-        data.status === 'completed'
+        data.status === 'outline_approved' || data.status === 'in_progress' || data.status === 'completed'
           ? 'outline_approved'
           : 'review_outline',
       );
-    } catch (e: any) {
-      setError(e.message);
-    }
+    } catch (e: any) { setError(e.message); }
   }, []);
 
   const generateOutline = useCallback(async (
@@ -303,14 +232,9 @@ export function useWorkSession() {
       const res = await fetch('/api/work/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          sessionId: activeSessionId,
-          suggestions: options?.suggestions?.trim() || undefined,
-        }),
+        body: JSON.stringify({ topic, sessionId: activeSessionId, suggestions: options?.suggestions?.trim() || undefined }),
         signal: ctrl.signal,
       });
-
       if (!res.ok) throw new Error('Erro ao gerar esboço');
 
       const reader = res.body!.getReader();
@@ -325,19 +249,11 @@ export function useWorkSession() {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
           if (data === '[DONE]') break;
-          try {
-            const json = JSON.parse(data);
-            const delta = json.choices?.[0]?.delta?.content ?? '';
-            if (delta) { accumulated += delta; setStreamingText(accumulated); }
-          } catch { /* ignorar */ }
+          try { const json = JSON.parse(data); const delta = json.choices?.[0]?.delta?.content ?? ''; if (delta) { accumulated += delta; setStreamingText(accumulated); } } catch { /* ignorar */ }
         }
       }
 
-      setSession(prev => prev ? {
-        ...prev,
-        outline_draft: accumulated,
-        sections: parseOutlineSections(accumulated),
-      } : prev);
+      setSession(prev => prev ? { ...prev, outline_draft: accumulated, sections: parseOutlineSections(accumulated) } : prev);
       setStep('review_outline');
     } catch (e: any) {
       if (e.name !== 'AbortError') { setError(e.message); setStep('topic_input'); }
@@ -356,9 +272,7 @@ export function useWorkSession() {
       const newSession: WorkSessionRecord = await sessionRes.json();
       setSession(newSession);
       setStep('resource_upload');
-    } catch (e: any) {
-      setError(e.message);
-    }
+    } catch (e: any) { setError(e.message); }
   }, []);
 
   const confirmResources = useCallback(async () => {
@@ -367,80 +281,32 @@ export function useWorkSession() {
   }, [generateOutline, session]);
 
   const skipResources = useCallback(async () => {
-    if (!session) {
-      setStep('topic_input');
-      return;
-    }
+    if (!session) { setStep('topic_input'); return; }
     await generateOutline(session.topic, { sessionId: session.id });
   }, [generateOutline, session]);
 
-  /**
-   * Upload de múltiplos ficheiros em simultâneo.
-   * Limite total: 50 MB por chamada.
-   * Retorna array com o resultado de cada ficheiro ({ ok, filename, sourceId?, chunksStored?, error? }).
-   */
   const uploadRagFiles = useCallback(async (
-    files: File[],
-    sessionId: string,
-    sourceType: 'reference' | 'institution_rules' = 'reference',
+    files: File[], sessionId: string, sourceType: 'reference' | 'institution_rules' = 'reference',
   ) => {
     if (files.length === 0) return [];
-
     const MAX_TOTAL = 50 * 1024 * 1024;
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-    if (totalSize > MAX_TOTAL) {
-      throw new Error(
-        `Total dos ficheiros excede 50 MB (${(totalSize / 1024 / 1024).toFixed(1)} MB seleccionados)`,
-      );
-    }
-
+    if (totalSize > MAX_TOTAL) throw new Error(`Total dos ficheiros excede 50 MB`);
     setUploadingRag(true);
     try {
       const formData = new FormData();
       formData.append('sessionId', sessionId);
       formData.append('sourceType', sourceType);
-      for (const file of files) {
-        formData.append('files[]', file);
-      }
-
+      for (const file of files) formData.append('files[]', file);
       const res = await fetch('/api/work/rag/upload', { method: 'POST', body: formData });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? 'Erro ao carregar ficheiros');
-      }
-
-      const data = await res.json() as { results: Array<{
-        ok: boolean;
-        filename: string;
-        sourceId?: string;
-        chunksStored?: number;
-        error?: string;
-      }> };
-
-      setRagSources(prev => [
-        ...prev,
-        ...data.results
-          .filter(r => r.ok && r.sourceId)
-          .map(r => ({
-            id:         r.sourceId!,
-            filename:   r.filename,
-            chunks:     r.chunksStored ?? 0,
-            sourceType,
-          })),
-      ]);
-
+      if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body.error ?? 'Erro ao carregar ficheiros'); }
+      const data = await res.json() as { results: Array<{ ok: boolean; filename: string; sourceId?: string; chunksStored?: number; error?: string }> };
+      setRagSources(prev => [...prev, ...data.results.filter(r => r.ok && r.sourceId).map(r => ({ id: r.sourceId!, filename: r.filename, chunks: r.chunksStored ?? 0, sourceType }))]);
       return data.results;
-    } finally {
-      setUploadingRag(false);
-    }
+    } finally { setUploadingRag(false); }
   }, []);
 
-  /** @deprecated Use uploadRagFiles (aceita array). Mantido por retrocompatibilidade. */
-  const uploadRagFile = useCallback(async (
-    file: File,
-    sessionId: string,
-    sourceType: 'reference' | 'institution_rules' = 'reference',
-  ) => {
+  const uploadRagFile = useCallback(async (file: File, sessionId: string, sourceType: 'reference' | 'institution_rules' = 'reference') => {
     const results = await uploadRagFiles([file], sessionId, sourceType);
     const r = results[0];
     if (!r?.ok) throw new Error(r?.error ?? 'Erro ao carregar ficheiro');
@@ -450,18 +316,12 @@ export function useWorkSession() {
   const approveOutline = useCallback(async (outline: string) => {
     if (!session) return;
     try {
-      const res = await fetch('/api/work/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, outline }),
-      });
+      const res = await fetch('/api/work/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: session.id, outline }) });
       if (!res.ok) throw new Error('Erro ao aprovar esboço');
       const updated: WorkSessionRecord = await res.json();
       setSession(updated);
       setStep('outline_approved');
-    } catch (e: any) {
-      setError(e.message);
-    }
+    } catch (e: any) { setError(e.message); }
   }, [session]);
 
   const requestNewOutline = useCallback((suggestions?: string) => {
@@ -469,15 +329,19 @@ export function useWorkSession() {
     generateOutline(session.topic, { sessionId: session.id, suggestions });
   }, [generateOutline, session]);
 
+  // ── developSection — 2 passes com agente revisor ─────────────────────────
+
   const developSection = useCallback(async (index: number) => {
     if (!session) return;
-    const previousStatus = session.sections.find(section => section.index === index)?.status;
+    const previousStatus = session.sections.find(s => s.index === index)?.status;
     const isRegeneration = previousStatus === 'developed' || previousStatus === 'inserted';
 
     setError(null);
     setActiveSectionIdx(index);
     setStreamingText('');
     setStep('developing');
+    setDevelopPhase('drafting');
+    setReviewMeta(null);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -489,7 +353,6 @@ export function useWorkSession() {
         body: JSON.stringify({ sessionId: session.id, sectionIndex: index }),
         signal: ctrl.signal,
       });
-
       if (!res.ok) throw new Error('Erro ao desenvolver secção');
 
       const reader = res.body!.getReader();
@@ -500,12 +363,38 @@ export function useWorkSession() {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
+
         for (const line of chunk.split('\n')) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
-          if (data === '[DONE]') break;
+          if (data === '[DONE]') continue;
+
           try {
             const json = JSON.parse(data);
+
+            // ── Eventos de fase do agente revisor ─────────────────────────
+            if (json.type === 'phase') {
+              if (json.phase === 'reviewing') {
+                setDevelopPhase('reviewing');
+                // Limpa o streaming — Pass 1 não é mostrado ao utilizador
+                setStreamingText('');
+                accumulated = '';
+              } else if (json.phase === 'refining') {
+                setDevelopPhase('refining');
+                setReviewMeta({
+                  sourceCount: json.sourceCount ?? 0,
+                  usedWeb: json.usedWeb ?? false,
+                  ragCount: json.ragCount ?? 0,
+                });
+                // Marca secção como enriquecida se teve fontes
+                if ((json.sourceCount ?? 0) > 0) {
+                  setSourceEnhancedSections(prev => new Set(prev).add(index));
+                }
+              }
+              continue;
+            }
+
+            // ── Conteúdo do Pass 2 (streaming visível) ────────────────────
             const delta = json.choices?.[0]?.delta?.content ?? '';
             if (delta) { accumulated += delta; setStreamingText(accumulated); }
           } catch { /* ignorar */ }
@@ -514,40 +403,35 @@ export function useWorkSession() {
 
       setSession(prev => {
         if (!prev) return prev;
-        const sections = prev.sections.map(section =>
-          section.index === index
-            ? { ...section, content: accumulated, status: 'developed' as const }
-            : section,
+        const sections = prev.sections.map(s =>
+          s.index === index ? { ...s, content: accumulated, status: 'developed' as const } : s,
         );
-        return {
-          ...prev,
-          sections,
-          status: sections.every(s => s.status !== 'pending') ? 'completed' : 'in_progress',
-        };
+        return { ...prev, sections, status: sections.every(s => s.status !== 'pending') ? 'completed' : 'in_progress' };
       });
 
       setStreamingText(accumulated);
+      setDevelopPhase('idle');
 
       setRegeneratedSections(prev => {
         const next = new Set(prev);
-        if (isRegeneration) next.add(index);
-        else next.delete(index);
+        if (isRegeneration) next.add(index); else next.delete(index);
         return next;
       });
 
       setStep('section_ready');
     } catch (e: any) {
-      if (e.name !== 'AbortError') { setError(e.message); setStep('outline_approved'); }
+      if (e.name !== 'AbortError') {
+        setError(e.message);
+        setStep('outline_approved');
+        setDevelopPhase('idle');
+      }
     }
   }, [session]);
 
   const insertSection = useCallback(async (
     index: number,
     onInsert: (text: string) => void,
-    options?: {
-      shouldResetEditor?: boolean;
-      onReplace?: (text: string) => void;
-    },
+    options?: { shouldResetEditor?: boolean; onReplace?: (text: string) => void },
   ) => {
     if (!session) return;
     const sec = session.sections[index];
@@ -556,9 +440,7 @@ export function useWorkSession() {
     const isSubsection = /^\d+\.\d+/.test(sec.title);
     const heading = isSubsection ? '###' : '##';
     const titleAlreadyPresent = contentStartsWithTitle(sec.content, sec.title);
-    const baseText = titleAlreadyPresent
-      ? sec.content
-      : `${heading} ${sec.title}\n\n${sec.content}`;
+    const baseText = titleAlreadyPresent ? sec.content : `${heading} ${sec.title}\n\n${sec.content}`;
 
     let fetchedSession: WorkSessionRecord | null = null;
 
@@ -566,85 +448,51 @@ export function useWorkSession() {
       await fetch('/api/work/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          _action: 'markInserted',
-          sessionId: session.id,
-          sectionIndex: index,
-        }),
+        body: JSON.stringify({ _action: 'markInserted', sessionId: session.id, sectionIndex: index }),
       });
 
       if (options?.shouldResetEditor && options.onReplace) {
-        // Busca a sessão actualizada para reconstruir o conteúdo completo
         const refreshRes = await fetch(`/api/work/session?id=${session.id}`);
         if (!refreshRes.ok) throw new Error('Erro ao sincronizar sessão regenerada');
-
         const refreshedSession: WorkSessionRecord = await refreshRes.json();
         fetchedSession = refreshedSession;
-
-        // Usa buildReconstructedContent para incluir headings pai automaticamente
         const outline = refreshedSession.outline_approved ?? refreshedSession.outline_draft;
         const organizedContent = buildReconstructedContent(
-          refreshedSession.sections.filter(s => s.content.trim()),
-          outline ?? null,
+          refreshedSession.sections.filter(s => s.content.trim()), outline ?? null,
         );
-
         options.onReplace(organizedContent);
       } else {
         onInsert(baseText);
       }
     } catch {
-      if (options?.shouldResetEditor && options.onReplace) {
-        options.onReplace(baseText);
-      } else {
-        onInsert(baseText);
-      }
+      if (options?.shouldResetEditor && options.onReplace) options.onReplace(baseText);
+      else onInsert(baseText);
     }
 
-    if (fetchedSession) {
-      setSession(fetchedSession);
-    } else {
-      setSession(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          sections: prev.sections.map(section =>
-            section.index === index
-              ? { ...section, status: 'inserted' as const }
-              : section,
-          ),
-        };
-      });
-    }
+    if (fetchedSession) setSession(fetchedSession);
+    else setSession(prev => prev ? { ...prev, sections: prev.sections.map(s => s.index === index ? { ...s, status: 'inserted' as const } : s) } : prev);
 
-    setRegeneratedSections(prev => {
-      const next = new Set(prev);
-      next.delete(index);
-      return next;
-    });
-
+    setRegeneratedSections(prev => { const next = new Set(prev); next.delete(index); return next; });
     setStep('outline_approved');
     setActiveSectionIdx(null);
   }, [session]);
 
   const isSectionRegenerated = useCallback((index: number) => regeneratedSections.has(index), [regeneratedSections]);
 
-  const backToOutline = useCallback(() => {
-    setStep('outline_approved');
-    setActiveSectionIdx(null);
-  }, []);
+  const isSourceEnhanced = useCallback((index: number) => sourceEnhancedSections.has(index), [sourceEnhancedSections]);
+
+  const backToOutline = useCallback(() => { setStep('outline_approved'); setActiveSectionIdx(null); }, []);
 
   const progressPct = session?.sections.length
-    ? Math.round(
-        session.sections.filter(s => s.status !== 'pending').length /
-        session.sections.length * 100,
-      )
+    ? Math.round(session.sections.filter(s => s.status !== 'pending').length / session.sections.length * 100)
     : 0;
 
   return {
     step, session, streamingText, activeSectionIdx, error, progressPct, recentSessions,
+    developPhase, reviewMeta, isSourceEnhanced,
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession,
     isSectionRegenerated, ragSources, uploadingRag, uploadRagFile, uploadRagFiles,
-    startWithResources, skipResources, confirmResources,
+    skipResources, confirmResources,
   };
 }
