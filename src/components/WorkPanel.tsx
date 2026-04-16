@@ -206,6 +206,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [autoMode, setAutoMode] = useState(false);
   const sessionsTopRef = useRef<HTMLDivElement>(null);
+  const panelScrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const autoModeRef = useRef(false);
   const handleInsertRef = useRef<(idx: number) => void>(() => {});
@@ -230,7 +231,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     '--panel-gold': C.gold,
   } as CSSProperties), []);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [streamingText, step, coverAgent.streamingAbstract]);
+  useEffect(() => {
+    if (step === 'outline_approved') return;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [streamingText, step, coverAgent.streamingAbstract]);
+
+  useEffect(() => {
+    if (step !== 'outline_approved') return;
+    panelScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step, session?.sections.length]);
   useEffect(() => { if (step === 'review_outline') { setOutlineEdit(session?.outline_draft ?? ''); setOutlineSuggestions(''); } }, [step, session]);
   useEffect(() => { if (showSessions) loadSessions(); }, [showSessions, loadSessions]);
   useEffect(() => { if (!showSessions) return; sessionsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [showSessions, recentSessions.length]);
@@ -432,7 +441,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
         )}
 
         {/* Corpo */}
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div ref={panelScrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
 
           {/* ── IDLE ── */}
           {step === 'idle' && (
