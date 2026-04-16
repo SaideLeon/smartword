@@ -206,6 +206,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [autoMode, setAutoMode] = useState(false);
   const sessionsTopRef = useRef<HTMLDivElement>(null);
+  const panelScrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const autoModeRef = useRef(false);
   const handleInsertRef = useRef<(idx: number) => void>(() => {});
@@ -230,7 +231,15 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     '--panel-gold': C.gold,
   } as CSSProperties), []);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [streamingText, step, coverAgent.streamingAbstract]);
+  useEffect(() => {
+    if (step === 'outline_approved') return;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [streamingText, step, coverAgent.streamingAbstract]);
+
+  useEffect(() => {
+    if (step !== 'outline_approved') return;
+    panelScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step, session?.sections.length]);
   useEffect(() => { if (step === 'review_outline') { setOutlineEdit(session?.outline_draft ?? ''); setOutlineSuggestions(''); } }, [step, session]);
   useEffect(() => { if (showSessions) loadSessions(); }, [showSessions, loadSessions]);
   useEffect(() => { if (!showSessions) return; sessionsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [showSessions, recentSessions.length]);
@@ -432,7 +441,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
         )}
 
         {/* Corpo */}
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div ref={panelScrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
 
           {/* ── IDLE ── */}
           {step === 'idle' && (
@@ -624,6 +633,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 );
               })}
 
+              {step === 'developing' && developPhase === 'reviewing' && (
+                <div className="mt-1">
+                  <PhaseIndicator phase="reviewing" reviewMeta={reviewMeta} />
+                </div>
+              )}
+
               {progressPct === 100 && (
                 <div className="mt-2 rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent)]/20 p-3 text-center">
                   <div className="mb-1 text-2xl">🎓</div>
@@ -645,6 +660,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                       : 'A preparar: '}
                   <span className="text-[var(--panel-accent)]">{session.sections[activeSectionIdx]?.title}</span>
                 </Label>
+              )}
+              {developPhase === 'drafting' && (
+                <div className="mt-2 flex items-center gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2.5">
+                  <ProcessingBars height={10} />
+                  <span className="font-mono text-[10px] text-[var(--panel-text-dim)]">A preparar o próximo conteúdo…</span>
+                </div>
               )}
               {/* O streamingText só contém o Pass 2 — Pass 1 nunca é mostrado */}
               {(developPhase === 'refining' || developPhase === 'idle') && streamingText && (
