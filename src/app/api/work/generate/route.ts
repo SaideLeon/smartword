@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { saveWorkOutlineDraft } from '@/lib/work/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
+import { GeminiApiError, geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
 import { parseOutlinePayload } from '@/lib/validation/input-guards';
 import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 import { requireAuth } from '@/lib/api-auth';
@@ -115,6 +115,14 @@ export async function POST(req: Request) {
       },
     });
   } catch (e: any) {
+    const status = e instanceof GeminiApiError ? e.status : null;
+    if (status === 429 || status === 503 || (typeof status === 'number' && status >= 500)) {
+      return NextResponse.json(
+        { error: 'Serviço de IA temporariamente indisponível. Tenta novamente em alguns segundos.' },
+        { status: 503, headers: { 'Retry-After': '5' } },
+      );
+    }
+
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
