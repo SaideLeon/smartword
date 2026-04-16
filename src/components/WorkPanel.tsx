@@ -633,6 +633,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 );
               })}
 
+              {step === 'developing' && developPhase === 'reviewing' && (
+                <div className="mt-1">
+                  <PhaseIndicator phase="reviewing" reviewMeta={reviewMeta} />
+                </div>
+              )}
+
               {progressPct === 100 && (
                 <div className="mt-2 rounded border border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent)]/20 p-3 text-center">
                   <div className="mb-1 text-2xl">🎓</div>
