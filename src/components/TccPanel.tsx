@@ -42,6 +42,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
   const [autoMode, setAutoMode] = useState(false);
+  const panelScrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const autoModeRef = useRef(false);
   const handleInsertRef = useRef<(idx: number) => void>(() => {});
@@ -51,8 +52,14 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
   const isProcessing = useCallback((id: string) => processingButtonId === id, [processingButtonId]);
 
   useEffect(() => {
+    if (step === 'outline_approved') return;
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [streamingText, step, coverAgent.streamingAbstract]);
+
+  useEffect(() => {
+    if (step !== 'outline_approved') return;
+    panelScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step, session?.sections.length]);
 
   useEffect(() => {
     if (step === 'review_outline') {
@@ -332,7 +339,7 @@ export function TccPanel({ onInsert, onTopicChange, onClose, isMobile = false, e
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div ref={panelScrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
         {step === 'idle' && (
           <div className="mt-8 text-center">
             <div className="mb-3 text-[2.5rem]">📝</div>
