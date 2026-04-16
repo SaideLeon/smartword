@@ -12,6 +12,16 @@ interface GeminiOptions {
   model?: string;
 }
 
+export class GeminiApiError extends Error {
+  status: number | null;
+
+  constructor(message: string, status: number | null = null) {
+    super(message);
+    this.name = 'GeminiApiError';
+    this.status = status;
+  }
+}
+
 type GeminiContent = {
   role: 'user' | 'model';
   parts: Array<{ text: string }>;
@@ -70,7 +80,7 @@ function ensureContents(contents: GeminiContent[]) {
 
 export async function geminiGenerateText(options: GeminiOptions): Promise<string> {
   const keys = collectGeminiKeys();
-  if (keys.length === 0) throw new Error('GEMINI_API_KEY não configurada.');
+  if (keys.length === 0) throw new GeminiApiError('GEMINI_API_KEY não configurada.', 500);
 
   const { systemInstruction, contents } = buildPayload(options.messages);
   let lastErrorMessage = 'Erro ao chamar Gemini.';
@@ -94,16 +104,16 @@ export async function geminiGenerateText(options: GeminiOptions): Promise<string
       const status = extractStatusFromError(error);
       lastErrorMessage = error?.message ?? `Erro Gemini (status ${status ?? 'desconhecido'}).`;
       if (i < keys.length - 1 && canRetryWithNextKey(status)) continue;
-      throw new Error(lastErrorMessage);
+      throw new GeminiApiError(lastErrorMessage, status);
     }
   }
 
-  throw new Error(lastErrorMessage);
+  throw new GeminiApiError(lastErrorMessage, null);
 }
 
 export async function geminiGenerateTextStreamSSE(options: GeminiOptions): Promise<ReadableStream<Uint8Array>> {
   const keys = collectGeminiKeys();
-  if (keys.length === 0) throw new Error('GEMINI_API_KEY não configurada.');
+  if (keys.length === 0) throw new GeminiApiError('GEMINI_API_KEY não configurada.', 500);
 
   const { systemInstruction, contents } = buildPayload(options.messages);
   let lastErrorMessage = 'Erro ao chamar Gemini.';
@@ -143,11 +153,11 @@ export async function geminiGenerateTextStreamSSE(options: GeminiOptions): Promi
       const status = extractStatusFromError(error);
       lastErrorMessage = error?.message ?? `Erro Gemini (status ${status ?? 'desconhecido'}).`;
       if (i < keys.length - 1 && canRetryWithNextKey(status)) continue;
-      throw new Error(lastErrorMessage);
+      throw new GeminiApiError(lastErrorMessage, status);
     }
   }
 
-  throw new Error(lastErrorMessage);
+  throw new GeminiApiError(lastErrorMessage, null);
 }
 
 // ── Embeddings com gemini-embedding-2-preview ─────────────────────────────────
