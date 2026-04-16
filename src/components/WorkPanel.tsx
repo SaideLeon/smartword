@@ -661,6 +661,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                   <span className="text-[var(--panel-accent)]">{session.sections[activeSectionIdx]?.title}</span>
                 </Label>
               )}
+              {developPhase === 'drafting' && (
+                <div className="mt-2 flex items-center gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2.5">
+                  <ProcessingBars height={10} />
+                  <span className="font-mono text-[10px] text-[var(--panel-text-dim)]">A preparar o próximo conteúdo…</span>
+                </div>
+              )}
               {/* O streamingText só contém o Pass 2 — Pass 1 nunca é mostrado */}
               {(developPhase === 'refining' || developPhase === 'idle') && streamingText && (
                 <StreamBox text={streamingText} showProcessing={!streamingText.trim()} />
