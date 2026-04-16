@@ -99,23 +99,14 @@ export default function Home() {
         )}
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
-          {/* Barra de contexto do editor */}
-          <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2">
-            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.15em] text-[var(--faint)]">
-              Editor principal
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowEditor((current) => !current)}
-              className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-              title="Modo avançado"
-            >
-              {showEditor ? 'Ocultar edição' : 'Modo avançado'}
-            </button>
-          </div>
-
           <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-            <EditorFileToolbar filename={filename} onFilenameChange={setFilename} onImportFile={importTextFile} />
+            <EditorFileToolbar
+              filename={filename}
+              onFilenameChange={setFilename}
+              onImportFile={importTextFile}
+              showAdvanced={showEditor}
+              onToggleAdvanced={() => setShowEditor((current) => !current)}
+            />
             <div className={cn('grid min-h-0 flex-1 gap-3', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
               {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
               {/*
