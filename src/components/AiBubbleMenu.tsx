@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { BubbleMenu } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2 } from 'lucide-react';
 
@@ -88,7 +88,8 @@ export function AiBubbleMenu({ editor }: Props) {
 
     try {
       // Get surrounding context for better results (first 2 000 chars of doc)
-      const context = editor.storage.markdown?.getMarkdown()?.slice(0, 2000) ?? '';
+      const markdownStorage = (editor.storage as { markdown?: { getMarkdown?: () => string } }).markdown;
+      const context = markdownStorage?.getMarkdown?.()?.slice(0, 2000) ?? '';
 
       const res = await fetch('/api/ai/inline', {
         method: 'POST',
@@ -166,15 +167,11 @@ export function AiBubbleMenu({ editor }: Props) {
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{
-        duration: [120, 80],
-        maxWidth: 460,
+      options={{
         placement: 'top-start',
-        offset: [0, 10],
-        zIndex: 40,
-        interactive: true,
-        appendTo: () => document.body,
+        offset: 10,
       }}
+      appendTo={() => document.body}
       shouldShow={({ editor, state }) => {
         const { from, to, empty } = state.selection;
         // Show only when real text is selected (not inside code block)
