@@ -1,11 +1,19 @@
 'use client';
 
+// src/app/app/page.tsx
+// Changes from original:
+//   1. Import RichEditor instead of MarkdownEditor
+//   2. Replace MarkdownEditor JSX with RichEditor (same props interface)
+//   3. The "showEditor" toggle now shows raw Markdown textarea side-by-side (power user mode)
+//   4. RichEditor is always visible as the primary editing surface
+
 import { useCallback, useEffect, useState } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorActions, useEditorMeta, usePanelActions, useSidePanel } from '@/hooks/useEditorStore';
 import { useThemeMode } from '@/hooks/useThemeMode';
-import { MarkdownEditor } from '@/components/MarkdownEditor';
+import { RichEditor } from '@/components/RichEditor';          // ← NEW
+import { MarkdownEditor } from '@/components/MarkdownEditor';  // kept for power-user raw mode
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
 import { AiChatDrawer } from '@/components/AiChatDrawer';
@@ -16,13 +24,23 @@ import { DocumentPreview } from '@/components/DocumentPreview';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
-  const { markdown, previewMarkdown, setMarkdown, filename, includeCover, setFilename, loading, exportDocx, importTextFile, clearDefaultMarkdown, setFilenameFromTopic } = useDocumentEditor();
+  const {
+    markdown, previewMarkdown, setMarkdown, filename, includeCover,
+    setFilename, loading, exportDocx, importTextFile, clearDefaultMarkdown,
+    setFilenameFromTopic,
+  } = useDocumentEditor();
+
   const sidePanel = useSidePanel();
   const { togglePanel, closePanel } = usePanelActions();
   const { canRedo, canUndo } = useEditorMeta();
   const { redo, undo } = useEditorActions();
   const isMobile = useIsMobile();
-  const [showEditor, setShowEditor] = useState(false);
+
+  // "showEditor" now means "show raw Markdown textarea" (power user mode)
+  // "showPreview" means "show DOCX preview alongside"
+  const [showRawMarkdown, setShowRawMarkdown] = useState(false);
+  const [showPreview, setShowPreview]         = useState(false);
+
   const { themeMode, toggleThemeMode } = useThemeMode();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
@@ -40,9 +58,7 @@ export default function Home() {
   );
 
   const handleReplace = useCallback(
-    (text: string) => {
-      setMarkdown(text);
-    },
+    (text: string) => { setMarkdown(text); },
     [setMarkdown],
   );
 
@@ -55,23 +71,28 @@ export default function Home() {
   );
 
   useEffect(() => {
-    setFullscreenSupported(typeof document !== 'undefined' && !!document.documentElement.requestFullscreen);
-    const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', syncFullscreenState);
-    syncFullscreenState();
-    return () => {
-      document.removeEventListener('fullscreenchange', syncFullscreenState);
-    };
+    setFullscreenSupported(
+      typeof document !== 'undefined' && !!document.documentElement.requestFullscreen,
+    );
+    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', sync);
+    sync();
+    return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
 
   const handleToggleFullscreen = useCallback(async () => {
     if (!fullscreenSupported) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-      return;
-    }
+    if (document.fullscreenElement) { await document.exitFullscreen(); return; }
     await document.documentElement.requestFullscreen();
   }, [fullscreenSupported]);
+
+  // Determine grid columns based on visible panels
+  const gridCols = cn(
+    'grid min-h-0 flex-1 gap-3',
+    showRawMarkdown && showPreview  ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]' :
+    showRawMarkdown || showPreview  ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' :
+    'grid-cols-1',
+  );
 
   return (
     <main
@@ -100,24 +121,45 @@ export default function Home() {
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
           <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+
+            {/* File toolbar — with toggle buttons for raw markdown and preview */}
             <EditorFileToolbar
               filename={filename}
               onFilenameChange={setFilename}
               onImportFile={importTextFile}
-              showAdvanced={showEditor}
-              onToggleAdvanced={() => setShowEditor((current) => !current)}
+              showAdvanced={showRawMarkdown}
+              onToggleAdvanced={() => setShowRawMarkdown(v => !v)}
+              showPreview={showPreview}
+              onTogglePreview={() => setShowPreview(v => !v)}
             />
-            <div className={cn('grid min-h-0 flex-1 gap-3', showEditor && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
-              {showEditor && <MarkdownEditor value={markdown} onChange={setMarkdown} isMobile={isMobile} />}
-              {/*
-                originalMarkdown = markdown antes de formalizePreviewHeadings
-                → preserva os níveis reais dos headings para o TOC ({toc})
-              */}
-              <DocumentPreview
-                markdown={previewMarkdown}
-                originalMarkdown={markdown}
+
+            {/* Editor area */}
+            <div className={gridCols}>
+
+              {/* ── PRIMARY: Rich editor (always visible) ── */}
+              <RichEditor
+                value={markdown}
+                onChange={setMarkdown}
                 isMobile={isMobile}
               />
+
+              {/* ── OPTIONAL: Raw Markdown textarea (power user) ── */}
+              {showRawMarkdown && (
+                <MarkdownEditor
+                  value={markdown}
+                  onChange={setMarkdown}
+                  isMobile={isMobile}
+                />
+              )}
+
+              {/* ── OPTIONAL: DOCX preview ── */}
+              {showPreview && (
+                <DocumentPreview
+                  markdown={previewMarkdown}
+                  originalMarkdown={markdown}
+                  isMobile={isMobile}
+                />
+              )}
             </div>
           </div>
         </section>
