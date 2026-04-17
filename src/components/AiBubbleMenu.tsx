@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { BubbleMenuPlugin } from '@tiptap/extension-bubble-menu';
-import { PluginKey } from '@tiptap/pm/state';
+import { NodeSelection, PluginKey } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2, Copy, Scissors, WholeWord, Clipboard } from 'lucide-react';
 
@@ -235,8 +235,11 @@ export function AiBubbleMenu({ editor }: Props) {
             || editor.isActive('italic')
             || editor.isActive('strike')
             || editor.isActive('underline');
+          const hasImageSelection =
+            editor.isActive('image')
+            || (state.selection instanceof NodeSelection && state.selection.node.type.name === 'image');
 
-          return !editor.isActive('codeBlock') && (hasTextSelection || hasInlineFormattingContext);
+          return !editor.isActive('codeBlock') && (hasTextSelection || hasInlineFormattingContext || hasImageSelection);
         },
       }),
     );
