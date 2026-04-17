@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { BubbleMenu } from '@tiptap/extension-bubble-menu';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { BubbleMenuPlugin } from '@tiptap/extension-bubble-menu';
+import { PluginKey } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
-import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2, Copy, Scissors, WholeWord } from 'lucide-react';
+import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2, Copy, Scissors, WholeWord, Clipboard } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,8 @@ export function AiBubbleMenu({ editor }: Props) {
   const [lastPrompt, setLastPrompt] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const bubbleMenuKeyRef = useRef(new PluginKey('ai-bubble-menu'));
 
   // ── Get selected text ───────────────────────────────────────────────────────
 
@@ -94,6 +97,27 @@ export function AiBubbleMenu({ editor }: Props) {
 
   const selectAll = useCallback(() => {
     editor.chain().focus().selectAll().run();
+  }, [editor]);
+
+  const pasteClipboard = useCallback(async () => {
+    if (!editor.isEditable) return;
+
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+
+      editor
+        .chain()
+        .focus()
+        .command(({ tr, state }) => {
+          const { from, to } = state.selection;
+          tr.replaceWith(from, to, state.schema.text(text));
+          return true;
+        })
+        .run();
+    } catch (err) {
+      console.warn('[AiBubbleMenu] Clipboard read blocked by browser permissions.', err);
+    }
   }, [editor]);
 
   // ── Call AI API ─────────────────────────────────────────────────────────────
@@ -187,23 +211,39 @@ export function AiBubbleMenu({ editor }: Props) {
     reset();
   }, [editor, reset, result]);
 
+  // ── Register official BubbleMenu extension plugin ─────────────────────────
+
+  useEffect(() => {
+    const element = menuRef.current;
+    if (!element) return;
+
+    editor.registerPlugin(
+      BubbleMenuPlugin({
+        editor,
+        element,
+        pluginKey: bubbleMenuKeyRef.current,
+        options: {
+          placement: 'top-start',
+          offset: 10,
+        },
+        appendTo: () => document.body,
+        shouldShow: ({ editor, state, from, to }) => {
+          const { empty } = state.selection;
+          return !empty && from !== to && !editor.isActive('codeBlock');
+        },
+      }),
+    );
+
+    return () => {
+      editor.unregisterPlugin(bubbleMenuKeyRef.current);
+    };
+  }, [editor]);
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <BubbleMenu
-      editor={editor}
-      tippyOptions={{
-        placement: 'top-start',
-        offset: [0, 10],
-      }}
-      appendTo={() => document.body}
-      shouldShow={({ editor, state }) => {
-        const { from, to, empty } = state.selection;
-        // Show only when real text is selected (not inside code block)
-        return !empty && from !== to && !editor.isActive('codeBlock');
-      }}
-    >
       <div
+        ref={menuRef}
         className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--parchment)] shadow-2xl shadow-black/50"
         style={{ backdropFilter: 'blur(12px)' }}
       >
@@ -239,6 +279,16 @@ export function AiBubbleMenu({ editor }: Props) {
             >
               <WholeWord className="h-3 w-3 text-[var(--gold2)]" />
               <span>Selecionar tudo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void pasteClipboard()}
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              title="Colar"
+            >
+              <Clipboard className="h-3 w-3 text-[var(--gold2)]" />
+              <span>Colar</span>
             </button>
 
             <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
@@ -387,6 +437,5 @@ export function AiBubbleMenu({ editor }: Props) {
           </div>
         )}
       </div>
-    </BubbleMenu>
   );
 }
