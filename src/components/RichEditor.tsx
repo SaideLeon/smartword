@@ -49,6 +49,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
   const suppressNextUpdate = useRef(false);
   const [ready, setReady] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
+  const [zoom, setZoom] = useState(100);
 
   const [collab, setCollab] = useState<CollabState>({
     active: false,
@@ -225,15 +226,33 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
       {editor && <AiBubbleMenu editor={editor} />}
 
       {/* Editor surface */}
-      <div
-        className="relative min-h-0 flex-1 cursor-text overflow-hidden rounded-md border border-[var(--border)] bg-[var(--parchment)]"
-        onClick={() => editor?.commands.focus()}
-      >
-        <EditorContent editor={editor} className="rich-root" />
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)]">
+        <div className="flex h-full min-h-0">
+          <div className="word-left-ruler">
+            {Array.from({ length: 22 }, (_, i) => (
+              <span key={`v-${i}`} className="word-left-ruler-mark">{i}</span>
+            ))}
+          </div>
+          <div className="word-workspace">
+            <div className="word-ruler">
+              {Array.from({ length: 17 }, (_, i) => (
+                <div key={`tick-${i}`} className="word-ruler-tick" style={{ left: `${(i / 16) * 100}%` }}>
+                  <span className="word-ruler-label">{i}</span>
+                </div>
+              ))}
+            </div>
+            <div className="word-page-wrap" onClick={() => editor?.commands.focus()}>
+              <div className="word-page" style={{ transform: `scale(${zoom / 100})` }}>
+                <EditorContent editor={editor} className="rich-root" />
+                <span className="word-page-number">1</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center gap-3 px-0.5">
+      <div className="flex flex-wrap items-center gap-3 px-0.5">
         <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted)]">
           {words.toLocaleString('pt-BR')} palavras
         </span>
@@ -252,22 +271,138 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
             </span>
           </>
         )}
+        <span className="h-3 w-px bg-[var(--border)]" />
+        <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--faint)]">
+          Layout Word-like
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setZoom(v => Math.max(70, v - 10))}
+            className="h-5 w-5 rounded border border-[var(--border)] text-[var(--faint)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+          >
+            -
+          </button>
+          <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted)]">
+            {zoom}%
+          </span>
+          <button
+            type="button"
+            onClick={() => setZoom(v => Math.min(130, v + 10))}
+            className="h-5 w-5 rounded border border-[var(--border)] text-[var(--faint)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {/* ── Scoped styles ── */}
       <style>{`
         /* Root container */
-        .rich-root { display: flex; flex-direction: column; min-height: 480px; }
+        .rich-root { display: flex; flex-direction: column; min-height: 1040px; }
+
+        .word-workspace {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+          background: linear-gradient(180deg, color-mix(in oklab, var(--surface), #000 18%), var(--surface));
+        }
+        .word-left-ruler {
+          width: 32px;
+          border-right: 1px solid var(--border);
+          background: color-mix(in oklab, var(--surface), #000 14%);
+          color: var(--faint);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          padding-top: 34px;
+          overflow: hidden;
+          opacity: 0.7;
+        }
+        .word-left-ruler-mark {
+          position: relative;
+        }
+        .word-left-ruler-mark::before {
+          content: '';
+          position: absolute;
+          left: -8px;
+          top: 50%;
+          width: 5px;
+          height: 1px;
+          background: var(--faint);
+        }
+        .word-ruler {
+          position: relative;
+          margin: 10px auto 0;
+          width: min(860px, calc(100% - 20px));
+          height: 24px;
+          border: 1px solid var(--border);
+          border-bottom: none;
+          background: color-mix(in oklab, var(--surface), #000 8%);
+          border-radius: 6px 6px 0 0;
+        }
+        .word-ruler-tick {
+          position: absolute;
+          top: 8px;
+          bottom: 4px;
+          width: 1px;
+          background: var(--faint);
+          opacity: 0.45;
+        }
+        .word-ruler-label {
+          position: absolute;
+          top: -7px;
+          left: -5px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 8px;
+          color: var(--faint);
+        }
+        .word-page-wrap {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
+          padding: 0 12px 22px;
+        }
+        .word-page-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+        .word-page-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+        .word-page {
+          width: 820px;
+          margin: 0 auto;
+          transform-origin: top center;
+          transition: transform 150ms ease;
+          position: relative;
+        }
+        .word-page-number {
+          position: absolute;
+          left: 50%;
+          bottom: 32px;
+          transform: translateX(-50%);
+          color: #787878;
+          font-family: 'Times New Roman', Times, serif;
+          font-size: 30px;
+          opacity: 0.55;
+          pointer-events: none;
+        }
 
         /* The ProseMirror editable area */
         .rich-prose {
           flex: 1;
           min-height: 480px;
-          padding: ${isMobile ? '18px 20px' : '28px 36px'};
+          margin: 0 auto;
+          max-width: 100%;
+          background: #fff;
+          color: #111;
+          border: 1px solid #d9d9d9;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+          border-radius: 0 0 4px 4px;
+          padding: ${isMobile ? '56px 54px' : '66px 78px'};
           font-family: 'Times New Roman', Times, serif;
           font-size: ${isMobile ? '14px' : '15px'};
           line-height: 1.8;
-          color: var(--ink);
           outline: none;
           caret-color: var(--gold2, #8b6914);
           word-break: break-word;
@@ -276,12 +411,12 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
         }
 
         /* Placeholder */
-        .rich-is-empty .rich-prose::before {
+        .rich-is-empty::before {
           content: attr(data-placeholder);
-          float: left;
-          height: 0;
+          position: absolute;
+          margin-top: 2px;
           pointer-events: none;
-          color: var(--faint);
+          color: #a8a8a8;
           font-family: 'JetBrains Mono', monospace;
           font-size: 12px;
         }
