@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { BubbleMenu } from '@tiptap/extension-bubble-menu';
+import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
 import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2, Copy, Scissors, WholeWord } from 'lucide-react';
 
@@ -192,9 +192,9 @@ export function AiBubbleMenu({ editor }: Props) {
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{
+      options={{
         placement: 'top-start',
-        offset: [0, 10],
+        offset: 10,
       }}
       appendTo={() => document.body}
       shouldShow={({ editor, state }) => {
