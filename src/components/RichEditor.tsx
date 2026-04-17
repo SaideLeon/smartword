@@ -227,17 +227,25 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
 
       {/* Editor surface */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)]">
-        <div className="word-workspace">
-          <div className="word-ruler">
-            {Array.from({ length: 17 }, (_, i) => (
-              <div key={`tick-${i}`} className="word-ruler-tick" style={{ left: `${(i / 16) * 100}%` }}>
-                <span className="word-ruler-label">{i}</span>
-              </div>
+        <div className="flex h-full min-h-0">
+          <div className="word-left-ruler">
+            {Array.from({ length: 22 }, (_, i) => (
+              <span key={`v-${i}`} className="word-left-ruler-mark">{i}</span>
             ))}
           </div>
-          <div className="word-page-wrap" onClick={() => editor?.commands.focus()}>
-            <div className="word-page" style={{ transform: `scale(${zoom / 100})` }}>
-              <EditorContent editor={editor} className="rich-root" />
+          <div className="word-workspace">
+            <div className="word-ruler">
+              {Array.from({ length: 17 }, (_, i) => (
+                <div key={`tick-${i}`} className="word-ruler-tick" style={{ left: `${(i / 16) * 100}%` }}>
+                  <span className="word-ruler-label">{i}</span>
+                </div>
+              ))}
+            </div>
+            <div className="word-page-wrap" onClick={() => editor?.commands.focus()}>
+              <div className="word-page" style={{ transform: `scale(${zoom / 100})` }}>
+                <EditorContent editor={editor} className="rich-root" />
+                <span className="word-page-number">1</span>
+              </div>
             </div>
           </div>
         </div>
@@ -300,6 +308,33 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
           min-height: 0;
           background: linear-gradient(180deg, color-mix(in oklab, var(--surface), #000 18%), var(--surface));
         }
+        .word-left-ruler {
+          width: 32px;
+          border-right: 1px solid var(--border);
+          background: color-mix(in oklab, var(--surface), #000 14%);
+          color: var(--faint);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          padding-top: 34px;
+          overflow: hidden;
+          opacity: 0.7;
+        }
+        .word-left-ruler-mark {
+          position: relative;
+        }
+        .word-left-ruler-mark::before {
+          content: '';
+          position: absolute;
+          left: -8px;
+          top: 50%;
+          width: 5px;
+          height: 1px;
+          background: var(--faint);
+        }
         .word-ruler {
           position: relative;
           margin: 10px auto 0;
@@ -339,6 +374,18 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
           margin: 0 auto;
           transform-origin: top center;
           transition: transform 150ms ease;
+          position: relative;
+        }
+        .word-page-number {
+          position: absolute;
+          left: 50%;
+          bottom: 32px;
+          transform: translateX(-50%);
+          color: #787878;
+          font-family: 'Times New Roman', Times, serif;
+          font-size: 30px;
+          opacity: 0.55;
+          pointer-events: none;
         }
 
         /* The ProseMirror editable area */
