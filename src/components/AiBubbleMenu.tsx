@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { BubbleMenu } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import type { Editor } from '@tiptap/react';
 import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2, Copy, Scissors, WholeWord } from 'lucide-react';
 
