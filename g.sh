@@ -15,6 +15,6 @@ git add .
 git commit -m "$mensagem"
 
 # Push
-git push origin main
+git push origin main --force
 
 echo "Commit e push realizados com sucesso."
