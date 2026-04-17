@@ -1,23 +1,20 @@
 'use client';
 
 // src/app/app/page.tsx
-// Changes from original:
-//   1. Import RichEditor instead of MarkdownEditor
-//   2. Replace MarkdownEditor JSX with RichEditor (same props interface)
-//   3. The "showEditor" toggle now shows raw Markdown textarea side-by-side (power user mode)
-//   4. RichEditor is always visible as the primary editing surface
+// Uses the current EditorHeader API: mode / onModeChange
 
 import { useCallback, useEffect, useState } from 'react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useEditorActions, useEditorMeta, usePanelActions, useSidePanel } from '@/hooks/useEditorStore';
+import { useEditorActions, useEditorMeta } from '@/hooks/useEditorStore';
 import { useThemeMode } from '@/hooks/useThemeMode';
-import { RichEditor } from '@/components/RichEditor';          // ← NEW
-import { MarkdownEditor } from '@/components/MarkdownEditor';  // kept for power-user raw mode
+import { RichEditor } from '@/components/RichEditor';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
 import { AiChatDrawer } from '@/components/AiChatDrawer';
 import { EditorHeader } from '@/components/EditorHeader';
+import type { AppMode } from '@/components/EditorHeader';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
 import { DocumentPreview } from '@/components/DocumentPreview';
@@ -30,16 +27,13 @@ export default function Home() {
     setFilenameFromTopic,
   } = useDocumentEditor();
 
-  const sidePanel = useSidePanel();
-  const { togglePanel, closePanel } = usePanelActions();
   const { canRedo, canUndo } = useEditorMeta();
   const { redo, undo } = useEditorActions();
   const isMobile = useIsMobile();
 
-  // "showEditor" now means "show raw Markdown textarea" (power user mode)
-  // "showPreview" means "show DOCX preview alongside"
+  const [mode, setMode] = useState<AppMode>(null);
   const [showRawMarkdown, setShowRawMarkdown] = useState(false);
-  const [showPreview, setShowPreview]         = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { themeMode, toggleThemeMode } = useThemeMode();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -62,13 +56,15 @@ export default function Home() {
     [setMarkdown],
   );
 
-  const handleTogglePanel = useCallback(
-    (panel: Parameters<typeof togglePanel>[0]) => {
+  const handleModeChange = useCallback(
+    (newMode: AppMode) => {
       clearDefaultMarkdown();
-      togglePanel(panel);
+      setMode((prev) => (prev === newMode ? null : newMode));
     },
-    [clearDefaultMarkdown, togglePanel],
+    [clearDefaultMarkdown],
   );
+
+  const handleClosePanel = useCallback(() => setMode(null), []);
 
   useEffect(() => {
     setFullscreenSupported(
@@ -86,7 +82,6 @@ export default function Home() {
     await document.documentElement.requestFullscreen();
   }, [fullscreenSupported]);
 
-  // Determine grid columns based on visible panels
   const gridCols = cn(
     'grid min-h-0 flex-1 gap-3',
     showRawMarkdown && showPreview  ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]' :
@@ -94,17 +89,19 @@ export default function Home() {
     'grid-cols-1',
   );
 
+  const sidePanel = mode === 'tcc' ? 'tcc' : mode === 'trabalho' ? 'work' : mode === 'ia' ? 'chat' : 'none';
+
   return (
     <main
       className={`${themeVars} flex h-dvh min-h-screen flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}
     >
       <EditorHeader
-        sidePanel={sidePanel}
+        mode={mode}
+        onModeChange={handleModeChange}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
-        onTogglePanel={handleTogglePanel}
         themeMode={themeMode}
         onToggleTheme={toggleThemeMode}
         isFullscreen={isFullscreen}
@@ -122,28 +119,19 @@ export default function Home() {
         <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--parchment)]">
           <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
 
-            {/* File toolbar — with toggle buttons for raw markdown and preview */}
             <EditorFileToolbar
               filename={filename}
               onFilenameChange={setFilename}
               onImportFile={importTextFile}
-              showAdvanced={showRawMarkdown}
-              onToggleAdvanced={() => setShowRawMarkdown(v => !v)}
-              showPreview={showPreview}
-              onTogglePreview={() => setShowPreview(v => !v)}
             />
 
-            {/* Editor area */}
             <div className={gridCols}>
-
-              {/* ── PRIMARY: Rich editor (always visible) ── */}
               <RichEditor
                 value={markdown}
                 onChange={setMarkdown}
                 isMobile={isMobile}
               />
 
-              {/* ── OPTIONAL: Raw Markdown textarea (power user) ── */}
               {showRawMarkdown && (
                 <MarkdownEditor
                   value={markdown}
@@ -152,7 +140,6 @@ export default function Home() {
                 />
               )}
 
-              {/* ── OPTIONAL: DOCX preview ── */}
               {showPreview && (
                 <DocumentPreview
                   markdown={previewMarkdown}
@@ -177,7 +164,7 @@ export default function Home() {
               <TccPanel
                 onInsert={handleInsert}
                 onTopicChange={setFilenameFromTopic}
-                onClose={closePanel}
+                onClose={handleClosePanel}
                 isMobile={isMobile}
                 editorMarkdown={markdown}
               />
@@ -186,7 +173,7 @@ export default function Home() {
               <WorkPanel
                 onInsert={handleInsert}
                 onTopicChange={setFilenameFromTopic}
-                onClose={closePanel}
+                onClose={handleClosePanel}
                 isMobile={isMobile}
                 editorMarkdown={markdown}
               />
@@ -202,11 +189,13 @@ export default function Home() {
         includeCover={includeCover}
         isMobile={isMobile}
         onExport={exportDocx}
+        zoom={100}
+        onZoomChange={() => {}}
       />
 
       <AiChatDrawer
         open={sidePanel === 'chat'}
-        onClose={closePanel}
+        onClose={handleClosePanel}
         onInsert={handleInsert}
         onReplace={handleReplace}
         isMobile={isMobile}
