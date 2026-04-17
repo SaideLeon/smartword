@@ -1,0 +1,635 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0e0d;--surface:#1a1714;--surface2:#141210;
+  --border:#2c2721;--border2:#3a332a;
+  --gold:#d4b37b;--gold2:#c9a96e;--gold3:#8b6914;
+  --ink:#f1e8da;--muted:#c8bfb4;--faint:#8a7d6e;--dim:#5a5248;
+  --green:#6ea886;--teal:#61aa9d;
+  --page:#ffffff;--page-shadow:rgba(0,0,0,0.6);
+}
+body{background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif}
+.editor-root{display:flex;flex-direction:column;height:100vh;min-height:640px;background:var(--bg);overflow:hidden}
+
+.header-bar{display:flex;align-items:center;height:44px;padding:0 10px;background:var(--surface);border-bottom:1px solid var(--border);gap:8px;flex-shrink:0}
+.logo-icon{width:26px;height:26px;border-radius:4px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-family:serif;font-weight:700;font-size:14px;color:#000;flex-shrink:0}
+.logo-text{font-size:15px;font-style:italic;font-family:Georgia,serif;color:var(--gold2);flex-shrink:0}
+.logo-sub{font-size:9px;color:var(--dim);font-family:monospace;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.header-spacer{flex:1}
+.mode-btns{display:flex;gap:4px}
+.mode-btn{padding:4px 10px;border-radius:3px;font-size:10px;font-family:monospace;font-weight:600;letter-spacing:.06em;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.mode-btn.active{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;border-color:transparent}
+.mode-btn.ia{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000}
+.mode-btn:not(.active):not(.ia){border:1px solid var(--border2);color:var(--muted);background:transparent}
+.header-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.icon-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--faint);cursor:pointer;font-size:13px;transition:all .15s}
+.icon-btn:hover{border-color:var(--gold2);color:var(--gold2)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 5px var(--teal);flex-shrink:0}
+.latex-label{font-size:9px;font-family:monospace;color:var(--dim);letter-spacing:.06em}
+
+.tabs-bar{display:flex;align-items:stretch;height:30px;background:var(--surface2);border-bottom:1px solid var(--border);padding:0 8px;flex-shrink:0}
+.tab{padding:0 14px;font-size:10px;font-family:monospace;letter-spacing:.08em;color:var(--muted);cursor:pointer;display:flex;align-items:center;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--gold2);border-bottom-color:var(--gold2)}
+
+.ribbon{display:flex;align-items:stretch;background:var(--surface);border-bottom:1px solid var(--border);padding:4px 8px;gap:1px;flex-shrink:0;min-height:72px;overflow:hidden}
+.ribbon-group{display:flex;flex-direction:column;align-items:center;padding:0 8px;position:relative}
+.ribbon-group::after{content:'';position:absolute;right:0;top:8px;bottom:8px;width:1px;background:var(--border)}
+.ribbon-group:last-child::after{display:none}
+.ribbon-label{font-size:9px;color:var(--dim);font-family:monospace;margin-top:auto;padding-top:4px;white-space:nowrap}
+.ribbon-controls{display:flex;align-items:center;gap:3px;flex:1}
+.ribbon-col{display:flex;flex-direction:column;gap:2px}
+.r-btn{padding:2px 6px;border-radius:3px;background:transparent;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;min-width:24px;min-height:22px;transition:all .12s;white-space:nowrap}
+.r-btn:hover{background:var(--border);color:var(--ink)}
+.r-btn.active{background:var(--gold2);color:#000;border-color:transparent}
+.r-btn.big{flex-direction:column;gap:2px;min-width:44px;padding:4px 6px}
+.r-btn.big .r-icon{font-size:18px;line-height:1}
+.r-btn.big .r-label{font-size:8px;font-family:monospace}
+.font-select{background:var(--surface2);border:1px solid var(--border2);color:var(--muted);font-size:11px;padding:2px 4px;border-radius:3px;width:120px;cursor:pointer}
+.font-select:focus{outline:none;border-color:var(--gold2)}
+.size-input{background:var(--surface2);border:1px solid var(--border2);color:var(--muted);font-size:11px;padding:2px 4px;border-radius:3px;width:36px;text-align:center}
+.size-input:focus{outline:none;border-color:var(--gold2)}
+.ribbon-sep{width:1px;background:var(--border);margin:4px 2px;align-self:stretch}
+.style-pill{padding:3px 10px;border-radius:3px;font-size:10px;cursor:pointer;border:1px solid var(--border2);color:var(--muted);background:transparent;transition:all .12s;white-space:nowrap}
+.style-pill:hover{border-color:var(--gold2);color:var(--gold2)}
+.style-pill.active{background:var(--gold2);color:#000;border-color:transparent}
+
+.filetool-bar{display:flex;align-items:center;height:32px;background:var(--surface2);border-bottom:1px solid var(--border);padding:0 12px;gap:8px;flex-shrink:0}
+.fname-wrap{position:relative;flex:1;max-width:280px}
+.fname-input{background:transparent;border:1px solid var(--border2);border-radius:3px;color:var(--muted);font-size:11px;font-family:monospace;padding:3px 36px 3px 8px;width:100%;outline:none;transition:border-color .15s}
+.fname-input:focus{border-color:var(--gold2)}
+.fname-ext{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--dim);font-family:monospace;pointer-events:none}
+.ft-btn{padding:3px 8px;border-radius:3px;font-size:10px;font-family:monospace;font-weight:700;letter-spacing:.06em;border:1px solid var(--border2);color:var(--muted);background:transparent;cursor:pointer;transition:all .15s}
+.ft-btn:hover{border-color:var(--gold2);color:var(--gold2)}
+
+.workspace{display:flex;flex:1;overflow:hidden;position:relative}
+.left-gutter{width:40px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding-top:16px;flex-shrink:0}
+.v-rule{width:2px;height:40px;border-radius:2px;background:linear-gradient(to bottom,transparent,var(--gold),transparent)}
+
+.doc-area{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 20px 32px;display:flex;flex-direction:column;align-items:center;gap:0;background:var(--bg)}
+.doc-area::-webkit-scrollbar{width:6px}
+.doc-area::-webkit-scrollbar-track{background:transparent}
+.doc-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.ruler{width:100%;max-width:620px;height:20px;background:var(--surface);border:1px solid var(--border2);border-bottom:none;border-radius:3px 3px 0 0;display:flex;align-items:flex-end;padding:0 40px;position:relative;flex-shrink:0}
+.ruler-mark{position:absolute;bottom:0;font-size:7px;color:var(--dim);font-family:monospace;transform:translateX(-50%)}
+.ruler-tick{position:absolute;bottom:2px;width:1px;background:var(--dim)}
+
+.page{width:100%;max-width:620px;min-height:877px;background:var(--page);box-shadow:0 8px 32px var(--page-shadow);position:relative;flex-shrink:0}
+.page-content{padding:64px 72px;font-family:'Times New Roman',Times,serif;font-size:15px;line-height:1.8;color:#111;min-height:100%;outline:none}
+.page-content[data-empty="true"]::before{content:attr(data-placeholder);color:#aaa;font-style:italic;pointer-events:none;position:absolute}
+.page-number{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font-family:'Times New Roman',Times,serif;font-size:13px;color:#888}
+
+.bubble-menu{position:absolute;background:var(--surface);border:1px solid var(--border2);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.5);display:flex;align-items:center;gap:1px;padding:4px;z-index:100;pointer-events:all}
+.b-btn{padding:3px 8px;border-radius:3px;font-size:10px;font-family:monospace;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;transition:all .12s}
+.b-btn:hover{background:var(--border);color:var(--ink)}
+.b-btn.ai{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;border-color:transparent}
+.b-sep{width:1px;height:16px;background:var(--border2);margin:0 2px}
+
+.right-panels{width:240px;display:flex;flex-direction:column;border-left:1px solid var(--border);background:var(--surface);flex-shrink:0;overflow-y:auto}
+.right-panels::-webkit-scrollbar{width:4px}
+.right-panels::-webkit-scrollbar-thumb{background:var(--border2)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border)}
+.panel-title{font-size:12px;font-family:monospace;color:var(--gold2);letter-spacing:.04em;font-weight:600}
+.panel-close{font-size:16px;color:var(--faint);cursor:pointer;background:none;border:none;padding:0 2px;line-height:1;transition:color .12s}
+.panel-close:hover{color:var(--muted)}
+.panel-body{padding:10px 12px}
+.style-item{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:4px;cursor:pointer;transition:background .12s}
+.style-item:hover{background:var(--border)}
+.style-item.active{background:var(--gold2);color:#000}
+.style-name{font-size:12px}
+.style-key{font-size:9px;font-family:monospace;color:var(--dim)}
+.style-item.active .style-key{color:#555}
+.panel-divider{height:1px;background:var(--border);margin:8px 0}
+
+.work-panel{border-top:1px solid var(--border)}
+.work-icon{width:56px;height:56px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:32px}
+.work-desc{font-size:11px;color:var(--muted);line-height:1.6;text-align:center;margin-bottom:14px}
+.work-desc strong{color:var(--teal)}
+.work-start-btn{display:block;width:100%;padding:9px;border-radius:5px;background:linear-gradient(135deg,var(--teal),#4a9a8d);color:#fff;font-family:monospace;font-size:11px;font-weight:600;letter-spacing:.04em;border:none;cursor:pointer;text-align:center;transition:all .15s}
+.work-start-btn:hover{filter:brightness(1.1)}
+.work-start-btn::before{content:'+ ';font-size:14px}
+.panel-import-btn{width:100%;padding:5px 8px;border-radius:3px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:monospace;font-size:10px;cursor:pointer;margin-top:6px;transition:all .15s}
+.panel-import-btn:hover{border-color:var(--gold2);color:var(--gold2)}
+.panel-adv-btn{width:100%;padding:5px 8px;border-radius:3px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:monospace;font-size:10px;cursor:pointer;margin-top:4px;transition:all .15s}
+.panel-adv-btn:hover{border-color:var(--gold2);color:var(--gold2)}
+
+.status-bar{display:flex;align-items:center;height:28px;background:var(--surface);border-top:1px solid var(--border);padding:0 12px;gap:12px;flex-shrink:0}
+.stat{font-size:10px;font-family:monospace;color:var(--dim)}
+.stat-sep{width:1px;height:12px;background:var(--border2)}
+.status-spacer{flex:1}
+.view-btn{padding:3px 7px;border-radius:3px;font-size:9px;font-family:monospace;border:1px solid var(--border2);color:var(--dim);background:transparent;cursor:pointer;transition:all .12s}
+.view-btn.active,.view-btn:hover{color:var(--muted);border-color:var(--gold)}
+.zoom-ctrl{display:flex;align-items:center;gap:4px}
+.zoom-btn{width:16px;height:16px;border-radius:2px;border:1px solid var(--border2);background:transparent;color:var(--dim);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.zoom-btn:hover{color:var(--muted);border-color:var(--gold)}
+.zoom-val{font-size:10px;font-family:monospace;color:var(--dim);min-width:32px;text-align:center}
+.zoom-bar{width:60px;height:3px;background:var(--border2);border-radius:2px;position:relative;cursor:pointer}
+.zoom-fill{height:100%;background:var(--gold2);border-radius:2px;transition:width .15s}
+.zoom-thumb{position:absolute;top:50%;width:10px;height:10px;background:var(--gold2);border-radius:50%;transform:translate(-50%,-50%);transition:left .15s}
+.export-btn{display:flex;align-items:center;gap:6px;padding:4px 14px;border-radius:5px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;font-family:monospace;font-size:10px;font-weight:700;border:none;cursor:pointer;white-space:nowrap;letter-spacing:.04em;transition:all .15s;margin-left:8px}
+.export-btn:hover{filter:brightness(1.1)}
+.export-icon{font-size:11px}
+
+.ai-bubble{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--gold2);font-family:monospace;padding:1px 6px;border:1px solid var(--gold2);border-radius:10px;margin-left:6px}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.cursor{display:inline-block;width:1px;height:16px;background:#555;animation:blink 1s step-end infinite;vertical-align:middle;margin-left:1px}
+</style>
+
+<div class="editor-root">
+  <div class="header-bar">
+    <div class="logo-icon">∂</div>
+    <div>
+      <div class="logo-text">Muneri</div>
+      <div class="logo-sub">Markdown para Word com equações nativas</div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="mode-btns">
+      <button class="mode-btn" id="btn-trabalho" onclick="setMode('trabalho')">TRABALHO</button>
+      <button class="mode-btn active" id="btn-tcc" onclick="setMode('tcc')">TCC</button>
+      <button class="mode-btn ia" id="btn-ia" onclick="setMode('ia')">IA</button>
+    </div>
+    <div class="header-sep"></div>
+    <button class="icon-btn" title="Desfazer">↶</button>
+    <button class="icon-btn" title="Refazer">↷</button>
+    <div class="header-sep"></div>
+    <span class="latex-label">LATEX → OMML</span>
+    <div class="status-dot"></div>
+    <div class="header-sep"></div>
+    <button class="icon-btn" title="Configurações" onclick="alert('Configurações')">⚙</button>
+  </div>
+
+  <div class="tabs-bar">
+    <div class="tab active" onclick="setTab('inicio',this)">PÁGINA INICIAL</div>
+    <div class="tab" onclick="setTab('inserir',this)">INSERIR</div>
+    <div class="tab" onclick="setTab('design',this)">DESIGN</div>
+    <div class="tab" onclick="setTab('layout',this)">LAYOUT DA PÁGINA</div>
+    <div class="tab" onclick="setTab('refs',this)">REFERÊNCIAS</div>
+    <div class="tab" onclick="setTab('revisao',this)">REVISÃO</div>
+  </div>
+
+  <div class="ribbon" id="ribbon-inicio">
+    <div class="ribbon-group">
+      <div class="ribbon-controls">
+        <div class="ribbon-col" style="gap:4px">
+          <button class="r-btn big" title="Colar" style="min-width:38px">
+            <span class="r-icon">📋</span>
+            <span class="r-label">Colar</span>
+          </button>
+        </div>
+        <div class="ribbon-col">
+          <button class="r-btn" style="font-size:10px" title="Cortar">✂ Cortar</button>
+          <button class="r-btn" style="font-size:10px" title="Copiar">📄 Copiar</button>
+          <button class="r-btn" style="font-size:10px" title="Colar Dentro">↓ Colar Entr.</button>
+        </div>
+      </div>
+      <div class="ribbon-label">Clipboardo</div>
+    </div>
+
+    <div class="ribbon-group" style="min-width:260px">
+      <div class="ribbon-controls" style="flex-wrap:wrap;gap:3px">
+        <div style="display:flex;align-items:center;gap:4px;width:100%">
+          <select class="font-select" id="sel-font">
+            <option>Times New Roman</option>
+            <option>Arial</option>
+            <option>Calibri</option>
+            <option>Georgia</option>
+            <option>Courier New</option>
+          </select>
+          <input class="size-input" type="number" value="12" min="8" max="72" id="inp-size"/>
+          <button class="r-btn" title="Aumentar fonte">A↑</button>
+          <button class="r-btn" title="Diminuir fonte">A↓</button>
+          <button class="r-btn" title="Limpar formatação" style="font-size:11px">⌫</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px">
+          <button class="r-btn" id="btn-bold" onclick="toggleFmt('bold')" style="font-weight:700;min-width:26px">B</button>
+          <button class="r-btn" id="btn-italic" onclick="toggleFmt('italic')" style="font-style:italic;min-width:26px">I</button>
+          <button class="r-btn" id="btn-ul" onclick="toggleFmt('ul')" style="text-decoration:underline;min-width:26px">U</button>
+          <button class="r-btn" style="min-width:26px" title="Tachado"><s>S</s></button>
+          <button class="r-btn" style="font-size:9px;min-width:26px" title="Subscrito">X₂</button>
+          <button class="r-btn" style="font-size:9px;min-width:26px" title="Sobrescrito">X²</button>
+          <div class="ribbon-sep"></div>
+          <button class="r-btn" style="min-width:24px" title="Cor do texto"><span style="border-bottom:2px solid #e74c3c;padding-bottom:1px">A</span></button>
+          <button class="r-btn" style="min-width:24px" title="Realce"><span style="background:#f1c40f;padding:0 2px">A</span></button>
+        </div>
+      </div>
+      <div class="ribbon-label">Fonta</div>
+    </div>
+
+    <div class="ribbon-group" style="min-width:120px">
+      <div class="ribbon-controls" style="flex-wrap:wrap;gap:2px">
+        <div style="display:flex;gap:2px;width:100%">
+          <button class="r-btn" title="Lista bullets">≡•</button>
+          <button class="r-btn" title="Lista numerada">≡1</button>
+          <button class="r-btn" title="Recuar">⇤</button>
+          <button class="r-btn" title="Avançar">⇥</button>
+          <button class="r-btn" title="Ordenar">↕A</button>
+          <button class="r-btn" title="Mostrar marcas">¶</button>
+        </div>
+        <div style="display:flex;gap:2px">
+          <button class="r-btn active" title="Alinhar esquerda">⬛◻◻</button>
+          <button class="r-btn" title="Centrar">◻⬛◻</button>
+          <button class="r-btn" title="Direita">◻◻⬛</button>
+          <button class="r-btn" title="Justificar">▬▬▬</button>
+          <button class="r-btn" style="font-size:9px" title="Espaçamento linhas">↕↕</button>
+          <button class="r-btn" title="Sombreamento">🎨</button>
+        </div>
+      </div>
+      <div class="ribbon-label">Parágrafo</div>
+    </div>
+
+    <div class="ribbon-group" style="min-width:160px">
+      <div class="ribbon-controls" style="gap:3px;flex-wrap:wrap">
+        <div style="display:flex;gap:3px;width:100%;align-items:center">
+          <button class="r-btn active" style="font-size:14px;font-weight:700;min-width:64px;padding:4px 8px" title="Estilo Título 1">Título 1</button>
+          <div class="ribbon-col" style="gap:2px">
+            <button class="r-btn" style="font-size:11px;min-width:72px;color:var(--muted)" title="Subtítulo">AaBbCc</button>
+            <button class="r-btn" style="font-size:11px;min-width:72px;color:var(--muted)" title="Normal">AaBbCc</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:3px;margin-top:2px">
+          <button class="r-btn ft-btn" onclick="document.getElementById('styles-panel').style.display==='none'?document.getElementById('styles-panel').style.display='block':document.getElementById('styles-panel').style.display='none'" style="font-size:10px;padding:2px 8px">Estilos ▾</button>
+          <button class="r-btn ft-btn" style="font-size:10px;padding:2px 8px">Importar</button>
+          <button class="r-btn ft-btn" style="font-size:10px;padding:2px 8px">Avançado</button>
+        </div>
+      </div>
+      <div class="ribbon-label">Estilos</div>
+    </div>
+
+    <div class="ribbon-group" style="min-width:80px">
+      <div class="ribbon-controls" style="flex-direction:column;gap:4px">
+        <button class="r-btn big" title="Cabeçalho e Rodapé">
+          <span class="r-icon" style="font-size:16px">📄</span>
+          <span class="r-label">Cabeçalho e Rodapé</span>
+        </button>
+      </div>
+      <div class="ribbon-label">Tabelas</div>
+    </div>
+
+    <div class="ribbon-group" style="min-width:60px">
+      <div class="ribbon-controls" style="flex-direction:column;gap:4px">
+        <button class="r-btn big" title="Equações">
+          <span class="r-icon" style="font-size:16px">π</span>
+          <span class="r-label">Equações</span>
+        </button>
+      </div>
+      <div class="ribbon-label">Equações</div>
+    </div>
+
+    <div class="ribbon-group" style="border:none;min-width:50px">
+      <div class="ribbon-controls" style="flex-direction:column;gap:4px">
+        <button class="r-btn big" title="Símbolos">
+          <span class="r-icon" style="font-size:16px">Ω</span>
+          <span class="r-label">Símbolos</span>
+        </button>
+      </div>
+      <div class="ribbon-label">Símbolos</div>
+    </div>
+  </div>
+
+  <div class="filetool-bar">
+    <div class="logo-icon" style="width:22px;height:22px;font-size:11px;flex-shrink:0">∂</div>
+    <div class="fname-wrap">
+      <input class="fname-input" id="fname" type="text" value="matematica-teste" />
+      <span class="fname-ext">.docx</span>
+    </div>
+    <button class="ft-btn" onclick="alert('Importar ficheiro .md ou .txt')">IMPORTAR</button>
+    <button class="ft-btn" onclick="document.getElementById('raw-mode-indicator').style.display=document.getElementById('raw-mode-indicator').style.display==='none'?'flex':'none'">AVANÇADO</button>
+    <button class="ft-btn" onclick="alert('Pré-visualização DOCX')">PRÉ-VISUALIZAÇÃO</button>
+    <div id="raw-mode-indicator" style="display:none;align-items:center;gap:4px;padding:2px 8px;background:var(--gold2);border-radius:3px">
+      <span style="font-size:9px;font-family:monospace;color:#000;font-weight:700">MODO AVANÇADO ACTIVO</span>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <div class="left-gutter"><div class="v-rule"></div></div>
+
+    <div class="doc-area" id="doc-area">
+      <div class="ruler" id="ruler">
+        <span class="ruler-mark" style="left:40px">-2</span>
+        <span class="ruler-tick" style="left:56px;height:5px"></span>
+        <span class="ruler-mark" style="left:72px">-1</span>
+        <span class="ruler-tick" style="left:88px;height:5px"></span>
+        <span class="ruler-mark" style="left:104px">0</span>
+        <span class="ruler-tick" style="left:128px;height:5px"></span>
+        <span class="ruler-mark" style="left:152px">1</span>
+        <span class="ruler-tick" style="left:168px;height:4px"></span>
+        <span class="ruler-mark" style="left:192px">2</span>
+        <span class="ruler-tick" style="left:216px;height:4px"></span>
+        <span class="ruler-mark" style="left:240px">3</span>
+        <span class="ruler-tick" style="left:264px;height:4px"></span>
+        <span class="ruler-mark" style="left:288px">4</span>
+        <span class="ruler-tick" style="left:312px;height:4px"></span>
+        <span class="ruler-mark" style="left:340px">5</span>
+        <span class="ruler-tick" style="left:360px;height:4px"></span>
+        <span class="ruler-mark" style="left:384px">6</span>
+        <span class="ruler-tick" style="left:408px;height:4px"></span>
+        <span class="ruler-mark" style="left:432px">7</span>
+        <span class="ruler-tick" style="left:456px;height:4px"></span>
+        <span class="ruler-mark" style="left:480px">8</span>
+        <span class="ruler-tick" style="left:504px;height:4px"></span>
+        <span class="ruler-mark" style="left:528px">9</span>
+        <span class="ruler-tick" style="left:552px;height:4px"></span>
+        <span class="ruler-mark" style="left:576px">10</span>
+      </div>
+
+      <div class="page" id="page">
+        <div class="page-content"
+             id="editor"
+             contenteditable="true"
+             spellcheck="true"
+             data-empty="true"
+             data-placeholder="Página em branco"
+             oninput="onEditorInput()"
+             onmouseup="onTextSelect()"
+             onkeyup="onTextSelect()"
+             style="caret-color:#555">
+        </div>
+        <div class="page-number" id="page-num">1</div>
+
+        <div id="bubble" class="bubble-menu" style="display:none;top:0;left:0">
+          <button class="b-btn" onclick="execFmt('cut')">✂ Cortar</button>
+          <button class="b-btn" onclick="execFmt('copy')">📄 Copiar</button>
+          <button class="b-btn" onclick="execFmt('selectAll')">⊡ Selec. tudo</button>
+          <button class="b-btn" onclick="execFmt('paste')">📋 Colar</button>
+          <div class="b-sep"></div>
+          <button class="b-btn ai" onclick="callAI('improve')">✦ Melhorar</button>
+          <button class="b-btn" onclick="callAI('summarize')">↕ Resumir</button>
+          <button class="b-btn" onclick="callAI('formalize')">≡ Formalizar</button>
+          <button class="b-btn" onclick="callAI('expand')">↔ Expandir</button>
+          <button class="b-btn" onclick="callAI('correct')">✓ Corrigir</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-panels" id="right-panels">
+      <div id="styles-panel">
+        <div class="panel-header">
+          <span class="panel-title">Estilos</span>
+          <button class="panel-close" onclick="document.getElementById('styles-panel').style.display='none'">×</button>
+        </div>
+        <div class="panel-body">
+          <div class="style-item" onclick="applyStyle('h1',this)">
+            <span class="style-name" style="font-weight:700;font-size:13px">Título 1</span>
+            <span class="style-key">T↓</span>
+          </div>
+          <div class="style-item" style="margin-top:2px" onclick="applyStyle('blockquote',this)">
+            <span class="style-name" style="font-style:italic">Citação</span>
+            <span class="style-key">Ta</span>
+          </div>
+          <div class="style-item" style="margin-top:2px" onclick="applyStyle('h2',this)">
+            <span class="style-name" style="font-size:12px;color:#aaa">Subtítulo</span>
+            <span class="style-key">Ta</span>
+          </div>
+          <div class="style-item" style="margin-top:2px" onclick="applyStyle('h3',this)">
+            <span class="style-name" style="font-size:11px;color:#888">Sent Subtítulo</span>
+            <span class="style-key">Ta</span>
+          </div>
+          <div class="style-item active" style="margin-top:2px" id="style-normal" onclick="applyStyle('p',this)">
+            <span class="style-name">Normal</span>
+            <span class="style-key" style="color:#555">—</span>
+          </div>
+          <div class="panel-divider"></div>
+          <button class="panel-import-btn">IMPORTAR</button>
+          <button class="panel-adv-btn">AVANÇADO</button>
+        </div>
+      </div>
+
+      <div class="work-panel" id="work-panel">
+        <div class="panel-header">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:16px">📚</span>
+            <span class="panel-title" style="color:var(--teal)">Trabalho Escolar</span>
+          </div>
+          <button class="panel-close" onclick="document.getElementById('work-panel').style.display='none'">×</button>
+        </div>
+        <div class="panel-body" style="padding:16px 12px;text-align:center">
+          <div class="work-icon">📚</div>
+          <div class="work-desc">
+            Copiloto para trabalhos do ensino secundário e médio.<br/>
+            Gera e desenvolve cada secção —
+            <strong>com base nas tuas fontes.</strong>
+          </div>
+          <button class="work-start-btn" onclick="alert('Modo Trabalho Escolar — integração futura')">Iniciar trabalho</button>
+        </div>
+      </div>
+
+      <div id="tcc-panel" style="border-top:1px solid var(--border);display:none">
+        <div class="panel-header">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:16px">📝</span>
+            <span class="panel-title">Modo TCC</span>
+          </div>
+          <button class="panel-close" onclick="document.getElementById('tcc-panel').style.display='none'">×</button>
+        </div>
+        <div class="panel-body" style="padding:16px 12px;text-align:center">
+          <div style="font-size:32px;margin-bottom:12px">📝</div>
+          <div class="work-desc">
+            Acompanha-te do esboço à conclusão, secção a secção.<br/>
+            <strong>Compressão de contexto automática.</strong>
+          </div>
+          <button class="work-start-btn" style="background:linear-gradient(135deg,var(--green),#4a7c59)" onclick="alert('Modo TCC — integração futura')">Iniciar TCC</button>
+        </div>
+      </div>
+
+      <div id="ia-panel" style="border-top:1px solid var(--border);display:none">
+        <div class="panel-header">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:var(--gold2);font-size:14px">✦</span>
+            <span class="panel-title" style="color:var(--gold2)">IA · Matemática</span>
+          </div>
+          <button class="panel-close" onclick="document.getElementById('ia-panel').style.display='none'">×</button>
+        </div>
+        <div class="panel-body" style="padding:16px 12px;text-align:center">
+          <div style="font-size:32px;margin-bottom:12px">✦</div>
+          <div class="work-desc">
+            Descreve o conteúdo que queres gerar.<br/>
+            <strong>Equações LaTeX prontas para Word.</strong>
+          </div>
+          <textarea placeholder="Gera exercícios sobre equações do 2.º grau…" style="width:100%;height:72px;background:var(--surface2);border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-size:11px;padding:8px;resize:none;outline:none;font-family:monospace" onfocus="this.style.borderColor='var(--gold2)'" onblur="this.style.borderColor='var(--border2)'"></textarea>
+          <button style="margin-top:8px;width:100%;padding:8px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;font-family:monospace;font-size:11px;font-weight:700;border:none;border-radius:4px;cursor:pointer" onclick="alert('Chat IA — integração futura')">↑ Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span class="stat">Página <span id="pg-curr">1</span> de <span id="pg-total">1</span></span>
+    <div class="stat-sep"></div>
+    <span class="stat">Palavras: <span id="word-count">0</span></span>
+    <div class="stat-sep"></div>
+    <span class="stat">Idioma: Português</span>
+    <div class="stat-sep"></div>
+    <span class="stat" id="char-count">0 LINHAS · 0 CARACTERES</span>
+    <div class="status-spacer"></div>
+    <button class="view-btn active" id="vbtn-read" onclick="setView('read',this)">Modo Leitura</button>
+    <button class="view-btn" id="vbtn-edit" onclick="setView('edit',this)">Edição</button>
+    <button class="view-btn" id="vbtn-web" onclick="setView('web',this)">Web</button>
+    <div class="stat-sep"></div>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="zbtn-minus" onclick="changeZoom(-10)">−</button>
+      <div class="zoom-bar" onclick="barZoom(event)">
+        <div class="zoom-fill" id="zfill" style="width:90%"></div>
+        <div class="zoom-thumb" id="zthumb" style="left:90%"></div>
+      </div>
+      <button class="zoom-btn" id="zbtn-plus" onclick="changeZoom(10)">+</button>
+      <span class="zoom-val" id="zoom-label">90%</span>
+    </div>
+    <button class="export-btn" onclick="alert('Exportar ' + document.getElementById('fname').value + '.docx')">
+      <span class="export-icon">↗</span>
+      Exportar <span id="export-fname">matematica-teste</span>
+    </button>
+  </div>
+</div>
+
+<script>
+var zoomVal=90;
+var fmtState={bold:false,italic:false,ul:false};
+var currentMode='tcc';
+
+function setMode(mode){
+  currentMode=mode;
+  ['trabalho','tcc','ia'].forEach(function(m){
+    var b=document.getElementById('btn-'+m);
+    b.className=b.className.replace(' active','');
+  });
+  var btn=document.getElementById('btn-'+mode);
+  btn.className=btn.className+' active';
+  if(btn.className.includes('ia')&&!btn.className.includes(' active')){}
+
+  document.getElementById('work-panel').style.display=mode==='trabalho'?'block':'none';
+  document.getElementById('tcc-panel').style.display=mode==='tcc'?'block':'none';
+  document.getElementById('ia-panel').style.display=mode==='ia'?'block':'none';
+  if(mode==='tcc'){
+    document.getElementById('tcc-panel').style.display='block';
+    document.getElementById('work-panel').style.display='none';
+  } else if(mode==='trabalho'){
+    document.getElementById('work-panel').style.display='block';
+    document.getElementById('tcc-panel').style.display='none';
+  }
+}
+
+function setTab(tab,el){
+  document.querySelectorAll('.tabs-bar .tab').forEach(function(t){t.className=t.className.replace(' active','')});
+  el.className=el.className+' active';
+}
+
+function toggleFmt(fmt){
+  fmtState[fmt]=!fmtState[fmt];
+  var btn=document.getElementById('btn-'+fmt);
+  if(fmtState[fmt]) btn.className=btn.className+' active';
+  else btn.className=btn.className.replace(' active','');
+  var cmd=fmt==='bold'?'bold':fmt==='italic'?'italic':'underline';
+  document.execCommand(cmd,false,null);
+  document.getElementById('editor').focus();
+}
+
+function execFmt(cmd){
+  if(cmd==='cut') document.execCommand('cut');
+  else if(cmd==='copy') document.execCommand('copy');
+  else if(cmd==='paste') document.execCommand('paste');
+  else if(cmd==='selectAll') document.execCommand('selectAll');
+  hideBubble();
+}
+
+function callAI(action){
+  var sel=window.getSelection().toString();
+  var label={improve:'Melhorar',summarize:'Resumir',formalize:'Formalizar',expand:'Expandir',correct:'Corrigir'};
+  alert('IA: '+label[action]+(sel?' — Texto seleccionado: "'+sel.slice(0,60)+'"':' — Selecciona texto primeiro'));
+  hideBubble();
+}
+
+function applyStyle(tag,el){
+  document.querySelectorAll('.style-item').forEach(function(s){s.className=s.className.replace(' active','')});
+  el.className=el.className+' active';
+  document.execCommand('formatBlock',false,tag==='p'?'p':tag==='h1'?'h1':tag==='h2'?'h2':tag==='h3'?'h3':'blockquote');
+  document.getElementById('editor').focus();
+}
+
+function onEditorInput(){
+  var ed=document.getElementById('editor');
+  var text=ed.innerText||'';
+  var words=text.trim().split(/\s+/).filter(function(w){return w.length>0});
+  document.getElementById('word-count').textContent=words.length;
+  document.getElementById('char-count').textContent=(text.split('\n').length)+' LINHAS · '+text.length+' CARACTERES';
+  ed.dataset.empty=text.trim()===''?'true':'false';
+  var fname=document.getElementById('fname').value;
+  document.getElementById('export-fname').textContent=fname;
+}
+
+function onTextSelect(){
+  var sel=window.getSelection();
+  if(sel&&!sel.isCollapsed&&sel.toString().trim().length>0){
+    showBubble(sel);
+  } else {
+    hideBubble();
+  }
+}
+
+function showBubble(sel){
+  var bubble=document.getElementById('bubble');
+  var range=sel.getRangeAt(0);
+  var rect=range.getBoundingClientRect();
+  var page=document.getElementById('page').getBoundingClientRect();
+  var x=rect.left-page.left;
+  var y=rect.top-page.top-52;
+  if(y<4) y=rect.bottom-page.top+6;
+  bubble.style.display='flex';
+  bubble.style.left=Math.max(0,x)+'px';
+  bubble.style.top=Math.max(4,y)+'px';
+}
+
+function hideBubble(){
+  document.getElementById('bubble').style.display='none';
+}
+
+function changeZoom(delta){
+  zoomVal=Math.min(200,Math.max(25,zoomVal+delta));
+  updateZoom();
+}
+
+function barZoom(e){
+  var bar=e.currentTarget;
+  var pct=e.offsetX/bar.offsetWidth;
+  zoomVal=Math.round(25+pct*175);
+  updateZoom();
+}
+
+function updateZoom(){
+  var pct=(zoomVal-25)/175;
+  document.getElementById('zfill').style.width=(pct*100)+'%';
+  document.getElementById('zthumb').style.left=(pct*100)+'%';
+  document.getElementById('zoom-label').textContent=zoomVal+'%';
+  document.getElementById('page').style.transform='scale('+zoomVal/100+')';
+  document.getElementById('page').style.transformOrigin='top center';
+}
+
+function setView(mode,el){
+  document.querySelectorAll('.view-btn').forEach(function(b){b.className=b.className.replace(' active','')});
+  el.className=el.className+' active';
+  var ed=document.getElementById('editor');
+  ed.contentEditable=mode==='edit'?'true':'false';
+  if(mode==='read') ed.style.color='#222';
+  else ed.style.color='#111';
+}
+
+document.getElementById('fname').addEventListener('input',function(){
+  document.getElementById('export-fname').textContent=this.value;
+});
+
+document.getElementById('editor').addEventListener('click',function(){
+  hideBubble();
+  this.dataset.empty=this.innerText.trim()===''?'true':'false';
+  if(this.innerText.trim()==='') return;
+});
+
+document.addEventListener('mousedown',function(e){
+  if(!document.getElementById('bubble').contains(e.target)){
+    hideBubble();
+  }
+});
+
+setMode('tcc');
+</script>
