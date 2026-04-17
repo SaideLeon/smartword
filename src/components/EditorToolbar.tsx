@@ -66,18 +66,6 @@ function RibbonGroup({ title, children, className = '' }: RibbonGroupProps) {
   );
 }
 
-function RibbonGroup({ title, children, className = '' }: RibbonGroupProps) {
-  return (
-    <div className={`relative flex min-h-[72px] flex-col justify-between px-2 py-1 ${className}`}>
-      <div className="flex flex-1 items-start gap-1">{children}</div>
-      <span className="pt-1 text-center font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--faint)]">
-        {title}
-      </span>
-      <span className="absolute -right-1 top-2 bottom-2 w-px bg-[var(--border)]" />
-    </div>
-  );
-}
-
 // ── Math dialog ───────────────────────────────────────────────────────────────
 
 function MathDialog({

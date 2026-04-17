@@ -20,6 +20,7 @@ interface Props {
   value: string;
   onChange: (markdown: string) => void;
   isMobile?: boolean;
+  shellless?: boolean;
 }
 
 interface CollabState {
@@ -44,7 +45,7 @@ function randomColor() {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RichEditor({ value, onChange, isMobile = false }: Props) {
+export function RichEditor({ value, onChange, isMobile = false, shellless = false }: Props) {
   const lastExternalValue = useRef<string>(value);
   const suppressNextUpdate = useRef(false);
   const [ready, setReady] = useState(false);
@@ -156,7 +157,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
     autofocus: false,
     editorProps: {
       attributes: {
-        class: 'rich-prose',
+        class: `rich-prose${shellless ? ' rich-prose-embedded' : ''}`,
         spellcheck: 'true',
         lang: 'pt',
       },
@@ -198,6 +199,31 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
   const words = editor?.storage.characterCount?.words() ?? 0;
 
   // ── Render ───────────────────────────────────────────────────────────────────
+
+  if (shellless) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        {editor && <AiBubbleMenu editor={editor} />}
+        <div className="min-h-0 flex-1">
+          <EditorContent editor={editor} className="rich-root rich-root-embedded" />
+        </div>
+        <style>{`
+          .rich-root-embedded { display: block; min-height: 100%; }
+          .rich-prose-embedded {
+            min-height: 640px;
+            height: 100%;
+            margin: 0;
+            width: 100%;
+            max-width: 100%;
+            border: none;
+            box-shadow: none;
+            background: transparent;
+            padding: ${isMobile ? '32px 26px' : '48px 54px'};
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
