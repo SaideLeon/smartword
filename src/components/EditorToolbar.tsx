@@ -4,8 +4,7 @@ import { useState, useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Strikethrough, Code, Quote, Minus,
-  Undo2, Redo2, List, ListOrdered, Heading1, Heading2, Heading3,
-  Pi, Users, Code2,
+  Undo2, Redo2, List, ListOrdered, Pi, Users, Code2,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -55,8 +54,16 @@ function ToolBtn({ icon, label, onClick, active, disabled }: BtnProps) {
   );
 }
 
-function Sep() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-[var(--border)]" />;
+function RibbonGroup({ title, children, className = '' }: RibbonGroupProps) {
+  return (
+    <div className={`relative flex min-h-[72px] flex-col justify-between px-2 py-1 ${className}`}>
+      <div className="flex flex-1 items-start gap-1">{children}</div>
+      <span className="pt-1 text-center font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--faint)]">
+        {title}
+      </span>
+      <span className="absolute -right-1 top-2 bottom-2 w-px bg-[var(--border)]" />
+    </div>
+  );
 }
 
 function RibbonGroup({ title, children, className = '' }: RibbonGroupProps) {
@@ -153,7 +160,7 @@ export function EditorToolbar({
   onToggleCollab,
 }: Props) {
   const [showMath, setShowMath] = useState(false);
-  const [activeTab, setActiveTab] = useState<'inicio' | 'inserir' | 'layout' | 'revisao'>('inicio');
+  const [activeTab, setActiveTab] = useState<'inicio' | 'inserir' | 'design' | 'layout' | 'refs' | 'revisao'>('inicio');
 
   const insertMath = useCallback(
     (latex: string, block: boolean) => {
@@ -192,7 +199,9 @@ export function EditorToolbar({
           {[
             { key: 'inicio', label: 'Página inicial' },
             { key: 'inserir', label: 'Inserir' },
+            { key: 'design', label: 'Design' },
             { key: 'layout', label: 'Layout da página' },
+            { key: 'refs', label: 'Referências' },
             { key: 'revisao', label: 'Revisão' },
           ].map(tab => (
             <button
@@ -295,12 +304,16 @@ export function EditorToolbar({
                       <option>Calibri</option>
                     </select>
                     <span className="rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--faint)]">12</span>
+                    <button type="button" className="rounded border border-[var(--border)] px-1 py-0.5 font-mono text-[10px] text-[var(--muted)]">A↑</button>
+                    <button type="button" className="rounded border border-[var(--border)] px-1 py-0.5 font-mono text-[10px] text-[var(--muted)]">A↓</button>
                   </div>
                   <div className="flex items-center gap-0.5">
                     <ToolBtn icon={<Bold className={iconSz} />} label="Negrito (Ctrl+B)" onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} />
                     <ToolBtn icon={<Italic className={iconSz} />} label="Itálico (Ctrl+I)" onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} />
                     {showFull && <ToolBtn icon={<Strikethrough className={iconSz} />} label="Tachado" onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} />}
                     <ToolBtn icon={<Code className={iconSz} />} label="Código inline" onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} />
+                    <button type="button" className="h-7 rounded border border-[var(--border)] px-1.5 text-[10px] text-[var(--muted)]">X₂</button>
+                    <button type="button" className="h-7 rounded border border-[var(--border)] px-1.5 text-[10px] text-[var(--muted)]">X²</button>
                   </div>
                 </div>
               </RibbonGroup>
@@ -353,7 +366,43 @@ export function EditorToolbar({
                   <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={`rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.06em] ${editor.isActive('heading', { level: 3 }) ? 'border-[var(--gold2)]/60 bg-[var(--gold)]/15 text-[var(--gold2)]' : 'border-[var(--border)] text-[var(--faint)]'}`}>
                     Sent.Subtítulo
                   </button>
+                  <button type="button" onClick={() => setShowMath(true)} className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                    Equações
+                  </button>
                 </div>
+              </RibbonGroup>
+            </>
+          )}
+
+          {activeTab === 'design' && (
+            <>
+              <RibbonGroup title="Temas">
+                <button type="button" className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[11px] text-[var(--muted)]">
+                  Cores do documento
+                </button>
+              </RibbonGroup>
+              <RibbonGroup title="Plano de fundo" className="[&>span:last-child]:hidden">
+                <button type="button" className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[11px] text-[var(--muted)]">
+                  Marca d&apos;água
+                </button>
+                <button type="button" className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[11px] text-[var(--muted)]">
+                  Cor da página
+                </button>
+              </RibbonGroup>
+            </>
+          )}
+
+          {activeTab === 'refs' && (
+            <>
+              <RibbonGroup title="Sumário">
+                <button type="button" className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[11px] text-[var(--muted)]">
+                  Inserir índice
+                </button>
+              </RibbonGroup>
+              <RibbonGroup title="Citações" className="[&>span:last-child]:hidden">
+                <button type="button" className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[11px] text-[var(--muted)]">
+                  Gerir fontes
+                </button>
               </RibbonGroup>
             </>
           )}

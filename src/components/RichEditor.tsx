@@ -299,7 +299,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
       {/* ── Scoped styles ── */}
       <style>{`
         /* Root container */
-        .rich-root { display: flex; flex-direction: column; min-height: 1040px; }
+        .rich-root { display: flex; flex-direction: column; min-height: 877px; }
 
         .word-workspace {
           display: flex;
@@ -309,7 +309,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
           background: linear-gradient(180deg, color-mix(in oklab, var(--surface), #000 18%), var(--surface));
         }
         .word-left-ruler {
-          width: 32px;
+          width: 40px;
           border-right: 1px solid var(--border);
           background: color-mix(in oklab, var(--surface), #000 14%);
           color: var(--faint);
@@ -318,8 +318,8 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 16px;
-          padding-top: 34px;
+          gap: 18px;
+          padding-top: 18px;
           overflow: hidden;
           opacity: 0.7;
         }
@@ -338,8 +338,8 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
         .word-ruler {
           position: relative;
           margin: 10px auto 0;
-          width: min(860px, calc(100% - 20px));
-          height: 24px;
+          width: min(620px, calc(100% - 20px));
+          height: 20px;
           border: 1px solid var(--border);
           border-bottom: none;
           background: color-mix(in oklab, var(--surface), #000 8%);
@@ -370,7 +370,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
         .word-page-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
         .word-page-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
         .word-page {
-          width: 820px;
+          width: 620px;
           margin: 0 auto;
           transform-origin: top center;
           transition: transform 150ms ease;
@@ -379,12 +379,12 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
         .word-page-number {
           position: absolute;
           left: 50%;
-          bottom: 32px;
+          bottom: 28px;
           transform: translateX(-50%);
           color: #787878;
           font-family: 'Times New Roman', Times, serif;
-          font-size: 30px;
-          opacity: 0.55;
+          font-size: 13px;
+          opacity: 0.85;
           pointer-events: none;
         }
 
@@ -398,8 +398,8 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
           color: #111;
           border: 1px solid #d9d9d9;
           box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-          border-radius: 0 0 4px 4px;
-          padding: ${isMobile ? '56px 54px' : '66px 78px'};
+          border-radius: 0;
+          padding: ${isMobile ? '52px 44px' : '64px 72px'};
           font-family: 'Times New Roman', Times, serif;
           font-size: ${isMobile ? '14px' : '15px'};
           line-height: 1.8;
