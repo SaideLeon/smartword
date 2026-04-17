@@ -204,7 +204,7 @@ export function AiBubbleMenu({ editor }: Props) {
       }}
     >
       <div
-        className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--parchment)] shadow-2xl shadow-black/50"
+        className="overflow-hidden rounded-xl border border-[color:rgba(201,169,110,0.55)] bg-[color:rgba(18,15,12,0.96)] text-[#f0e6d5] shadow-[0_14px_36px_rgba(0,0,0,0.62)] ring-1 ring-black/40"
         style={{ backdropFilter: 'blur(12px)' }}
       >
 
@@ -214,7 +214,7 @@ export function AiBubbleMenu({ editor }: Props) {
             <button
               type="button"
               onClick={() => void cutSelection()}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               title="Cortar"
             >
               <Scissors className="h-3 w-3 text-[var(--gold2)]" />
@@ -224,7 +224,7 @@ export function AiBubbleMenu({ editor }: Props) {
             <button
               type="button"
               onClick={() => void copySelection()}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               title="Copiar"
             >
               <Copy className="h-3 w-3 text-[var(--gold2)]" />
@@ -234,14 +234,14 @@ export function AiBubbleMenu({ editor }: Props) {
             <button
               type="button"
               onClick={selectAll}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               title="Selecionar tudo"
             >
               <WholeWord className="h-3 w-3 text-[var(--gold2)]" />
               <span>Selecionar tudo</span>
             </button>
 
-            <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
+            <div className="mx-0.5 h-4 w-px bg-[#3f352b]" />
 
             {/* IA label */}
             <div className="flex items-center gap-1.5 px-2 py-1 font-mono text-[10px] tracking-[0.06em] text-[var(--gold2)]">
@@ -249,7 +249,7 @@ export function AiBubbleMenu({ editor }: Props) {
               <span className="uppercase">IA</span>
             </div>
 
-            <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
+            <div className="mx-0.5 h-4 w-px bg-[#3f352b]" />
 
             {/* Quick actions */}
             {ACTIONS.map(action => (
@@ -257,14 +257,14 @@ export function AiBubbleMenu({ editor }: Props) {
                 key={action.label}
                 type="button"
                 onClick={() => runAi(action.prompt)}
-                className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+                className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               >
                 <span className="text-[var(--gold2)]">{action.emoji}</span>
                 <span>{action.label}</span>
               </button>
             ))}
 
-            <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
+            <div className="mx-0.5 h-4 w-px bg-[#3f352b]" />
 
             {/* Custom prompt */}
             <button
@@ -273,7 +273,7 @@ export function AiBubbleMenu({ editor }: Props) {
                 setPhase('custom');
                 setTimeout(() => customInputRef.current?.focus(), 50);
               }}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
             >
               <ChevronRight className="h-3 w-3" />
               <span>Instrução custom</span>
@@ -295,7 +295,7 @@ export function AiBubbleMenu({ editor }: Props) {
                 if (e.key === 'Escape') reset();
               }}
               placeholder="Ex: traduz para inglês académico…"
-              className="min-w-[200px] flex-1 rounded border border-[var(--border)] bg-transparent px-3 py-1.5 font-mono text-[11px] text-[var(--ink)] outline-none placeholder-[var(--faint)] focus:border-[var(--gold2)]"
+              className="min-w-[200px] flex-1 rounded border border-[#4f4338] bg-[#15120f] px-3 py-1.5 font-mono text-[11px] text-[#f5ebdc] outline-none placeholder:text-[#a99a86] focus:border-[var(--gold2)]"
             />
             <button
               type="button"
@@ -308,7 +308,7 @@ export function AiBubbleMenu({ editor }: Props) {
             <button
               type="button"
               onClick={reset}
-              className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] text-[var(--faint)] transition hover:border-[var(--muted)] hover:text-[var(--muted)]"
+              className="flex h-8 w-8 items-center justify-center rounded border border-[#4f4338] text-[#b9aa95] transition hover:border-[#c9a96e] hover:text-[#f5ebdc]"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -320,11 +320,11 @@ export function AiBubbleMenu({ editor }: Props) {
           <div className="flex max-w-[340px] items-start gap-3 p-3">
             <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-[var(--gold2)]" />
             <div className="min-w-0 flex-1">
-              <p className="mb-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--faint)]">
+              <p className="mb-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[#b9aa95]">
                 A processar…
               </p>
               {result && (
-                <p className="line-clamp-3 font-mono text-[11px] leading-[1.65] text-[var(--muted)]">
+                <p className="line-clamp-3 font-mono text-[11px] leading-[1.65] text-[#f1e7d8]">
                   {result}
                 </p>
               )}
@@ -332,7 +332,7 @@ export function AiBubbleMenu({ editor }: Props) {
             <button
               type="button"
               onClick={reset}
-              className="flex-shrink-0 text-[var(--faint)] hover:text-[var(--muted)]"
+              className="flex-shrink-0 text-[#b9aa95] hover:text-[#f5ebdc]"
               title="Cancelar"
             >
               <X className="h-3.5 w-3.5" />
@@ -353,14 +353,14 @@ export function AiBubbleMenu({ editor }: Props) {
               <button
                 type="button"
                 onClick={reset}
-                className="text-[var(--faint)] transition hover:text-[var(--muted)]"
+                className="text-[#b9aa95] transition hover:text-[#f5ebdc]"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
             {/* Result preview */}
-            <div className="max-h-[140px] overflow-y-auto rounded border border-[var(--border)] bg-[var(--heroRight)] px-3 py-2.5 font-mono text-[11px] leading-[1.7] text-[#c8bfb4]">
+            <div className="max-h-[140px] overflow-y-auto rounded border border-[#4f4338] bg-[#1a1612] px-3 py-2.5 font-mono text-[11px] leading-[1.7] text-[#f1e7d8]">
               {result}
             </div>
 
@@ -378,7 +378,7 @@ export function AiBubbleMenu({ editor }: Props) {
                 type="button"
                 onClick={() => runAi(lastPrompt)}
                 title="Gerar nova versão"
-                className="flex items-center justify-center gap-1.5 rounded border border-[var(--border)] px-3 py-1.5 font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+                className="flex items-center justify-center gap-1.5 rounded border border-[#4f4338] px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Novo

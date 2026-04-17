@@ -77,6 +77,12 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
     autofocus: false,
     editorProps: {
       attributes: { class: 'rich-prose', spellcheck: 'true', lang: 'pt' },
+      handleDOMEvents: {
+        contextmenu: (_view, event) => {
+          event.preventDefault();
+          return true;
+        },
+      },
     },
     onUpdate: ({ editor }) => {
       if (suppressNextUpdate.current) return;
@@ -114,6 +120,7 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
       <style>{`
         /* Root */
         .rich-root { display: flex; flex-direction: column; flex: 1; }
+        .rich-root, .rich-root * { -webkit-touch-callout: none !important; }
 
         /* White A4 page editing surface */
         .rich-prose {
@@ -128,7 +135,9 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           caret-color: #555;
           word-break: break-word;
           overflow-wrap: break-word;
-          -webkit-touch-callout: none;
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: text;
+          user-select: text;
         }
 
         /* Placeholder */

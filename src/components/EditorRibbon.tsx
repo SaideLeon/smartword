@@ -2,6 +2,21 @@
 
 import { useCallback, useState } from 'react';
 import type { Editor } from '@tiptap/react';
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Clipboard,
+  ClipboardCopy,
+  IndentDecrease,
+  IndentIncrease,
+  List,
+  ListOrdered,
+  Pilcrow,
+  Rows3,
+  Scissors,
+} from 'lucide-react';
 
 interface Props {
   editor: Editor | null;
@@ -58,12 +73,12 @@ export function EditorRibbon({ editor, activeTab }: Props) {
   );
 
   // Big vertical ribbon button
-  const BigBtn = ({ icon, label, onClick, title }: { icon: string; label: string; onClick?: () => void; title?: string }) => (
+  const BigBtn = ({ icon, label, onClick, title }: { icon: React.ReactNode; label: string; onClick?: () => void; title?: string }) => (
     <button
       type="button" title={title} onClick={onClick}
       className="flex min-w-[44px] cursor-pointer flex-col items-center gap-0.5 rounded border border-transparent px-1.5 py-1 text-[var(--muted)] transition-all hover:bg-[var(--border)] hover:text-[var(--ink)]"
     >
-      <span className="text-lg leading-none">{icon}</span>
+      <span className="leading-none">{icon}</span>
       <span className="font-mono text-[8px] leading-none">{label}</span>
     </button>
   );
@@ -110,10 +125,10 @@ export function EditorRibbon({ editor, activeTab }: Props) {
       >
         {/* ── Área de Transferência ── */}
         <Group label="Área de transferência" minWidth={86}>
-          <BigBtn icon="📋" label="Colar" onClick={() => { try { document.execCommand('paste'); } catch {} editor.commands.focus(); }} title="Colar (Ctrl+V)" />
+          <BigBtn icon={<Clipboard className="h-4 w-4" />} label="Colar" onClick={() => { try { document.execCommand('paste'); } catch {} editor.commands.focus(); }} title="Colar (Ctrl+V)" />
           <div className="flex flex-col gap-0.5">
-            <Btn onClick={() => { try { document.execCommand('cut'); } catch {} }} title="Cortar">✂ Cortar</Btn>
-            <Btn onClick={() => { try { document.execCommand('copy'); } catch {} }} title="Copiar">📄 Copiar</Btn>
+            <Btn onClick={() => { try { document.execCommand('cut'); } catch {} }} title="Cortar"><Scissors className="h-3.5 w-3.5" /><span>Cortar</span></Btn>
+            <Btn onClick={() => { try { document.execCommand('copy'); } catch {} }} title="Copiar"><ClipboardCopy className="h-3.5 w-3.5" /><span>Copiar</span></Btn>
           </div>
         </Group>
 
@@ -155,18 +170,18 @@ export function EditorRibbon({ editor, activeTab }: Props) {
         <Group label="Parágrafo" minWidth={116}>
           <div className="flex flex-col gap-1">
             <div className="flex gap-0.5">
-              <Btn active={isBulletList} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Lista de marcadores">≡•</Btn>
-              <Btn active={isOrderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Lista numerada">≡1</Btn>
-              <Btn title="Recuar">⇤</Btn>
-              <Btn title="Avançar">⇥</Btn>
-              <Btn title="Marcas de parágrafo">¶</Btn>
+              <Btn active={isBulletList} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Lista de marcadores"><List className="h-3.5 w-3.5" /></Btn>
+              <Btn active={isOrderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Lista numerada"><ListOrdered className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Recuar"><IndentDecrease className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Avançar"><IndentIncrease className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Marcas de parágrafo"><Pilcrow className="h-3.5 w-3.5" /></Btn>
             </div>
             <div className="flex gap-0.5">
-              <Btn title="Alinhar à esquerda">⬛◻◻</Btn>
-              <Btn title="Centrar">◻⬛◻</Btn>
-              <Btn title="Alinhar à direita">◻◻⬛</Btn>
-              <Btn title="Justificar">▬▬▬</Btn>
-              <Btn title="Espaçamento entre linhas" className="text-[9px]">↕↕</Btn>
+              <Btn title="Alinhar à esquerda"><AlignLeft className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Centrar"><AlignCenter className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Alinhar à direita"><AlignRight className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Justificar"><AlignJustify className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Espaçamento entre linhas"><Rows3 className="h-3.5 w-3.5" /></Btn>
             </div>
           </div>
         </Group>
@@ -197,13 +212,13 @@ export function EditorRibbon({ editor, activeTab }: Props) {
 
         {/* ── Equações ── */}
         <Group label="Equações" minWidth={58}>
-          <BigBtn icon="π" label="Equações" onClick={() => setShowMath(true)} title="Inserir equação LaTeX (Ctrl+E)" />
+          <BigBtn icon={<span className="text-lg">π</span>} label="Equações" onClick={() => setShowMath(true)} title="Inserir equação LaTeX (Ctrl+E)" />
         </Group>
 
         {/* ── Símbolos (sem separador final) ── */}
         <div className="flex flex-col items-center px-2" style={{ minWidth: 50 }}>
           <div className="flex flex-1 items-center">
-            <BigBtn icon="Ω" label="Símbolos" title="Inserir símbolo" />
+            <BigBtn icon={<span className="text-lg">Ω</span>} label="Símbolos" title="Inserir símbolo" />
           </div>
           <p className="mt-auto pt-1 font-mono text-[9px] text-[var(--dim)]">Símbolos</p>
         </div>
