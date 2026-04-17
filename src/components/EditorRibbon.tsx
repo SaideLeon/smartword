@@ -11,10 +11,10 @@ import {
   ClipboardCopy,
   IndentDecrease,
   IndentIncrease,
-  LineHeight,
   List,
   ListOrdered,
   Pilcrow,
+  Rows3,
   Scissors,
 } from 'lucide-react';
 
@@ -181,7 +181,7 @@ export function EditorRibbon({ editor, activeTab }: Props) {
               <Btn title="Centrar"><AlignCenter className="h-3.5 w-3.5" /></Btn>
               <Btn title="Alinhar à direita"><AlignRight className="h-3.5 w-3.5" /></Btn>
               <Btn title="Justificar"><AlignJustify className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Espaçamento entre linhas"><LineHeight className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Espaçamento entre linhas"><Rows3 className="h-3.5 w-3.5" /></Btn>
             </div>
           </div>
         </Group>
