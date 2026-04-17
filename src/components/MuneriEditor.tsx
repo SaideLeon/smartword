@@ -71,6 +71,19 @@ export default function MuneriEditor() {
     [clearDefaultMarkdown, togglePanel],
   );
 
+  const handleImportClick = useCallback(() => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.md,.txt,text/markdown,text/plain';
+    fileInput.onchange = () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        void importTextFile(file);
+      }
+    };
+    fileInput.click();
+  }, [importTextFile]);
+
   return (
     <div className={styles.editorRoot}>
       <div className={styles.headerBar}>
@@ -124,7 +137,7 @@ export default function MuneriEditor() {
       <div className={styles.ribbon}>
         <div className={styles.ribbonGroup}>
           <div className={styles.ribbonControls}>
-            <button className={styles.ftBtn} onClick={() => importTextFile()}>
+            <button className={styles.ftBtn} onClick={handleImportClick}>
               IMPORTAR
             </button>
             <button className={styles.ftBtn} onClick={() => setShowRawMarkdown((v) => !v)}>
