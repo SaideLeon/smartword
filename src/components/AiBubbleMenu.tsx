@@ -64,6 +64,13 @@ export function AiBubbleMenu({ editor }: Props) {
   const abortRef = useRef<AbortController | null>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Get selected text ───────────────────────────────────────────────────────
+
+  const getSelectedText = useCallback(() => {
+    const { from, to } = editor.state.selection;
+    return editor.state.doc.textBetween(from, to, '\n');
+  }, [editor]);
+
   // ── Native editing helpers (copy/cut/select-all) ──────────────────────────
 
   const copySelection = useCallback(async () => {
@@ -87,13 +94,6 @@ export function AiBubbleMenu({ editor }: Props) {
 
   const selectAll = useCallback(() => {
     editor.chain().focus().selectAll().run();
-  }, [editor]);
-
-  // ── Get selected text ───────────────────────────────────────────────────────
-
-  const getSelectedText = useCallback(() => {
-    const { from, to } = editor.state.selection;
-    return editor.state.doc.textBetween(from, to, '\n');
   }, [editor]);
 
   // ── Call AI API ─────────────────────────────────────────────────────────────
