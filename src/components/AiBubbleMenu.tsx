@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import type { Editor } from '@tiptap/react';
-import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2 } from 'lucide-react';
+import { Sparkles, ChevronRight, X, Check, RotateCcw, Loader2, Copy, Scissors, WholeWord } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,6 +63,31 @@ export function AiBubbleMenu({ editor }: Props) {
   const [lastPrompt, setLastPrompt] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Native editing helpers (copy/cut/select-all) ──────────────────────────
+
+  const copySelection = useCallback(async () => {
+    const text = getSelectedText();
+    if (!text.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      document.execCommand('copy');
+    }
+  }, [getSelectedText]);
+
+  const cutSelection = useCallback(async () => {
+    const { empty } = editor.state.selection;
+    if (empty || !editor.isEditable) return;
+
+    await copySelection();
+    editor.chain().focus().deleteSelection().run();
+  }, [copySelection, editor]);
+
+  const selectAll = useCallback(() => {
+    editor.chain().focus().selectAll().run();
+  }, [editor]);
 
   // ── Get selected text ───────────────────────────────────────────────────────
 
@@ -133,6 +158,16 @@ export function AiBubbleMenu({ editor }: Props) {
     }
   }, [editor, getSelectedText]);
 
+  // ── Reset state ─────────────────────────────────────────────────────────────
+
+  const reset = useCallback(() => {
+    abortRef.current?.abort();
+    setPhase('idle');
+    setResult('');
+    setCustomPrompt('');
+    setLastPrompt('');
+  }, []);
+
   // ── Apply result to editor ───────────────────────────────────────────────────
 
   const applyResult = useCallback(() => {
@@ -150,17 +185,7 @@ export function AiBubbleMenu({ editor }: Props) {
       .run();
 
     reset();
-  }, [editor, result]);
-
-  // ── Reset state ─────────────────────────────────────────────────────────────
-
-  const reset = useCallback(() => {
-    abortRef.current?.abort();
-    setPhase('idle');
-    setResult('');
-    setCustomPrompt('');
-    setLastPrompt('');
-  }, []);
+  }, [editor, reset, result]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -186,6 +211,38 @@ export function AiBubbleMenu({ editor }: Props) {
         {/* ── IDLE: action buttons row ── */}
         {phase === 'idle' && (
           <div className="flex flex-wrap items-center gap-px p-1.5">
+            <button
+              type="button"
+              onClick={() => void cutSelection()}
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              title="Cortar"
+            >
+              <Scissors className="h-3 w-3 text-[var(--gold2)]" />
+              <span>Cortar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void copySelection()}
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              title="Copiar"
+            >
+              <Copy className="h-3 w-3 text-[var(--gold2)]" />
+              <span>Copiar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={selectAll}
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[var(--muted)] transition-all hover:bg-[var(--border)]/60 hover:text-[var(--ink)]"
+              title="Selecionar tudo"
+            >
+              <WholeWord className="h-3 w-3 text-[var(--gold2)]" />
+              <span>Selecionar tudo</span>
+            </button>
+
+            <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
+
             {/* IA label */}
             <div className="flex items-center gap-1.5 px-2 py-1 font-mono text-[10px] tracking-[0.06em] text-[var(--gold2)]">
               <Sparkles className="h-3 w-3" />

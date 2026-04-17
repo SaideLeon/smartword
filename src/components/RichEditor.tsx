@@ -159,6 +159,12 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
         spellcheck: 'true',
         lang: 'pt',
       },
+      handleDOMEvents: {
+        contextmenu: (_view, event) => {
+          event.preventDefault();
+          return true;
+        },
+      },
     },
     onUpdate: ({ editor }) => {
       if (suppressNextUpdate.current) return;
@@ -266,6 +272,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
           caret-color: var(--gold2, #8b6914);
           word-break: break-word;
           overflow-wrap: break-word;
+          -webkit-touch-callout: none;
         }
 
         /* Placeholder */
