@@ -8,6 +8,8 @@ interface Props {
   onImportFile: (file: File) => void;
   showAdvanced?: boolean;
   onToggleAdvanced?: () => void;
+  showPreview?: boolean;
+  onTogglePreview?: () => void;
 }
 
 export function EditorFileToolbar({
@@ -16,6 +18,8 @@ export function EditorFileToolbar({
   onImportFile,
   showAdvanced = false,
   onToggleAdvanced,
+  showPreview = false,
+  onTogglePreview,
 }: Props) {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -70,6 +74,21 @@ export function EditorFileToolbar({
           title="Modo avançado"
         >
           {showAdvanced ? 'Ocultar' : 'Avançado'}
+        </button>
+      )}
+
+      {onTogglePreview && (
+        <button
+          type="button"
+          onClick={onTogglePreview}
+          className={`whitespace-nowrap rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.06em] transition ${
+            showPreview
+              ? 'border-[var(--gold2)] bg-[var(--gold2)]/10 text-[var(--gold2)]'
+              : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]'
+          }`}
+          title="Pré-visualização DOCX"
+        >
+          {showPreview ? 'Ocultar pré-vis.' : 'Pré-visualização'}
         </button>
       )}
     </div>

@@ -117,7 +117,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
   const extensions = [
     StarterKit.configure({
       // When Yjs is active, Yjs handles history (undo/redo).
-      history: !collab.active,
+      undoRedo: collab.active ? false : {},
     }),
     Placeholder.configure({
       placeholder: ({ node }) => {
@@ -162,7 +162,8 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
     },
     onUpdate: ({ editor }) => {
       if (suppressNextUpdate.current) return;
-      const md = editor.storage.markdown.getMarkdown();
+      const markdownStorage = (editor.storage as { markdown?: { getMarkdown?: () => string } }).markdown;
+      const md = markdownStorage?.getMarkdown?.() ?? '';
       lastExternalValue.current = md;
       onChange(md);
     },
@@ -177,7 +178,7 @@ export function RichEditor({ value, onChange, isMobile = false }: Props) {
 
     suppressNextUpdate.current = true;
     lastExternalValue.current = value;
-    editor.commands.setContent(value, false);
+    editor.commands.setContent(value, { emitUpdate: false });
 
     requestAnimationFrame(() => {
       suppressNextUpdate.current = false;
