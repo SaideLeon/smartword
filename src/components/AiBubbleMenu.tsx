@@ -229,7 +229,14 @@ export function AiBubbleMenu({ editor }: Props) {
         appendTo: () => document.body,
         shouldShow: ({ editor, state, from, to }) => {
           const { empty } = state.selection;
-          return !empty && from !== to && !editor.isActive('codeBlock');
+          const hasTextSelection = !empty && from !== to;
+          const hasInlineFormattingContext =
+            editor.isActive('bold')
+            || editor.isActive('italic')
+            || editor.isActive('strike')
+            || editor.isActive('underline');
+
+          return !editor.isActive('codeBlock') && (hasTextSelection || hasInlineFormattingContext);
         },
       }),
     );
@@ -242,10 +249,17 @@ export function AiBubbleMenu({ editor }: Props) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-      <div
+    <div
         ref={menuRef}
         className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--parchment)] shadow-2xl shadow-black/50"
-        style={{ backdropFilter: 'blur(12px)' }}
+        style={{
+          backdropFilter: 'blur(12px)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          visibility: 'hidden',
+          opacity: 0,
+        }}
       >
 
         {/* ── IDLE: action buttons row ── */}
@@ -436,6 +450,6 @@ export function AiBubbleMenu({ editor }: Props) {
             </div>
           </div>
         )}
-      </div>
+    </div>
   );
 }
