@@ -386,10 +386,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Sidebar direita (240 px) ── */}
+        {/* ── Sidebar direita (340 px) ── */}
         {showRightSidebar && (
           <aside
-            className="flex w-60 shrink-0 flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)]"
+            className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)]"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border2) transparent' }}
           >
             {mode === 'tcc' && (
