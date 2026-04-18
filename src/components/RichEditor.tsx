@@ -86,6 +86,7 @@ interface Props {
   onChange: (markdown: string) => void;
   isMobile?: boolean;
   onEditorReady?: (editor: Editor) => void;
+  onEditorUpdate?: (editor: Editor) => void;
 }
 
 interface CollabState {
@@ -102,12 +103,14 @@ function randomColor() { return CURSOR_COLORS[Math.floor(Math.random() * CURSOR_
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RichEditor({ value, onChange, isMobile = false, onEditorReady }: Props) {
+export function RichEditor({ value, onChange, isMobile = false, onEditorReady, onEditorUpdate }: Props) {
   const lastExternalValue = useRef<string>(value);
   const suppressNextUpdate = useRef(false);
   const [ready, setReady] = useState(false);
   const onEditorReadyRef = useRef(onEditorReady);
+  const onEditorUpdateRef = useRef(onEditorUpdate);
   useEffect(() => { onEditorReadyRef.current = onEditorReady; });
+  useEffect(() => { onEditorUpdateRef.current = onEditorUpdate; });
 
   const [collab, setCollab] = useState<CollabState>({
     active: false, ydoc: null, provider: null, roomId: null, peers: 0, connected: false,
@@ -161,16 +164,16 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
       const md = markdownStorage?.getMarkdown?.() ?? '';
       lastExternalValue.current = md;
       onChange(md);
+      onEditorUpdateRef.current?.(editor);
     },
     onCreate: () => setReady(true),
   });
 
   // Notify parent when editor is ready
   useEffect(() => {
-    if (editor && onEditorReadyRef.current) {
-      onEditorReadyRef.current(editor);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!editor) return;
+    if (onEditorReadyRef.current) onEditorReadyRef.current(editor);
+    if (onEditorUpdateRef.current) onEditorUpdateRef.current(editor);
   }, [editor]);
 
   // Sync external markdown changes
