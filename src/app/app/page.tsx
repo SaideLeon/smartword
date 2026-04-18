@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useEditorActions, useEditorMeta } from '@/hooks/useEditorStore';
@@ -16,7 +16,6 @@ import { EditorRibbon } from '@/components/EditorRibbon';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
 import { IaMiniPanel } from '@/components/IaMiniPanel';
-import { StylesPanel } from '@/components/StylesPanel';
 
 type RibbonTab = 'inicio' | 'inserir' | 'design' | 'layout' | 'referencias' | 'revisao';
 
@@ -57,21 +56,9 @@ function Ruler() {
 // ── Constantes de página A4 ────────────────────────────────────────────────────
 //
 // Altura total da página A4 renderizada (877 px ≈ 297 mm a 96 dpi).
-// Margens: 64 px topo + 64 px base → área de conteúdo = 749 px.
-// Os separadores têm 128 px de altura total (64 + 14 + 50 px).
-//
-// NOTA SOBRE O TRANSBORDAMENTO:
-// O texto que flui para a zona de margem (64 px acima/abaixo do conteúdo)
-// é coberto pelas zonas brancas do separador, que usam position:absolute
-// com z-index superior ao do editor. Isto impede visualmente o texto de
-// "aparecer" entre páginas sem precisar de clipar o editor.
+// Mantemos apenas a referência de altura A4 para altura mínima inicial.
 //
 const PAGE_H        = 877;   // altura total A4 em px
-const MARGIN_V      = 64;    // margem vertical (topo e base) em px
-const CONTENT_H     = PAGE_H - MARGIN_V * 2; // 749 px de conteúdo útil
-const SEP_COVER     = 57;    // px de zona branca que cobre cada margem
-const SEP_BAR       = 14;    // px da tira escura entre páginas
-const SEP_TOTAL     = SEP_COVER * 2 + SEP_BAR; // 128 px total do separador
 
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Home() {
@@ -94,37 +81,10 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen]     = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
 
-  // ── Rastreamento de páginas ────────────────────────────────────────────────
-  // pageCount é calculado medindo a altura real do conteúdo do editor
-  // e dividindo pelo tamanho de uma página A4 (877 px).
-  const [pageCount, setPageCount]           = useState(1);
-  const [actualContentHeight, setActualContentHeight] = useState(PAGE_H);
-  const editorWrapperRef = useRef<HTMLDivElement>(null);
-
-  // ResizeObserver — atualiza pageCount sempre que o conteúdo cresce ou encolhe.
-  // Usa a altura do wrapper interno do editor (não do contentor da página)
-  // para ter a medida exata do texto renderizado.
-  useEffect(() => {
-    const el = editorWrapperRef.current;
-    if (!el) return;
-
-    const observer = new ResizeObserver(([entry]) => {
-      const h = entry.contentRect.height;
-      setActualContentHeight(h);
-      setPageCount(Math.max(1, Math.ceil(h / PAGE_H)));
-    });
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   // ── Tema ───────────────────────────────────────────────────────────────────
   const themeVars = themeMode === 'dark'
     ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--surface:#1a1714] [--surface2:#141210] [--gold:#d4b37b] [--gold2:#c9a96e] [--gold3:#8b6914] [--muted:#c8bfb4] [--faint:#8a7d6e] [--dim:#5a5248] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--border2:#3a332a] [--navBg:#1a1714] [--heroRight:#090908]'
     : '[--ink:#0f0e0d] [--parchment:#f5f0e8] [--surface:#ece8df] [--surface2:#e5e0d5] [--gold:#c9a96e] [--gold2:#8b6914] [--gold3:#6a4e10] [--muted:#6b6254] [--faint:#c4b8a4] [--dim:#a09585] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--border2:#c8baa0] [--navBg:#f5f0e8] [--heroRight:#1e1a14]';
-
-  // Cor de fundo do separador entre páginas
-  const sepBarColor = themeMode === 'dark' ? '#111010' : '#b8ae9e';
 
   const handleInsert = useCallback((text: string) => {
     setMarkdown(prev => prev ? `${prev}\n\n${text}` : text);
@@ -140,7 +100,13 @@ export default function Home() {
   const handleClosePanel = useCallback(() => setMode(null), []);
 
   useEffect(() => {
-    setFullscreenSupported(typeof document !== 'undefined' && !!document.documentElement.requestFullscreen);
+    const supported = typeof document !== 'undefined' && !!document.documentElement.requestFullscreen;
+    setFullscreenSupported(supported);
+
+    if (supported && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => undefined);
+    }
+
     const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', sync);
     sync();
@@ -166,8 +132,7 @@ export default function Home() {
   //   zoom            → afeta o espaço ocupado no layout corretamente,
   //                     não requer compensação, não cria stacking context.
   //
-  // Com zoom CSS, o contentor cresce/encolhe proporcionalmente e os
-  // separadores posicionados com `position:absolute` seguem automaticamente.
+  // Com zoom CSS, o contentor cresce/encolhe proporcionalmente no layout.
   const zoomFactor = zoom / 100;
 
   return (
@@ -187,6 +152,16 @@ export default function Home() {
         onToggleFullscreen={handleToggleFullscreen}
         fullscreenSupported={fullscreenSupported}
       />
+
+      {isFullscreen && (
+        <button
+          type="button"
+          onClick={handleToggleFullscreen}
+          className="absolute right-3 top-3 z-40 cursor-pointer rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 font-mono text-[10px] tracking-[0.08em] text-[var(--ink)] shadow-md hover:bg-[var(--surface2)]"
+        >
+          SAIR DE TELA CHEIA
+        </button>
+      )}
 
       {/* ── Separador de tabs (30 px) ── */}
       <nav
@@ -235,33 +210,7 @@ export default function Home() {
           {/* Régua */}
           <Ruler />
 
-          {/*
-           * ── Contentor principal do documento ──────────────────────────────
-           *
-           * ARQUITECTURA DE PÁGINAS:
-           *
-           *  ┌─────────────────────────────────┐  ← contentor (posição relativa)
-           *  │  fundo branco A4 (absoluto, z=0)│  ← cresce com o conteúdo
-           *  │  ┌───────────────────────────┐  │
-           *  │  │  editor TipTap (z=1)      │  │  ← texto flui livremente
-           *  │  └───────────────────────────┘  │
-           *  │  separador pág 1→2 (abs, z=10)  │  ← COBRE o texto nas margens
-           *  │  separador pág 2→3 (abs, z=10)  │
-           *  │  ...                            │
-           *  └─────────────────────────────────┘
-           *
-           * Os separadores têm z-index superior ao editor e cobrem a zona
-           * de margem (64 px em cima + 64 px em baixo de cada fronteira),
-           * impedindo que o texto apareça visualmente entre páginas.
-           *
-           * O texto NÃO é clipado — continua a fluir normalmente no TipTap.
-           * O efeito visual de "páginas separadas" é obtido por cobertura,
-           * não por clipping, o que mantém o editor 100% funcional.
-           *
-           * ZOOM: aplicado via propriedade CSS `zoom` no contentor.
-           * Ao contrário de transform:scale, o zoom CSS afeta o espaço
-           * ocupado no layout, pelo que não é necessária nenhuma compensação.
-           ──────────────────────────────────────────────────────────────────── */}
+          {/* ── Contentor principal do documento (fluxo contínuo) ── */}
           <div
             className="relative w-full max-w-[620px] shrink-0"
             style={{
@@ -289,12 +238,8 @@ export default function Home() {
               }}
             />
 
-            {/*
-             * Wrapper do editor — z-index: 1, acima do fundo branco.
-             * É este elemento que o ResizeObserver mede para calcular pageCount.
-             */}
+            {/* Wrapper do editor — z-index: 1, acima do fundo branco. */}
             <div
-              ref={editorWrapperRef}
               style={{ position: 'relative', zIndex: 1 }}
             >
               <RichEditor
@@ -305,96 +250,15 @@ export default function Home() {
               />
             </div>
 
-            {/*
-             * ── Separadores entre páginas ──────────────────────────────────
-             *
-             * Existe um separador por cada fronteira entre páginas.
-             * (pageCount - 1) separadores no total.
-             *
-             * Cada separador é composto por 3 zonas verticais:
-             *
-             *   ┌────────────────────────────────────────┐
-             *   │  BRANCO SUPERIOR (SEP_COVER = 57 px)   │ ← cobre margem inf. da pág. N
-             *   ├────────────────────────────────────────┤
-             *   │  BARRA ESCURA    (SEP_BAR   = 14 px)   │ ← fronteira visual
-             *   ├────────────────────────────────────────┤
-             *   │  BRANCO INFERIOR (SEP_COVER = 57 px)   │ ← cobre margem sup. da pág. N+1
-             *   └────────────────────────────────────────┘
-             *
-             * Posicionamento:
-             *   top = (i+1) * PAGE_H - SEP_COVER
-             *   (i+1)*PAGE_H é a fronteira entre as páginas i e i+1)
-             *   Subtraímos SEP_COVER para que a zona branca superior comece
-             *   64 px antes da fronteira, cobrindo a margem inferior da pág. N.
-             *
-             * z-index: 10 — acima do editor (z=1) e do fundo (z=0).
-             * pointer-events: none — não interfere com a edição de texto.
-             ──────────────────────────────────────────────────────────────── */}
-            {Array.from({ length: pageCount - 1 }, (_, i) => {
-              const boundaryY = (i + 1) * PAGE_H;
-              const sepTop    = boundaryY - SEP_COVER;
-
-              return (
-                <div
-                  key={`sep-${i}`}
-                  aria-hidden="true"
-                  style={{
-                    position:      'absolute',
-                    left:          0,
-                    right:         0,
-                    top:           `${sepTop}px`,
-                    height:        `${SEP_TOTAL}px`,
-                    zIndex:        10,
-                    pointerEvents: 'none',
-                    display:       'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  {/* Zona branca superior — cobre margem inferior da página N */}
-                  <div style={{ height: `${SEP_COVER}px`, backgroundColor: 'white' }} />
-
-                  {/* Tira escura — fronteira física entre as duas folhas */}
-                  <div
-                    style={{
-                      height:          `${SEP_BAR}px`,
-                      backgroundColor: sepBarColor,
-                      boxShadow:       '0 2px 10px rgba(0,0,0,0.50), 0 -2px 10px rgba(0,0,0,0.40)',
-                      display:         'flex',
-                      alignItems:      'center',
-                      justifyContent:  'center',
-                      flexShrink:      0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily:    '"JetBrains Mono", monospace',
-                        fontSize:      '7px',
-                        letterSpacing: '0.14em',
-                        color:         themeMode === 'dark' ? '#4a4440' : '#9a9080',
-                        userSelect:    'none',
-                        whiteSpace:    'nowrap',
-                      }}
-                    >
-                      — Pág. {i + 1} / {pageCount} —
-                    </span>
-                  </div>
-
-                  {/* Zona branca inferior — cobre margem superior da página N+1 */}
-                  <div style={{ height: `${SEP_COVER}px`, backgroundColor: 'white' }} />
-                </div>
-              );
-            })}
           </div>
         </div>
 
-        {/* ── Sidebar direita (240 px) ── */}
+        {/* ── Sidebar direita (340 px) ── */}
         {showRightSidebar && (
           <aside
-            className="flex w-60 shrink-0 flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)]"
+            className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)]"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border2) transparent' }}
           >
-            <StylesPanel editor={editorInstance} />
-
             {mode === 'tcc' && (
               <div className="flex flex-1 flex-col border-t border-[var(--border)]">
                 <TccPanel
