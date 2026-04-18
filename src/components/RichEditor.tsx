@@ -196,7 +196,7 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
         /* ── White A4 editing surface ───────────────────────────────────── */
         .rich-prose {
           flex: 1;
-          min-height: 750px;
+          min-height: 749px;
           padding: ${isMobile ? '40px 32px' : '64px 72px'};
           font-family: 'Times New Roman', Times, serif;
           font-size: ${isMobile ? '13px' : '15px'};
