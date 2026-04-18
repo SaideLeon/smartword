@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
   AlignCenter,
@@ -53,12 +53,39 @@ function MathDialog({ onInsert, onClose }: { onInsert: (latex: string, block: bo
 
 export function EditorRibbon({ editor, activeTab }: Props) {
   const [showMath, setShowMath] = useState(false);
+  const [showParagraphMarks, setShowParagraphMarks] = useState(false);
 
   const insertMath = useCallback((latex: string, block: boolean) => {
     if (!editor) return;
     editor.chain().focus().insertContent(block ? `\n\n$$${latex}$$\n\n` : `$${latex}$`).run();
     setShowMath(false);
   }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dom.classList.toggle('show-paragraph-marks', showParagraphMarks);
+
+    return () => {
+      editor.view.dom.classList.remove('show-paragraph-marks');
+    };
+  }, [editor, showParagraphMarks]);
+
+  const getCurrentLineHeight = useCallback(() => {
+    if (!editor) return '1.8';
+    if (editor.isActive('heading')) {
+      return String(editor.getAttributes('heading').lineHeight ?? '1.8');
+    }
+    return String(editor.getAttributes('paragraph').lineHeight ?? '1.8');
+  }, [editor]);
+
+  const cycleLineHeight = useCallback(() => {
+    if (!editor) return;
+    const values = ['1.5', '1.8', '2'];
+    const current = getCurrentLineHeight();
+    const currentIndex = values.indexOf(current);
+    const next = values[(currentIndex + 1) % values.length];
+    editor.chain().focus().setLineHeight(next).run();
+  }, [editor, getCurrentLineHeight]);
 
   // Inline small ribbon button
   const Btn = ({ children, onClick, active = false, title, className = '' }: {
@@ -172,16 +199,46 @@ export function EditorRibbon({ editor, activeTab }: Props) {
             <div className="flex gap-0.5">
               <Btn active={isBulletList} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Lista de marcadores"><List className="h-3.5 w-3.5" /></Btn>
               <Btn active={isOrderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Lista numerada"><ListOrdered className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Recuar"><IndentDecrease className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Avançar"><IndentIncrease className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Marcas de parágrafo"><Pilcrow className="h-3.5 w-3.5" /></Btn>
+              <Btn onClick={() => editor.chain().focus().decreaseIndent().run()} title="Recuar"><IndentDecrease className="h-3.5 w-3.5" /></Btn>
+              <Btn onClick={() => editor.chain().focus().increaseIndent().run()} title="Avançar"><IndentIncrease className="h-3.5 w-3.5" /></Btn>
+              <Btn active={showParagraphMarks} onClick={() => setShowParagraphMarks(v => !v)} title="Marcas de parágrafo"><Pilcrow className="h-3.5 w-3.5" /></Btn>
             </div>
             <div className="flex gap-0.5">
-              <Btn title="Alinhar à esquerda"><AlignLeft className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Centrar"><AlignCenter className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Alinhar à direita"><AlignRight className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Justificar"><AlignJustify className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Espaçamento entre linhas"><Rows3 className="h-3.5 w-3.5" /></Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'left' })}
+                onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                title="Alinhar à esquerda"
+              >
+                <AlignLeft className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'center' })}
+                onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                title="Centrar"
+              >
+                <AlignCenter className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'right' })}
+                onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                title="Alinhar à direita"
+              >
+                <AlignRight className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'justify' })}
+                onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                title="Justificar"
+              >
+                <AlignJustify className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={getCurrentLineHeight() !== '1.8'}
+                onClick={cycleLineHeight}
+                title={`Espaçamento entre linhas (${getCurrentLineHeight()})`}
+              >
+                <Rows3 className="h-3.5 w-3.5" />
+              </Btn>
             </div>
           </div>
         </Group>
