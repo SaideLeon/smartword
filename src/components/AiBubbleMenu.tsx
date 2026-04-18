@@ -208,13 +208,17 @@ export function AiBubbleMenu({ editor }: Props) {
         style={{ backdropFilter: 'blur(12px)' }}
       >
 
-        {/* ── IDLE: action buttons row ── */}
+        {/* ── IDLE: action buttons column ── */}
         {phase === 'idle' && (
-          <div className="flex flex-wrap items-center gap-px p-1.5">
+          <div className="flex flex-col p-1">
+            <div className="px-3 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[#6b5e4e]">
+              Edição
+            </div>
             <button
               type="button"
+              onMouseDown={e => e.preventDefault()}
               onClick={() => void cutSelection()}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               title="Cortar"
             >
               <Scissors className="h-3 w-3 text-[var(--gold2)]" />
@@ -223,8 +227,9 @@ export function AiBubbleMenu({ editor }: Props) {
 
             <button
               type="button"
+              onMouseDown={e => e.preventDefault()}
               onClick={() => void copySelection()}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               title="Copiar"
             >
               <Copy className="h-3 w-3 text-[var(--gold2)]" />
@@ -233,49 +238,50 @@ export function AiBubbleMenu({ editor }: Props) {
 
             <button
               type="button"
+              onMouseDown={e => e.preventDefault()}
               onClick={selectAll}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               title="Selecionar tudo"
             >
               <WholeWord className="h-3 w-3 text-[var(--gold2)]" />
               <span>Selecionar tudo</span>
             </button>
 
-            <div className="mx-0.5 h-4 w-px bg-[#3f352b]" />
+            <div className="my-1 h-px bg-[#3f352b]" />
 
             {/* IA label */}
-            <div className="flex items-center gap-1.5 px-2 py-1 font-mono text-[10px] tracking-[0.06em] text-[var(--gold2)]">
+            <div className="flex items-center gap-1.5 px-3 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--gold2)]">
               <Sparkles className="h-3 w-3" />
-              <span className="uppercase">IA</span>
+              <span>IA</span>
             </div>
-
-            <div className="mx-0.5 h-4 w-px bg-[#3f352b]" />
 
             {/* Quick actions */}
             {ACTIONS.map(action => (
               <button
                 key={action.label}
                 type="button"
+                onMouseDown={e => e.preventDefault()}
                 onClick={() => runAi(action.prompt)}
-                className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
+                className="flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
               >
-                <span className="text-[var(--gold2)]">{action.emoji}</span>
+                <span className="w-3 text-center text-[var(--gold2)]">{action.emoji}</span>
                 <span>{action.label}</span>
               </button>
             ))}
 
-            <div className="mx-0.5 h-4 w-px bg-[#3f352b]" />
+            <div className="my-1 h-px bg-[#3f352b]" />
 
             {/* Custom prompt */}
             <button
               type="button"
+              onMouseDown={e => e.preventDefault()}
               onClick={() => {
                 setPhase('custom');
                 setTimeout(() => customInputRef.current?.focus(), 50);
               }}
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition-all hover:bg-[#2a241f] hover:text-white"
             >
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3 w-3 text-[var(--gold2)]" />
               <span>Instrução custom</span>
             </button>
           </div>
@@ -300,6 +306,7 @@ export function AiBubbleMenu({ editor }: Props) {
             <button
               type="button"
               disabled={!customPrompt.trim()}
+              onMouseDown={e => e.preventDefault()}
               onClick={() => customPrompt.trim() && runAi(customPrompt)}
               className="rounded border border-[var(--gold2)]/50 bg-[var(--gold2)]/10 px-3 py-1.5 font-mono text-[11px] text-[var(--gold2)] transition hover:bg-[var(--gold2)]/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -307,6 +314,7 @@ export function AiBubbleMenu({ editor }: Props) {
             </button>
             <button
               type="button"
+              onMouseDown={e => e.preventDefault()}
               onClick={reset}
               className="flex h-8 w-8 items-center justify-center rounded border border-[#4f4338] text-[#b9aa95] transition hover:border-[#c9a96e] hover:text-[#f5ebdc]"
             >
@@ -352,6 +360,7 @@ export function AiBubbleMenu({ editor }: Props) {
               </div>
               <button
                 type="button"
+                onMouseDown={e => e.preventDefault()}
                 onClick={reset}
                 className="text-[#b9aa95] transition hover:text-[#f5ebdc]"
               >
@@ -368,6 +377,7 @@ export function AiBubbleMenu({ editor }: Props) {
             <div className="mt-2.5 flex gap-2">
               <button
                 type="button"
+                onMouseDown={e => e.preventDefault()}
                 onClick={applyResult}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] py-1.5 font-mono text-[11px] font-semibold text-black transition hover:brightness-110"
               >
@@ -376,6 +386,7 @@ export function AiBubbleMenu({ editor }: Props) {
               </button>
               <button
                 type="button"
+                onMouseDown={e => e.preventDefault()}
                 onClick={() => runAi(lastPrompt)}
                 title="Gerar nova versão"
                 className="flex items-center justify-center gap-1.5 rounded border border-[#4f4338] px-3 py-1.5 font-mono text-[11px] text-[#f1e7d8] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
