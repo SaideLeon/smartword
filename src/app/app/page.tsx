@@ -79,7 +79,7 @@ export default function Home() {
   const { themeMode, toggleThemeMode } = useThemeMode();
   const isMobile = useIsMobile();
 
-  const [mode, setMode]               = useState<AppMode>('tcc');
+  const [mode, setMode]               = useState<AppMode>('trabalho');
   const [ribbonTab, setRibbonTab]     = useState<RibbonTab>('inicio');
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
@@ -119,6 +119,31 @@ export default function Home() {
       document.removeEventListener('fullscreenchange', sync);
       document.removeEventListener('webkitfullscreenchange', sync as EventListener);
       document.removeEventListener('MSFullscreenChange', sync as EventListener);
+    };
+  }, [fullscreenSupported]);
+
+  useEffect(() => {
+    if (!fullscreenSupported || getFullscreenElement()) return;
+
+    // Alguns browsers bloqueiam fullscreen sem gesto do utilizador.
+    // Neste caso, tentamos novamente no primeiro clique/toque/tecla.
+    const requestOnFirstInteraction = () => {
+      if (!getFullscreenElement()) {
+        requestAppFullscreen().catch(() => undefined);
+      }
+      window.removeEventListener('pointerdown', requestOnFirstInteraction);
+      window.removeEventListener('keydown', requestOnFirstInteraction);
+      window.removeEventListener('touchstart', requestOnFirstInteraction);
+    };
+
+    window.addEventListener('pointerdown', requestOnFirstInteraction, { once: true });
+    window.addEventListener('keydown', requestOnFirstInteraction, { once: true });
+    window.addEventListener('touchstart', requestOnFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', requestOnFirstInteraction);
+      window.removeEventListener('keydown', requestOnFirstInteraction);
+      window.removeEventListener('touchstart', requestOnFirstInteraction);
     };
   }, [fullscreenSupported]);
 
