@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 import { useEditorActions, useEditorMeta } from '@/hooks/useEditorStore';
@@ -29,7 +29,7 @@ const TABS: { key: RibbonTab; label: string }[] = [
   { key: 'revisao', label: 'REVISÃO' },
 ];
 
-// Ruler component
+// ── Ruler component ────────────────────────────────────────────────────────────
 function Ruler() {
   const marks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   return (
@@ -54,6 +54,42 @@ function Ruler() {
   );
 }
 
+// ── Page separator between A4 cards ───────────────────────────────────────────
+function PageSeparator() {
+  return (
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '620px',
+        margin: '0 auto',
+        height: '24px',
+        background: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        userSelect: 'none',
+        pointerEvents: 'none',
+      }}
+    >
+      <div style={{ flex: 1, height: '1px', background: 'var(--border2, #3a332a)' }} />
+      <span
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '9px',
+          letterSpacing: '0.06em',
+          color: 'var(--dim, #5a5248)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        quebra automática de página
+      </span>
+      <div style={{ flex: 1, height: '1px', background: 'var(--border2, #3a332a)' }} />
+    </div>
+  );
+}
+
+// ── Main page component ────────────────────────────────────────────────────────
 export default function Home() {
   const {
     markdown, setMarkdown, filename, includeCover,
@@ -74,10 +110,38 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
 
-  // Extended theme vars — adds --surface, --surface2, --border2, --dim for new layout
+  // ── Multi-page tracking ────────────────────────────────────────────────────
+  // pageNaturalHeight: A4 page height in px at 100% zoom (≈ 297mm @ 96dpi)
+  const pageNaturalHeight = 877;
+  const [pageCount, setPageCount] = useState(1);
+  const [actualContentHeight, setActualContentHeight] = useState(pageNaturalHeight);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
+
+  // Track the actual rendered height of the editor content
+  useEffect(() => {
+    const el = pageContainerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const h = entry.contentRect.height;
+      setActualContentHeight(h);
+      setPageCount(Math.max(1, Math.ceil(h / pageNaturalHeight)));
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pageNaturalHeight]);
+
+  // ── Theme vars ─────────────────────────────────────────────────────────────
   const themeVars = themeMode === 'dark'
     ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--surface:#1a1714] [--surface2:#141210] [--gold:#d4b37b] [--gold2:#c9a96e] [--gold3:#8b6914] [--muted:#c8bfb4] [--faint:#8a7d6e] [--dim:#5a5248] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--border2:#3a332a] [--navBg:#1a1714] [--heroRight:#090908]'
     : '[--ink:#0f0e0d] [--parchment:#f5f0e8] [--surface:#ece8df] [--surface2:#e5e0d5] [--gold:#c9a96e] [--gold2:#8b6914] [--gold3:#6a4e10] [--muted:#6b6254] [--faint:#c4b8a4] [--dim:#a09585] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--border2:#c8baa0] [--navBg:#f5f0e8] [--heroRight:#1e1a14]';
+
+  // ── Zoom math ──────────────────────────────────────────────────────────────
+  const zoomScale = zoom / 100;
+  const actualVisualHeight = actualContentHeight * zoomScale;
+  // Compensate for the gap that transform:scale leaves in the layout flow
+  const marginCompensation = zoomScale < 1 ? -(actualContentHeight - actualVisualHeight) : 0;
 
   const handleInsert = useCallback((text: string) => {
     setMarkdown(prev => prev ? `${prev}\n\n${text}` : text);
@@ -106,13 +170,25 @@ export default function Home() {
     else await document.documentElement.requestFullscreen();
   }, [fullscreenSupported]);
 
-  // Zoom compensation: when scaled down, reduce effective height to avoid dead space
-  const zoomScale = zoom / 100;
-  const pageNaturalHeight = 877; // min-height of page in px
-  const pageVisualHeight = pageNaturalHeight * zoomScale;
-  const marginCompensation = zoomScale < 1 ? -(pageNaturalHeight - pageVisualHeight) : 0;
-
   const showRightSidebar = !isMobile && mode !== null;
+
+  // ── Page separator lines via background-image ──────────────────────────────
+  // Draws a subtle dashed line every pageNaturalHeight px to simulate page edges.
+  // Using two stops so the line is exactly 2px wide.
+  const pageLineBg = `repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent ${pageNaturalHeight - 2}px,
+    #d0cbc4 ${pageNaturalHeight - 2}px,
+    #d0cbc4 ${pageNaturalHeight}px
+  )`;
+
+  // Page number positions (absolute inside the container, one per page)
+  // Each page number sits 32px from the bottom of its page section
+  const pageNumbers = Array.from({ length: pageCount }, (_, i) => ({
+    page: i + 1,
+    top: (i + 1) * pageNaturalHeight - 32,
+  }));
 
   return (
     <main className={`${themeVars} flex h-dvh flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}>
@@ -179,8 +255,17 @@ export default function Home() {
           {/* Ruler */}
           <Ruler />
 
-          {/* A4 white page */}
+          {/* ── A4 page container ─────────────────────────────────────────
+            - Grows with content (no fixed height)
+            - background-image draws a subtle horizontal line every
+              pageNaturalHeight px to simulate page boundaries
+            - Page number spans are positioned absolutely at the footer
+              of each page section
+            - transform:scale applies zoom; marginBottom compensates
+              for the layout gap that transform leaves behind
+          ──────────────────────────────────────────────────────────────── */}
           <div
+            ref={pageContainerRef}
             className="relative w-full max-w-[620px] shrink-0 bg-white"
             style={{
               minHeight: `${pageNaturalHeight}px`,
@@ -188,6 +273,8 @@ export default function Home() {
               transform: `scale(${zoomScale})`,
               transformOrigin: 'top center',
               marginBottom: `${marginCompensation}px`,
+              // Visual A4 page-break lines
+              backgroundImage: pageLineBg,
             }}
           >
             <RichEditor
@@ -196,14 +283,33 @@ export default function Home() {
               isMobile={isMobile}
               onEditorReady={setEditorInstance}
             />
-            {/* Page number */}
-            <div
-              className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 text-[13px] text-[#888]"
-              style={{ fontFamily: "'Times New Roman', Times, serif" }}
-            >
-              1
-            </div>
+
+            {/* Page numbers — one per page section */}
+            {pageNumbers.map(({ page, top }) => (
+              <div
+                key={page}
+                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] text-[#888]"
+                style={{
+                  fontFamily: "'Times New Roman', Times, serif",
+                  top: `${top}px`,
+                }}
+              >
+                {page}
+              </div>
+            ))}
           </div>
+
+          {/* Page separator labels between pages (purely visual, outside the scaled div) */}
+          {pageCount > 1 && (
+            <div
+              className="w-full max-w-[620px]"
+              style={{ transform: `scale(${zoomScale})`, transformOrigin: 'top center' }}
+            >
+              {Array.from({ length: pageCount - 1 }, (_, i) => (
+                <PageSeparator key={i} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right sidebar (240px) */}
@@ -252,11 +358,9 @@ export default function Home() {
           </aside>
         )}
 
-        {/* Mobile: no sidebar — show chat drawer directly when ia mode */}
+        {/* Mobile panels */}
         {isMobile && mode === 'tcc' && (
-          <div
-            className="absolute inset-0 z-20 animate-[slideUp_0.25s_ease] bg-[var(--parchment)] shadow-2xl"
-          >
+          <div className="absolute inset-0 z-20 animate-[slideUp_0.25s_ease] bg-[var(--parchment)] shadow-2xl">
             <TccPanel
               onInsert={handleInsert}
               onTopicChange={setFilenameFromTopic}
