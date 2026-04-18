@@ -79,7 +79,7 @@ export default function Home() {
   const { themeMode, toggleThemeMode } = useThemeMode();
   const isMobile = useIsMobile();
 
-  const [mode, setMode]               = useState<AppMode>('tcc');
+  const [mode, setMode]               = useState<AppMode>('trabalho');
   const [ribbonTab, setRibbonTab]     = useState<RibbonTab>('inicio');
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
