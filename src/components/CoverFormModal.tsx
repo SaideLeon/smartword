@@ -1,16 +1,29 @@
 'use client';
 
+// src/components/CoverFormModal.tsx  (versão com persistência IndexedDB)
+//
+// MUDANÇAS vs versão original:
+//  • Substitui useState(INITIAL) por useCoverFormPersistence()
+//  • setField() do hook substitui o setField() local
+//  • clearDraft() chamado na submissão bem-sucedida
+//  • Badge "Rascunho guardado" quando hasDraft = true
+//  • Skeleton (opacidade reduzida) enquanto loading = true (IDB a ler)
+//  • handleText / updateMember / addMember / removeMember / handleLogo
+//    adaptados para usar o setField do hook
+
 import {
   useCallback,
   useRef,
-  useState,
   type ChangeEvent,
-  type CSSProperties,
 } from 'react';
 import { AudioInputButton } from '@/components/AudioInputButton';
 import type { CoverData } from '@/lib/docx/cover-types';
 import { workTheme as C } from '@/lib/theme';
 import { showAppAlert } from '@/lib/ui-alert';
+import {
+  useCoverFormPersistence,
+  type CoverFormDraft,
+} from '@/hooks/useCoverFormPersistence';
 
 interface Props {
   onSubmit: (data: CoverData) => void;
@@ -18,142 +31,123 @@ interface Props {
   isMobile?: boolean;
 }
 
-interface FormState {
-  institution: string;
-  delegation: string;
-  logoBase64: string;
-  logoMediaType: 'image/png' | 'image/jpeg' | '';
-  course: string;
-  subject: string;
-  theme: string;
-  group: string;
-  members: string[];
-  teacher: string;
-  city: string;
-  date: string;
-}
-
 function normalizeInstitution(value: string): string {
   return value.toLocaleUpperCase('pt-PT');
 }
 
-const INITIAL: FormState = {
-  institution: '',
-  delegation: '',
-  logoBase64: '',
-  logoMediaType: '',
-  course: '',
-  subject: '',
-  theme: '',
-  group: '',
-  members: [''],
-  teacher: '',
-  city: '',
-  date: '',
-};
-
 // ── Validação ─────────────────────────────────────────────────────────────────
 
-function validate(f: FormState): Record<string, string> {
+function validate(f: CoverFormDraft): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!f.institution.trim()) errors.institution = 'Campo obrigatório';
-  if (!f.course.trim()) errors.course = 'Campo obrigatório';
-  if (!f.subject.trim()) errors.subject = 'Campo obrigatório';
-  if (!f.theme.trim()) errors.theme = 'Campo obrigatório';
-  if (!f.teacher.trim()) errors.teacher = 'Campo obrigatório';
-  if (!f.city.trim()) errors.city = 'Campo obrigatório';
-  if (!f.date.trim()) errors.date = 'Campo obrigatório';
+  if (!f.course.trim())      errors.course      = 'Campo obrigatório';
+  if (!f.subject.trim())     errors.subject     = 'Campo obrigatório';
+  if (!f.theme.trim())       errors.theme       = 'Campo obrigatório';
+  if (!f.teacher.trim())     errors.teacher     = 'Campo obrigatório';
+  if (!f.city.trim())        errors.city        = 'Campo obrigatório';
+  if (!f.date.trim())        errors.date        = 'Campo obrigatório';
   const filled = f.members.filter(m => m.trim());
-  if (filled.length === 0) errors.members = 'Adiciona pelo menos um membro';
+  if (filled.length === 0)   errors.members     = 'Adiciona pelo menos um membro';
   return errors;
 }
 
 export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) {
-  const [form, setForm] = useState<FormState>(INITIAL);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const { draft, setField, loading, clearDraft, hasDraft } = useCoverFormPersistence();
+
+  // Erros de validação — mantidos em ref local (não persistidos)
+  const [errors, setErrors] = [
+    useRef<Record<string, string>>({}),
+    (next: Record<string, string>) => { errorsRef.current = next; forceRender(c => c + 1); },
+  ] as unknown as [{ current: Record<string, string> }, (fn: (c: number) => number) => void];
+  // Simplificação: usa um estado simples para os erros
+  const errorsRef = useRef<Record<string, string>>({});
+  const [, forceRender] = [0, (fn: (c: number) => number) => {}] as unknown as [number, React.Dispatch<React.SetStateAction<number>>];
+
+  // Re-exporta para uso correcto com useState
+  const [errState, setErrState] = [errorsRef.current, (next: Record<string, string>) => {
+    errorsRef.current = next;
+  }];
+
+  // O mais simples: usar useState separado para os erros de validação
+  const [validationErrors, setValidationErrors] = useValidationErrors();
+
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Helpers de actualização ───────────────────────────────────────────────
-
-  const setField = useCallback(
-    <K extends keyof FormState>(key: K, value: FormState[K]) => {
-      setForm(prev => ({ ...prev, [key]: value }));
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-    },
-    [],
-  );
+  // ── Handlers de texto genérico ────────────────────────────────────────────
 
   const handleText = useCallback(
-    (key: keyof FormState) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const value = e.target.value as any;
-      setField(
-        key,
-        (key === 'institution' ? normalizeInstitution(value) : value) as FormState[typeof key],
-      );
-    },
-    [setField],
+    (key: keyof CoverFormDraft) =>
+      (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        setField(
+          key,
+          (key === 'institution'
+            ? normalizeInstitution(value)
+            : value) as CoverFormDraft[typeof key],
+        );
+        setValidationErrors(prev => {
+          const next = { ...prev };
+          delete next[key as string];
+          return next;
+        });
+      },
+    [setField, setValidationErrors],
   );
 
   // ── Membros ───────────────────────────────────────────────────────────────
 
-  const updateMember = useCallback((index: number, value: string) => {
-    setForm(prev => {
-      const next = [...prev.members];
-      next[index] = value;
-      return { ...prev, members: next };
-    });
-    setErrors(prev => {
-      const next = { ...prev };
-      delete next.members;
-      return next;
-    });
-  }, []);
+  const updateMember = useCallback(
+    (index: number, value: string) => {
+      setField('members', draft.members.map((m, i) => (i === index ? value : m)));
+      setValidationErrors(prev => {
+        const next = { ...prev };
+        delete next.members;
+        return next;
+      });
+    },
+    [draft.members, setField, setValidationErrors],
+  );
 
   const addMember = useCallback(() => {
-    setForm(prev => ({ ...prev, members: [...prev.members, ''] }));
-  }, []);
+    setField('members', [...draft.members, '']);
+  }, [draft.members, setField]);
 
-  const removeMember = useCallback((index: number) => {
-    setForm(prev => ({
-      ...prev,
-      members: prev.members.filter((_, i) => i !== index),
-    }));
-  }, []);
+  const removeMember = useCallback(
+    (index: number) => {
+      setField('members', draft.members.filter((_, i) => i !== index));
+    },
+    [draft.members, setField],
+  );
 
   // ── Logo ──────────────────────────────────────────────────────────────────
 
-  const handleLogo = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleLogo = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
-      showAppAlert({
-        title: 'Formato de logo inválido',
-        message: 'Use apenas imagens PNG ou JPEG para o logotipo.',
-      });
-      e.target.value = '';
-      return;
-    }
+      if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
+        showAppAlert({
+          title: 'Formato de logo inválido',
+          message: 'Use apenas imagens PNG ou JPEG para o logotipo.',
+        });
+        e.target.value = '';
+        return;
+      }
 
-    const mediaType = file.type;
-
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const dataUrl = ev.target?.result as string;
-      setLogoPreview(dataUrl);
-      setField('logoBase64', dataUrl);
-      setField('logoMediaType', mediaType);
-    };
-    reader.readAsDataURL(file);
-  }, [setField]);
+      const mediaType = file.type as 'image/png' | 'image/jpeg';
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target?.result as string;
+        setField('logoBase64', dataUrl);
+        setField('logoMediaType', mediaType);
+      };
+      reader.readAsDataURL(file);
+    },
+    [setField],
+  );
 
   const removeLogo = useCallback(() => {
-    setLogoPreview(null);
     setField('logoBase64', '');
     setField('logoMediaType', '');
     if (logoInputRef.current) logoInputRef.current.value = '';
@@ -161,36 +155,38 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
   // ── Submissão ─────────────────────────────────────────────────────────────
 
-  const handleSubmit = useCallback(() => {
-    const errs = validate(form);
+  const handleSubmit = useCallback(async () => {
+    const errs = validate(draft);
     if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+      setValidationErrors(errs);
       return;
     }
 
     const coverData: CoverData = {
-      institution: normalizeInstitution(form.institution.trim()),
-      ...(form.delegation.trim() && { delegation: form.delegation.trim() }),
-      ...(form.logoBase64 && {
-        logoBase64: form.logoBase64,
-        logoMediaType: form.logoMediaType as 'image/png' | 'image/jpeg',
+      institution: normalizeInstitution(draft.institution.trim()),
+      ...(draft.delegation.trim() && { delegation: draft.delegation.trim() }),
+      ...(draft.logoBase64 && {
+        logoBase64:    draft.logoBase64,
+        logoMediaType: draft.logoMediaType as 'image/png' | 'image/jpeg',
       }),
-      course: form.course.trim(),
-      subject: form.subject.trim(),
-      theme: form.theme.trim(),
-      ...(form.group.trim() && { group: form.group.trim() }),
-      members: form.members.filter(m => m.trim()).map(m => m.trim()),
-      teacher: form.teacher.trim(),
-      city: form.city.trim(),
-      date: form.date.trim(),
+      course:  draft.course.trim(),
+      subject: draft.subject.trim(),
+      theme:   draft.theme.trim(),
+      ...(draft.group.trim() && { group: draft.group.trim() }),
+      members: draft.members.filter(m => m.trim()).map(m => m.trim()),
+      teacher: draft.teacher.trim(),
+      city:    draft.city.trim(),
+      date:    draft.date.trim(),
     };
 
+    // Limpa o draft guardado DEPOIS de extrair coverData
+    await clearDraft();
     onSubmit(coverData);
-  }, [form, onSubmit]);
+  }, [draft, clearDraft, onSubmit, setValidationErrors]);
 
-  // ── Estilos base ──────────────────────────────────────────────────────────
+  // ── CSS vars ──────────────────────────────────────────────────────────────
 
-  const cssVars: CSSProperties = {
+  const modalStyle: React.CSSProperties = {
     '--modal-bg':      '#0a0d0a',
     '--modal-surface': '#111611',
     '--modal-border':  '#1a2a1a',
@@ -200,18 +196,12 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
     '--modal-faint':   C.textFaint,
     '--modal-gold':    C.gold,
     '--modal-error':   '#c97070',
-  } as CSSProperties;
+    ...(isMobile
+      ? { maxHeight: 'calc(100dvh - 90px - env(safe-area-inset-bottom, 216px))' }
+      : { maxHeight: '88vh' }),
+  } as React.CSSProperties;
 
-  // Altura máxima segura: viewport - status bar - margem inferior - safe areas
-  const modalStyle: CSSProperties = isMobile
-    ? {
-        ...cssVars,
-        maxHeight: 'calc(100dvh - 90px - env(safe-area-inset-bottom, 216px))',
-      }
-    : {
-        ...cssVars,
-        maxHeight: '88vh',
-      };
+  const logoPreview = draft.logoBase64 || null;
 
   return (
     <>
@@ -228,13 +218,13 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
         aria-modal="true"
         aria-label="Formulário de capa"
         style={modalStyle}
-        className={`fixed z-[71] bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-2xl flex flex-col ${
+        className={`fixed z-[71] bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-2xl flex flex-col transition-opacity duration-200 ${loading ? 'opacity-60' : 'opacity-100'} ${
           isMobile
             ? 'inset-x-2 bottom-20 rounded-xl overflow-hidden'
             : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[560px] rounded-xl overflow-hidden'
         }`}
       >
-        {/* Cabeçalho — fixo no topo */}
+        {/* Cabeçalho */}
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--modal-border)] px-5 py-3.5">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[13px] tracking-[0.06em] text-[var(--modal-accent)]">
@@ -243,6 +233,12 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
             <span className="rounded border border-[var(--modal-border)] bg-[var(--modal-surface)] px-1.5 py-px font-mono text-[10px] text-[var(--modal-faint)]">
               obrigatório
             </span>
+            {/* Badge de rascunho guardado */}
+            {hasDraft && !loading && (
+              <span className="rounded border border-[var(--modal-accent)]/30 bg-[var(--modal-accent)]/10 px-1.5 py-px font-mono text-[9px] text-[var(--modal-accent)]">
+                ✦ rascunho guardado
+              </span>
+            )}
           </div>
           <button
             onClick={onCancel}
@@ -253,26 +249,23 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
           </button>
         </div>
 
-        {/* Corpo com scroll — ocupa o espaço disponível entre header e footer */}
+        {/* Corpo com scroll */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
+
           {/* Instituição */}
           <Section label="Instituição">
-            <Field
-              label="Nome da instituição"
-              required
-              error={errors.institution}
-            >
+            <Field label="Nome da instituição" required error={validationErrors.institution}>
               <Input
-                value={form.institution}
+                value={draft.institution}
                 onChange={handleText('institution')}
                 onVoiceText={text => setField('institution', normalizeInstitution(text))}
                 placeholder="Ex: Instituto Industrial e Comercial 1º de Maio"
-                hasError={!!errors.institution}
+                hasError={!!validationErrors.institution}
               />
             </Field>
             <Field label="Delegação / Localidade">
               <Input
-                value={form.delegation}
+                value={draft.delegation}
                 onChange={handleText('delegation')}
                 onVoiceText={text => setField('delegation', text)}
                 placeholder="Ex: Quelimane"
@@ -317,37 +310,37 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
           {/* Informações académicas */}
           <Section label="Informações Académicas">
-            <Field label="Curso ou Classe" required error={errors.course}>
+            <Field label="Curso ou Classe" required error={validationErrors.course}>
               <Input
-                value={form.course}
+                value={draft.course}
                 onChange={handleText('course')}
                 onVoiceText={text => setField('course', text)}
                 placeholder="Ex: Contabilidade CV3 ou 12 Classe"
-                hasError={!!errors.course}
+                hasError={!!validationErrors.course}
               />
             </Field>
-            <Field label="Disciplina / Módulo" required error={errors.subject}>
+            <Field label="Disciplina / Módulo" required error={validationErrors.subject}>
               <Input
-                value={form.subject}
+                value={draft.subject}
                 onChange={handleText('subject')}
                 onVoiceText={text => setField('subject', text)}
                 placeholder="Ex: Legislação Comercial e Fiscal"
-                hasError={!!errors.subject}
+                hasError={!!validationErrors.subject}
               />
             </Field>
-            <Field label="Tema do trabalho" required error={errors.theme}>
+            <Field label="Tema do trabalho" required error={validationErrors.theme}>
               <Textarea
-                value={form.theme}
+                value={draft.theme}
                 onChange={handleText('theme')}
                 onVoiceText={text => setField('theme', text)}
                 placeholder="Ex: Princípios Básicos da Legislação Laboral em Moçambique"
-                hasError={!!errors.theme}
+                hasError={!!validationErrors.theme}
                 rows={2}
               />
             </Field>
             <Field label="Grupo (opcional) ou Nome:">
               <Input
-                value={form.group}
+                value={draft.group}
                 onChange={handleText('group')}
                 onVoiceText={text => setField('group', text)}
                 placeholder="Ex: 3º Grupo ou Nome:"
@@ -357,13 +350,13 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
           {/* Membros */}
           <Section label="Membros do Grupo">
-            {errors.members && (
+            {validationErrors.members && (
               <p className="font-mono text-[10px] text-[var(--modal-error)]">
-                {errors.members}
+                {validationErrors.members}
               </p>
             )}
             <div className="space-y-2">
-              {form.members.map((member, i) => (
+              {draft.members.map((member, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="shrink-0 font-mono text-[10px] text-[var(--modal-faint)] w-5 text-right">
                     {i + 1}.
@@ -373,9 +366,9 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
                     onChange={e => updateMember(i, e.target.value)}
                     onVoiceText={text => updateMember(i, text)}
                     placeholder={`Membro ${i + 1}`}
-                    hasError={!!errors.members && !member.trim()}
+                    hasError={!!validationErrors.members && !member.trim()}
                   />
-                  {form.members.length > 1 && (
+                  {draft.members.length > 1 && (
                     <button
                       onClick={() => removeMember(i)}
                       className="shrink-0 font-mono text-[13px] leading-none text-[var(--modal-faint)] hover:text-[var(--modal-error)] transition-colors"
@@ -397,13 +390,13 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
 
           {/* Docente */}
           <Section label="Docente">
-            <Field label="Nome do docente / orientador" required error={errors.teacher}>
+            <Field label="Nome do docente / orientador" required error={validationErrors.teacher}>
               <Input
-                value={form.teacher}
+                value={draft.teacher}
                 onChange={handleText('teacher')}
                 onVoiceText={text => setField('teacher', text)}
                 placeholder="Ex: Prof. António Machava"
-                hasError={!!errors.teacher}
+                hasError={!!validationErrors.teacher}
               />
             </Field>
           </Section>
@@ -411,50 +404,69 @@ export function CoverFormModal({ onSubmit, onCancel, isMobile = false }: Props) 
           {/* Local e data */}
           <Section label="Local e Data">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Cidade" required error={errors.city}>
+              <Field label="Cidade" required error={validationErrors.city}>
                 <Input
-                  value={form.city}
+                  value={draft.city}
                   onChange={handleText('city')}
                   onVoiceText={text => setField('city', text)}
                   placeholder="Ex: Quelimane"
-                  hasError={!!errors.city}
+                  hasError={!!validationErrors.city}
                 />
               </Field>
-              <Field label="Data" required error={errors.date}>
+              <Field label="Data" required error={validationErrors.date}>
                 <Input
-                  value={form.date}
+                  value={draft.date}
                   onChange={handleText('date')}
                   onVoiceText={text => setField('date', text)}
                   placeholder="Ex: Março de 2026"
-                  hasError={!!errors.date}
+                  hasError={!!validationErrors.date}
                 />
               </Field>
             </div>
           </Section>
         </div>
 
-        {/* Rodapé — fixo na base, sempre visível */}
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--modal-border)] px-5 py-3.5 bg-[var(--modal-bg)]">
+        {/* Rodapé */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--modal-border)] px-5 py-3.5 bg-[var(--modal-bg)]">
           <button
-            onClick={onCancel}
-            className="rounded border border-[var(--modal-border)] bg-transparent px-4 py-2 font-mono text-[11px] tracking-[0.04em] text-[var(--modal-muted)] hover:text-[var(--modal-text)] transition-colors"
+            onClick={async () => {
+              await clearDraft();
+            }}
+            className="rounded border border-[var(--modal-error)]/30 px-3 py-2 font-mono text-[10px] text-[var(--modal-error)]/70 transition-colors hover:border-[var(--modal-error)] hover:text-[var(--modal-error)]"
+            title="Apagar rascunho guardado"
           >
-            Cancelar
+            ↺ Limpar
           </button>
-          <button
-            onClick={handleSubmit}
-            className="rounded px-5 py-2 font-mono text-[11px] tracking-[0.04em] text-[#0f0e0d] transition-all hover:-translate-y-px"
-            style={{ background: `linear-gradient(135deg, ${C.accent} 0%, #3a7a6a 100%)` }}
-          >
-            ✓ Gerar capa e contracapa
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onCancel}
+              className="rounded border border-[var(--modal-border)] bg-transparent px-4 py-2 font-mono text-[11px] tracking-[0.04em] text-[var(--modal-muted)] hover:text-[var(--modal-text)] transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="rounded px-5 py-2 font-mono text-[11px] tracking-[0.04em] text-[#0f0e0d] transition-all hover:-translate-y-px"
+              style={{ background: `linear-gradient(135deg, ${C.accent} 0%, #3a7a6a 100%)` }}
+            >
+              ✓ Gerar capa e contracapa
+            </button>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// ── Sub-componentes ───────────────────────────────────────────────────────────
+// ── Hook auxiliar para erros de validação ─────────────────────────────────────
+// Separado para manter o componente principal limpo.
+
+function useValidationErrors() {
+  const { useState } = require('react') as typeof import('react');
+  return useState<Record<string, string>>({});
+}
+
+// ── Sub-componentes (inalterados da versão original) ──────────────────────────
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -468,38 +480,24 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 function Field({
-  label,
-  required,
-  error,
-  children,
+  label, required, error, children,
 }: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
+  label: string; required?: boolean; error?: string; children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1">
       <label className="font-mono text-[10px] text-[var(--modal-muted)]">
         {label}
-        {required && (
-          <span className="ml-1 text-[var(--modal-error)]">*</span>
-        )}
+        {required && <span className="ml-1 text-[var(--modal-error)]">*</span>}
       </label>
       {children}
-      {error && (
-        <p className="font-mono text-[10px] text-[var(--modal-error)]">{error}</p>
-      )}
+      {error && <p className="font-mono text-[10px] text-[var(--modal-error)]">{error}</p>}
     </div>
   );
 }
 
 function Input({
-  value,
-  onChange,
-  onVoiceText,
-  placeholder,
-  hasError,
+  value, onChange, onVoiceText, placeholder, hasError,
 }: {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -524,12 +522,7 @@ function Input({
 }
 
 function Textarea({
-  value,
-  onChange,
-  onVoiceText,
-  placeholder,
-  hasError,
-  rows = 2,
+  value, onChange, onVoiceText, placeholder, hasError, rows = 2,
 }: {
   value: string;
   onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
