@@ -16,10 +16,70 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { AiBubbleMenu } from '@/components/AiBubbleMenu';
 
+
+const TextAlignExtension = Extension.create({
+  name: 'textAlign',
+
+  addOptions() {
+    return {
+      types: ['heading', 'paragraph'],
+      defaultAlignment: 'justify',
+      alignments: ['left', 'center', 'right', 'justify'],
+    };
+  },
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          textAlign: {
+            default: this.options.defaultAlignment,
+            parseHTML: element => element.style.textAlign || this.options.defaultAlignment,
+            renderHTML: attributes => {
+              if (!attributes.textAlign || attributes.textAlign === this.options.defaultAlignment) {
+                return {};
+              }
+              return { style: `text-align: ${attributes.textAlign}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+
+  addCommands() {
+    return {
+      setTextAlign:
+        (alignment: string) =>
+        ({ commands }) => {
+          if (!this.options.alignments.includes(alignment)) {
+            return false;
+          }
+
+          return this.options.types.every((type: string) => commands.updateAttributes(type, { textAlign: alignment }));
+        },
+      unsetTextAlign:
+        () =>
+        ({ commands }) => this.options.types.every((type: string) => commands.resetAttributes(type, 'textAlign')),
+    };
+  },
+});
+
 // ── Marker Decoration Extension ───────────────────────────────────────────────
 // Decora parágrafos que contêm marcadores especiais ({pagebreak}, {toc},
 // {section}) com classes CSS para renderização visual, mantendo o texto
 // original no documento (necessário para exportação DOCX).
+
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    textAlign: {
+      setTextAlign: (alignment: string) => ReturnType;
+      unsetTextAlign: () => ReturnType;
+    };
+  }
+}
 
 const MARKER_PLUGIN_KEY = new PluginKey<DecorationSet>('markerDecoration');
 
@@ -130,6 +190,7 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
     }),
     CharacterCount,
     Markdown.configure({ html: false, tightLists: true, transformPastedText: true, transformCopiedText: false }),
+    TextAlignExtension,
     MarkerDecorationExtension,
     ...(collab.active && collab.ydoc
       ? [
@@ -170,7 +231,6 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
     if (editor && onEditorReadyRef.current) {
       onEditorReadyRef.current(editor);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
   // Sync external markdown changes

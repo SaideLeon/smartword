@@ -177,10 +177,34 @@ export function EditorRibbon({ editor, activeTab }: Props) {
               <Btn title="Marcas de parágrafo"><Pilcrow className="h-3.5 w-3.5" /></Btn>
             </div>
             <div className="flex gap-0.5">
-              <Btn title="Alinhar à esquerda"><AlignLeft className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Centrar"><AlignCenter className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Alinhar à direita"><AlignRight className="h-3.5 w-3.5" /></Btn>
-              <Btn title="Justificar"><AlignJustify className="h-3.5 w-3.5" /></Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'left' })}
+                onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                title="Alinhar à esquerda"
+              >
+                <AlignLeft className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'center' })}
+                onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                title="Centrar"
+              >
+                <AlignCenter className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'right' })}
+                onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                title="Alinhar à direita"
+              >
+                <AlignRight className="h-3.5 w-3.5" />
+              </Btn>
+              <Btn
+                active={editor.isActive({ textAlign: 'justify' })}
+                onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                title="Justificar"
+              >
+                <AlignJustify className="h-3.5 w-3.5" />
+              </Btn>
               <Btn title="Espaçamento entre linhas"><Rows3 className="h-3.5 w-3.5" /></Btn>
             </div>
           </div>
