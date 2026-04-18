@@ -5,7 +5,7 @@ import {
   Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, VerticalAlign,
   PageBreak, Footer, PageNumber, NumberFormat, SectionType, TabStopType,
 } from 'docx';
-import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
+import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign, TextAlign } from './types';
 import { convertLatexToOmml } from './math-converter';
 import { buildChart } from './chart-builder';
 
@@ -28,6 +28,26 @@ const PAGE_MARGIN = {
   bottom: convertMillimetersToTwip(20),
   right:  convertMillimetersToTwip(20),
 };
+
+// ── Mapeamento TextAlign → AlignmentType (docx) ──────────────────────────────
+
+/**
+ * Converte o valor textAlign do AST para o AlignmentType da biblioteca docx.
+ * Quando não há alinhamento declarado, usa o padrão do documento (justified).
+ */
+function toDocxAlignment(
+  textAlign: TextAlign | undefined,
+  fallback: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.JUSTIFIED,
+): (typeof AlignmentType)[keyof typeof AlignmentType] {
+  if (!textAlign) return fallback;
+  switch (textAlign) {
+    case 'left':    return AlignmentType.LEFT;
+    case 'center':  return AlignmentType.CENTER;
+    case 'right':   return AlignmentType.RIGHT;
+    case 'justify': return AlignmentType.JUSTIFIED;
+    default:        return fallback;
+  }
+}
 
 // ── Contexto de construção ────────────────────────────────────────────────────
 interface HeadingEntry {
@@ -70,7 +90,7 @@ function inlineToText(nodes: InlineNode[]): string {
   }).join('');
 }
 
-// ── Extração de headings (1.ª passagem) ─────────────────────────────────────
+// ── Extracção de headings (1.ª passagem) ─────────────────────────────────────
 function extractHeadings(ast: DocumentNode[]): HeadingEntry[] {
   const headings: HeadingEntry[] = [];
   let counter = 0;
@@ -172,31 +192,14 @@ async function buildTable(node: Extract<DocumentNode, { type: 'table' }>): Promi
 }
 
 // ── Índice estático automático ────────────────────────────────────────────────
-//
-// Gerado inteiramente a partir dos headings do AST — sem campos Word, sem TOC
-// nativo, sem dependência do Microsoft Word.
-//
-// Cada entrada é um parágrafo com InternalHyperlink que aponta para o Bookmark
-// inserido no próprio parágrafo de heading. Funciona em qualquer leitor DOCX:
-//   ✓ Word Desktop (Windows/Mac)
-//   ✓ Word Mobile (iOS/Android)
-//   ✓ LibreOffice / OpenOffice
-//   ✓ Google Docs
-//   ✓ WPS Office
-//   ✓ Qualquer visualizador DOCX
-//
-// Não inclui números de página: impossíveis de calcular antes da renderização,
-// e para documentos digitais os hyperlinks são a forma correcta de navegar.
 
 function buildStaticToc(headings: HeadingEntry[]): any[] {
-  // ── Constantes tipográficas ────────────────────────────────────────────────
   const FONT = 'Times New Roman';
   const FONT_SIZE = 24;
   const LINE_SPACING = 360;
   const LINE_RULE = 'auto' as any;
   const BLACK = '000000';
 
-  // ── Título "Índice" ────────────────────────────────────────────────────────
   const titleParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 0, after: 440, line: LINE_SPACING, lineRule: LINE_RULE },
@@ -211,7 +214,6 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
     ],
   });
 
-  // ── Linha separadora abaixo do título ─────────────────────────────────────
   const separator = new Paragraph({
     spacing: { before: 0, after: 200, line: LINE_SPACING, lineRule: LINE_RULE },
     border: {
@@ -220,7 +222,6 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
     children: [],
   });
 
-  // ── Caso vazio ────────────────────────────────────────────────────────────
   if (headings.length === 0) {
     return [
       titleParagraph,
@@ -242,7 +243,6 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
     ];
   }
 
-  // ── Entradas do índice ─────────────────────────────────────────────────────
   const INDENT_PER_LEVEL_MM = 6;
 
   let entryCounter = 0;
@@ -295,7 +295,6 @@ function buildStaticToc(headings: HeadingEntry[]): any[] {
       });
     });
 
-  // ── Quebra de página após o índice ────────────────────────────────────────
   const pageBreakAfterToc = new Paragraph({
     children: [new PageBreak()],
   });
@@ -347,7 +346,9 @@ async function buildBlock(
   switch (node.type) {
     case 'paragraph': {
       const children = await Promise.all(node.children.map(c => buildInline(c)));
-      return new Paragraph({ ...options, children: children.flat() });
+      // Alinhamento explícito do utilizador tem prioridade sobre o padrão JUSTIFIED
+      const alignment = toDocxAlignment(node.textAlign, AlignmentType.JUSTIFIED);
+      return new Paragraph({ ...options, alignment, children: children.flat() });
     }
 
     case 'math_block': {
@@ -363,7 +364,6 @@ async function buildBlock(
         5: HeadingLevel.HEADING_5, 6: HeadingLevel.HEADING_6,
       };
 
-      // Obtém o ID de bookmark correspondente a este heading (ordem de aparecimento)
       const entry = ctx.headings[ctx.headingIndex.value];
       ctx.headingIndex.value++;
 
@@ -372,15 +372,23 @@ async function buildBlock(
       );
       const flatChildren = deepFlat(inlineChildren);
 
-      // Insere Bookmark para que os InternalHyperlinks do índice funcionem
       const children = entry
         ? [new Bookmark({ id: entry.id, children: flatChildren })]
         : flatChildren;
+
+      // Para headings, o alinhamento explícito sobrescreve os defaults dos estilos
+      // H1 é centrado por defeito (ABNT); os outros são LEFT por defeito.
+      const defaultHeadingAlignment = node.level === 1
+        ? AlignmentType.CENTER
+        : AlignmentType.LEFT;
+
+      const alignment = toDocxAlignment(node.textAlign, defaultHeadingAlignment);
 
       return new Paragraph({
         ...options,
         children,
         heading: headingMap[node.level],
+        alignment,
       });
     }
 
@@ -421,8 +429,6 @@ async function buildBlock(
     case 'chart':
       return buildChart(node);
 
-    // ── Índice estático ────────────────────────────────────────────────────
-    // Autossuficiente: não depende de Word, campos TOC, ou ação do utilizador.
     case 'toc':
       return buildStaticToc(ctx.headings);
 
@@ -524,7 +530,6 @@ export const SHARED_NUMBERING = {
 // ── Secções de conteúdo ───────────────────────────────────────────────────────
 
 export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> {
-  // 1.ª passagem: extrair headings e atribuir IDs de bookmark
   const headings = extractHeadings(ast);
   const ctx: BuildContext = {
     headings,
@@ -579,12 +584,6 @@ export async function buildContentSections(ast: DocumentNode[]): Promise<any[]> 
 }
 
 // ── Documento completo ────────────────────────────────────────────────────────
-//
-// O documento é agora AUTOSSUFICIENTE:
-//   • O índice é gerado estaticamente — sem campos Word, sem TOC nativo
-//   • Não requer Microsoft Word para ser aberto/utilizado correctamente
-//   • Funciona em mobile, LibreOffice, Google Docs, e qualquer leitor DOCX
-//   • features.updateFields foi removido — não é necessário com índice estático
 
 export async function buildDocxDocument(ast: DocumentNode[]): Promise<Document> {
   const sections = await buildContentSections(ast);

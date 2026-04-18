@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
   AlignCenter,
@@ -53,39 +53,12 @@ function MathDialog({ onInsert, onClose }: { onInsert: (latex: string, block: bo
 
 export function EditorRibbon({ editor, activeTab }: Props) {
   const [showMath, setShowMath] = useState(false);
-  const [showParagraphMarks, setShowParagraphMarks] = useState(false);
 
   const insertMath = useCallback((latex: string, block: boolean) => {
     if (!editor) return;
     editor.chain().focus().insertContent(block ? `\n\n$$${latex}$$\n\n` : `$${latex}$`).run();
     setShowMath(false);
   }, [editor]);
-
-  useEffect(() => {
-    if (!editor) return;
-    editor.view.dom.classList.toggle('show-paragraph-marks', showParagraphMarks);
-
-    return () => {
-      editor.view.dom.classList.remove('show-paragraph-marks');
-    };
-  }, [editor, showParagraphMarks]);
-
-  const getCurrentLineHeight = useCallback(() => {
-    if (!editor) return '1.8';
-    if (editor.isActive('heading')) {
-      return String(editor.getAttributes('heading').lineHeight ?? '1.8');
-    }
-    return String(editor.getAttributes('paragraph').lineHeight ?? '1.8');
-  }, [editor]);
-
-  const cycleLineHeight = useCallback(() => {
-    if (!editor) return;
-    const values = ['1.5', '1.8', '2'];
-    const current = getCurrentLineHeight();
-    const currentIndex = values.indexOf(current);
-    const next = values[(currentIndex + 1) % values.length];
-    editor.chain().focus().setLineHeight(next).run();
-  }, [editor, getCurrentLineHeight]);
 
   // Inline small ribbon button
   const Btn = ({ children, onClick, active = false, title, className = '' }: {
@@ -130,17 +103,23 @@ export function EditorRibbon({ editor, activeTab }: Props) {
     );
   }
 
-  const isBold = editor.isActive('bold');
-  const isItalic = editor.isActive('italic');
-  const isStrike = editor.isActive('strike');
-  const isCode = editor.isActive('code');
+  const isBold       = editor.isActive('bold');
+  const isItalic     = editor.isActive('italic');
+  const isStrike     = editor.isActive('strike');
+  const isCode       = editor.isActive('code');
   const isBulletList = editor.isActive('bulletList');
-  const isOrderedList = editor.isActive('orderedList');
+  const isOrderedList= editor.isActive('orderedList');
   const isBlockquote = editor.isActive('blockquote');
-  const isH1 = editor.isActive('heading', { level: 1 });
-  const isH2 = editor.isActive('heading', { level: 2 });
-  const isH3 = editor.isActive('heading', { level: 3 });
-  const isPara = editor.isActive('paragraph');
+  const isH1         = editor.isActive('heading', { level: 1 });
+  const isH2         = editor.isActive('heading', { level: 2 });
+  const isH3         = editor.isActive('heading', { level: 3 });
+  const isPara       = editor.isActive('paragraph');
+
+  // ── Alinhamento — lê o estado real do TipTap ──────────────────────────────
+  const isAlignLeft    = editor.isActive({ textAlign: 'left' });
+  const isAlignCenter  = editor.isActive({ textAlign: 'center' });
+  const isAlignRight   = editor.isActive({ textAlign: 'right' });
+  const isAlignJustify = editor.isActive({ textAlign: 'justify' });
 
   return (
     <>
@@ -199,46 +178,41 @@ export function EditorRibbon({ editor, activeTab }: Props) {
             <div className="flex gap-0.5">
               <Btn active={isBulletList} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Lista de marcadores"><List className="h-3.5 w-3.5" /></Btn>
               <Btn active={isOrderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Lista numerada"><ListOrdered className="h-3.5 w-3.5" /></Btn>
-              <Btn onClick={() => editor.chain().focus().decreaseIndent().run()} title="Recuar"><IndentDecrease className="h-3.5 w-3.5" /></Btn>
-              <Btn onClick={() => editor.chain().focus().increaseIndent().run()} title="Avançar"><IndentIncrease className="h-3.5 w-3.5" /></Btn>
-              <Btn active={showParagraphMarks} onClick={() => setShowParagraphMarks(v => !v)} title="Marcas de parágrafo"><Pilcrow className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Recuar"><IndentDecrease className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Avançar"><IndentIncrease className="h-3.5 w-3.5" /></Btn>
+              <Btn title="Marcas de parágrafo"><Pilcrow className="h-3.5 w-3.5" /></Btn>
             </div>
+            {/* ── Botões de alinhamento — agora com lógica real ── */}
             <div className="flex gap-0.5">
               <Btn
-                active={editor.isActive({ textAlign: 'left' })}
+                active={isAlignLeft}
                 onClick={() => editor.chain().focus().setTextAlign('left').run()}
                 title="Alinhar à esquerda"
               >
                 <AlignLeft className="h-3.5 w-3.5" />
               </Btn>
               <Btn
-                active={editor.isActive({ textAlign: 'center' })}
+                active={isAlignCenter}
                 onClick={() => editor.chain().focus().setTextAlign('center').run()}
                 title="Centrar"
               >
                 <AlignCenter className="h-3.5 w-3.5" />
               </Btn>
               <Btn
-                active={editor.isActive({ textAlign: 'right' })}
+                active={isAlignRight}
                 onClick={() => editor.chain().focus().setTextAlign('right').run()}
                 title="Alinhar à direita"
               >
                 <AlignRight className="h-3.5 w-3.5" />
               </Btn>
               <Btn
-                active={editor.isActive({ textAlign: 'justify' })}
+                active={isAlignJustify}
                 onClick={() => editor.chain().focus().setTextAlign('justify').run()}
                 title="Justificar"
               >
                 <AlignJustify className="h-3.5 w-3.5" />
               </Btn>
-              <Btn
-                active={getCurrentLineHeight() !== '1.8'}
-                onClick={cycleLineHeight}
-                title={`Espaçamento entre linhas (${getCurrentLineHeight()})`}
-              >
-                <Rows3 className="h-3.5 w-3.5" />
-              </Btn>
+              <Btn title="Espaçamento entre linhas"><Rows3 className="h-3.5 w-3.5" /></Btn>
             </div>
           </div>
         </Group>

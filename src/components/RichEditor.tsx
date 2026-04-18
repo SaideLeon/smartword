@@ -8,6 +8,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
+import TextAlign from '@tiptap/extension-text-align';
 import { Markdown } from 'tiptap-markdown';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from 'prosemirror-state';
@@ -16,149 +17,7 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { AiBubbleMenu } from '@/components/AiBubbleMenu';
 
-
-const TextAlignExtension = Extension.create({
-  name: 'textAlign',
-
-  addOptions() {
-    return {
-      types: ['heading', 'paragraph'],
-      defaultAlignment: 'justify',
-      alignments: ['left', 'center', 'right', 'justify'],
-    };
-  },
-
-  addGlobalAttributes() {
-    return [
-      {
-        types: this.options.types,
-        attributes: {
-          textAlign: {
-            default: this.options.defaultAlignment,
-            parseHTML: element => element.style.textAlign || this.options.defaultAlignment,
-            renderHTML: attributes => {
-              if (!attributes.textAlign || attributes.textAlign === this.options.defaultAlignment) {
-                return {};
-              }
-              return { style: `text-align: ${attributes.textAlign}` };
-            },
-          },
-        },
-      },
-    ];
-  },
-
-  addCommands() {
-    return {
-      setTextAlign:
-        (alignment: string) =>
-        ({ commands }) => {
-          if (!this.options.alignments.includes(alignment)) {
-            return false;
-          }
-
-          return this.options.types.every((type: string) => commands.updateAttributes(type, { textAlign: alignment }));
-        },
-      unsetTextAlign:
-        () =>
-        ({ commands }) => this.options.types.every((type: string) => commands.resetAttributes(type, 'textAlign')),
-    };
-  },
-});
-
-const ParagraphLayoutExtension = Extension.create({
-  name: 'paragraphLayout',
-
-  addOptions() {
-    return {
-      types: ['heading', 'paragraph'],
-      maxIndent: 6,
-      lineHeights: ['1.5', '1.8', '2'],
-      defaultLineHeight: '1.8',
-    };
-  },
-
-  addGlobalAttributes() {
-    return [
-      {
-        types: this.options.types,
-        attributes: {
-          indent: {
-            default: 0,
-            parseHTML: element => Number(element.getAttribute('data-indent') ?? 0),
-            renderHTML: attributes => {
-              if (!attributes.indent) return {};
-              return { 'data-indent': String(attributes.indent) };
-            },
-          },
-          lineHeight: {
-            default: this.options.defaultLineHeight,
-            parseHTML: element => element.getAttribute('data-line-height') || this.options.defaultLineHeight,
-            renderHTML: attributes => {
-              if (!attributes.lineHeight || attributes.lineHeight === this.options.defaultLineHeight) return {};
-              return { 'data-line-height': String(attributes.lineHeight) };
-            },
-          },
-        },
-      },
-    ];
-  },
-
-  addCommands() {
-    const getCurrentIndent = () => {
-      for (const type of this.options.types as string[]) {
-        if (this.editor.isActive(type)) {
-          const value = Number(this.editor.getAttributes(type).indent ?? 0);
-          return Number.isNaN(value) ? 0 : value;
-        }
-      }
-      return 0;
-    };
-
-    return {
-      increaseIndent:
-        () =>
-        ({ commands }) => {
-          const nextIndent = Math.min(this.options.maxIndent, getCurrentIndent() + 1);
-          return (this.options.types as string[]).every((type: string) => commands.updateAttributes(type, { indent: nextIndent }));
-        },
-      decreaseIndent:
-        () =>
-        ({ commands }) => {
-          const nextIndent = Math.max(0, getCurrentIndent() - 1);
-          return (this.options.types as string[]).every((type: string) => commands.updateAttributes(type, { indent: nextIndent }));
-        },
-      setLineHeight:
-        (lineHeight: string) =>
-        ({ commands }) => {
-          if (!(this.options.lineHeights as string[]).includes(lineHeight)) {
-            return false;
-          }
-          return (this.options.types as string[]).every((type: string) => commands.updateAttributes(type, { lineHeight }));
-        },
-    };
-  },
-});
-
 // ── Marker Decoration Extension ───────────────────────────────────────────────
-// Decora parágrafos que contêm marcadores especiais ({pagebreak}, {toc},
-// {section}) com classes CSS para renderização visual, mantendo o texto
-// original no documento (necessário para exportação DOCX).
-
-
-declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
-    textAlign: {
-      setTextAlign: (alignment: string) => ReturnType;
-      unsetTextAlign: () => ReturnType;
-    };
-    paragraphLayout: {
-      increaseIndent: () => ReturnType;
-      decreaseIndent: () => ReturnType;
-      setLineHeight: (lineHeight: string) => ReturnType;
-    };
-  }
-}
 
 const MARKER_PLUGIN_KEY = new PluginKey<DecorationSet>('markerDecoration');
 
@@ -268,9 +127,23 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
       emptyEditorClass: 'rich-is-empty',
     }),
     CharacterCount,
-    Markdown.configure({ html: false, tightLists: true, transformPastedText: true, transformCopiedText: false }),
-    TextAlignExtension,
-    ParagraphLayoutExtension,
+    // ── TextAlign ────────────────────────────────────────────────────────────
+    // Aplica-se a parágrafos e todos os níveis de heading.
+    // defaultAlignment: 'justify' — mantém o comportamento ABNT existente.
+    // O tiptap-markdown com html:true serializa o alinhamento como atributo
+    // style inline: <p style="text-align: center">…</p>
+    // O parser.ts lê esse atributo e passa textAlign ao DocumentNode.
+    TextAlign.configure({
+      types: ['heading', 'paragraph'],
+      alignments: ['left', 'center', 'right', 'justify'],
+      defaultAlignment: 'justify',
+    }),
+    Markdown.configure({
+      html: true,              // IMPORTANTE: preserva os <p style="text-align:…"> no output
+      tightLists: true,
+      transformPastedText: true,
+      transformCopiedText: false,
+    }),
     MarkerDecorationExtension,
     ...(collab.active && collab.ydoc
       ? [
@@ -311,6 +184,7 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
     if (editor && onEditorReadyRef.current) {
       onEditorReadyRef.current(editor);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
   // Sync external markdown changes
@@ -366,16 +240,6 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
         /* ── Paragraphs ─────────────────────────────────────────────────── */
         .rich-prose p { margin: 0 0 0.8em; text-align: justify; }
         .rich-prose p:last-child { margin-bottom: 0; }
-        .rich-prose.show-paragraph-marks p::after { content: '¶'; margin-left: 0.25rem; color: #b8b8b8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-        .rich-prose [data-indent="1"] { margin-left: 2rem; }
-        .rich-prose [data-indent="2"] { margin-left: 4rem; }
-        .rich-prose [data-indent="3"] { margin-left: 6rem; }
-        .rich-prose [data-indent="4"] { margin-left: 8rem; }
-        .rich-prose [data-indent="5"] { margin-left: 10rem; }
-        .rich-prose [data-indent="6"] { margin-left: 12rem; }
-        .rich-prose [data-line-height="1.5"] { line-height: 1.5; }
-        .rich-prose [data-line-height="1.8"] { line-height: 1.8; }
-        .rich-prose [data-line-height="2"] { line-height: 2; }
 
         /* ── Headings — ABNT ────────────────────────────────────────────── */
         .rich-prose h1 { font-size: 1.4em; font-weight: 700; text-align: center; text-transform: uppercase; margin: 1.6em 0 0.5em; line-height: 1.3; }
@@ -418,22 +282,14 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
 
         /* ═══════════════════════════════════════════════════════════════════
            SPECIAL MARKER NODES
-           Paragraphs containing {pagebreak}, {toc}, or {section} are
-           decorated with a CSS class and rendered visually.
-           The original text is hidden via font-size:0 / color:transparent;
-           the ::before pseudo-element shows the visual indicator.
-           The caret still works normally inside the paragraph.
         ════════════════════════════════════════════════════════════════════ */
 
-        /* ── Base marker styles ─────────────────────────────────────────── */
         .rich-prose p.rich-marker {
           position: relative !important;
           margin: 10px 0 !important;
           padding: 0 !important;
           text-indent: 0 !important;
           text-align: center !important;
-
-          /* Hide the raw text ({pagebreak} etc.) visually */
           font-size: 0 !important;
           color: transparent !important;
           caret-color: #bbb;
@@ -441,7 +297,6 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           cursor: default;
         }
 
-        /* ── {pagebreak} ────────────────────────────────────────────────── */
         .rich-prose p.rich-marker-pagebreak {
           height: 30px !important;
           min-height: 30px !important;
@@ -471,7 +326,6 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           pointer-events: none;
         }
 
-        /* ── {section} ──────────────────────────────────────────────────── */
         .rich-prose p.rich-marker-section {
           height: 30px !important;
           min-height: 30px !important;
@@ -501,7 +355,6 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           pointer-events: none;
         }
 
-        /* ── {toc} ──────────────────────────────────────────────────────── */
         .rich-prose p.rich-marker-toc {
           height: 72px !important;
           min-height: 72px !important;

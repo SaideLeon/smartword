@@ -2,8 +2,60 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
-import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign } from './types';
+import { DocumentNode, InlineNode, TableRowNode, TableCellNode, TableAlign, TextAlign } from './types';
 import { parseChartBlock } from './chart-parser';
+
+// ── Extracção de text-align a partir de atributos HTML ───────────────────────
+// O tiptap-markdown com html:true serializa parágrafos alinhados como:
+//   <p style="text-align: center">texto</p>
+// O remarkParse com allowDangerousHtml expõe estes como nós "html".
+
+const STYLE_TEXT_ALIGN_RE = /text-align:\s*(left|center|right|justify)/i;
+
+/**
+ * Extrai o valor de text-align de um atributo style inline.
+ * Retorna undefined se não houver alinhamento declarado.
+ */
+function extractTextAlign(styleAttr: string): TextAlign | undefined {
+  const match = styleAttr.match(STYLE_TEXT_ALIGN_RE);
+  if (!match) return undefined;
+  const value = match[1].toLowerCase();
+  if (value === 'left' || value === 'center' || value === 'right' || value === 'justify') {
+    return value as TextAlign;
+  }
+  return undefined;
+}
+
+/**
+ * Tenta extrair o atributo style e o conteúdo interno de um nó HTML
+ * de parágrafo ou heading emitido pelo tiptap-markdown.
+ *
+ * Exemplos de input:
+ *   <p style="text-align: center">Texto centrado</p>
+ *   <h2 style="text-align: right">Título à direita</h2>
+ *   <p>Texto sem alinhamento</p>   ← retorna null (sem alinhamento especial)
+ *
+ * Retorna { tag, textAlign, innerHtml } ou null se não for um bloco reconhecido.
+ */
+function parseAlignedHtmlBlock(raw: string): {
+  tag: string;
+  textAlign: TextAlign | undefined;
+  innerHtml: string;
+} | null {
+  // Aceita p, h1-h6
+  const blockRe = /^<(p|h[1-6])([^>]*)>([\s\S]*?)<\/\1>\s*$/i;
+  const match = raw.trim().match(blockRe);
+  if (!match) return null;
+
+  const tag = match[1].toLowerCase();
+  const attrs = match[2];
+  const innerHtml = match[3];
+
+  const styleMatch = attrs.match(/style="([^"]*)"/i);
+  const textAlign = styleMatch ? extractTextAlign(styleMatch[1]) : undefined;
+
+  return { tag, textAlign, innerHtml };
+}
 
 function htmlToPlainText(html: string): string {
   return html
@@ -69,9 +121,6 @@ export function parseToAST(markdown: string): DocumentNode[] {
     switch (node.type) {
       case 'paragraph': {
         // ── Marcadores estruturais especiais ────────────────────────────────
-        // Uma linha com apenas {pagebreak} → quebra de página (sem nova secção)
-        // Uma linha com apenas {section}   → nova secção (reinicia paginação)
-        // Uma linha com apenas {toc}       → índice automático
         if (node.children.length === 1 && node.children[0].type === 'text') {
           const marker = (node.children[0].value as string).trim();
           if (marker === '{pagebreak}') return { type: 'page_break' };
@@ -106,7 +155,41 @@ export function parseToAST(markdown: string): DocumentNode[] {
         };
 
       case 'html': {
-        const text = htmlToPlainText(node.value as string);
+        const raw = node.value as string;
+
+        // ── Bloco HTML com alinhamento (emitido pelo tiptap-markdown) ───────
+        // Exemplo: <p style="text-align: center">Texto</p>
+        const aligned = parseAlignedHtmlBlock(raw);
+        if (aligned) {
+          const { tag, textAlign, innerHtml } = aligned;
+          const plainText = htmlToPlainText(innerHtml);
+
+          if (!plainText) return null;
+
+          // Determinar o nível do heading, se aplicável
+          const headingMatch = tag.match(/^h([1-6])$/);
+          if (headingMatch) {
+            const level = parseInt(headingMatch[1], 10) as 1 | 2 | 3 | 4 | 5 | 6;
+            const result: DocumentNode = {
+              type: 'heading',
+              level,
+              children: [{ type: 'text', value: plainText }],
+            };
+            if (textAlign) result.textAlign = textAlign;
+            return result;
+          }
+
+          // Parágrafo HTML com ou sem alinhamento
+          const result: DocumentNode = {
+            type: 'paragraph',
+            children: [{ type: 'text', value: plainText }],
+          };
+          if (textAlign) result.textAlign = textAlign;
+          return result;
+        }
+
+        // ── HTML genérico sem alinhamento (tabelas, spans, etc.) ─────────────
+        const text = htmlToPlainText(raw);
         if (!text) return null;
         return {
           type: 'paragraph',

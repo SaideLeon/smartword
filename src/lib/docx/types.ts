@@ -13,10 +13,13 @@ export interface ChartNode {
   series: ChartSeries[];
 }
 
+export type TextAlign = 'left' | 'center' | 'right' | 'justify';
+export type TableAlign = 'left' | 'center' | 'right';
+
 export type DocumentNode =
-  | { type: 'paragraph'; children: InlineNode[] }
+  | { type: 'paragraph'; children: InlineNode[]; textAlign?: TextAlign }
   | { type: 'math_block'; latex: string }
-  | { type: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; children: InlineNode[] }
+  | { type: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; children: InlineNode[]; textAlign?: TextAlign }
   | { type: 'list'; ordered: boolean; items: DocumentNode[][] }
   | { type: 'blockquote'; children: DocumentNode[] }
   | { type: 'table'; align: (TableAlign | null)[]; rows: TableRowNode[] }
@@ -24,8 +27,6 @@ export type DocumentNode =
   | { type: 'section_break' }
   | { type: 'toc' }
   | ChartNode;
-
-export type TableAlign = 'left' | 'center' | 'right';
 
 export interface TableRowNode {
   isHeader: boolean;
