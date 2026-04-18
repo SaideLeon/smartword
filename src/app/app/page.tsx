@@ -138,7 +138,11 @@ export default function Home() {
   const showRightSidebar = !isMobile && mode !== null;
 
   // ── Physical page break gap ────────────────────────────────────────────────
-  const PAGE_GAP = 28; // altura total do gap entre páginas (px)
+  // Cobre a margem inferior (64px) + margem superior (64px) de cada par de páginas.
+  // O texto que flui para essa zona fica oculto atrás do gap — exatamente como
+  // o Word esconde texto nas margens ao renderizar em modo de impressão.
+  const PAGE_GAP = 128; // = margem inferior + margem superior
+  const PAGE_MARGIN = PAGE_GAP / 2; // 64px de cada lado da fronteira
 
   return (
     <main className={`${themeVars} flex h-dvh flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}>
@@ -233,7 +237,9 @@ export default function Home() {
               sombras de papel e número de página, exatamente como o Word faz.
             ───────────────────────────────────────────────────────────────────── */}
             {Array.from({ length: pageCount - 1 }, (_, i) => {
-              const gapTop = (i + 1) * pageNaturalHeight - PAGE_GAP / 2;
+              const boundary = (i + 1) * pageNaturalHeight;
+              const gapTop = boundary - PAGE_MARGIN;
+
               return (
                 <div
                   key={`gap-${i}`}
@@ -250,17 +256,18 @@ export default function Home() {
                   <div
                     className="absolute left-0 right-0 top-0"
                     style={{
-                      height: '10px',
-                      background: 'linear-gradient(to bottom, rgba(0,0,0,0.28), transparent)',
+                      height: '18px',
+                      background: 'linear-gradient(to bottom, rgba(0,0,0,0.30), transparent)',
                     }}
                   />
 
-                  {/* Sombra da página de baixo (sobe para cima) */}
+                  {/* Linha de corte da página acima (aresta inferior do papel) */}
                   <div
-                    className="absolute bottom-0 left-0 right-0"
+                    className="absolute left-0 right-0"
                     style={{
-                      height: '10px',
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.18), transparent)',
+                      top: `${PAGE_MARGIN - 1}px`,
+                      height: '1px',
+                      background: 'rgba(0,0,0,0.08)',
                     }}
                   />
 
@@ -276,6 +283,25 @@ export default function Home() {
                   >
                     — Pág. {i + 1} / {pageCount} —
                   </div>
+
+                  {/* Linha de corte da página abaixo (aresta superior do papel) */}
+                  <div
+                    className="absolute left-0 right-0"
+                    style={{
+                      bottom: `${PAGE_MARGIN - 1}px`,
+                      height: '1px',
+                      background: 'rgba(0,0,0,0.08)',
+                    }}
+                  />
+
+                  {/* Sombra da margem superior da página abaixo */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0"
+                    style={{
+                      height: '18px',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.22), transparent)',
+                    }}
+                  />
                 </div>
               );
             })}
