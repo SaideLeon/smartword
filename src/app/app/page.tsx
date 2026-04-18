@@ -100,7 +100,13 @@ export default function Home() {
   const handleClosePanel = useCallback(() => setMode(null), []);
 
   useEffect(() => {
-    setFullscreenSupported(typeof document !== 'undefined' && !!document.documentElement.requestFullscreen);
+    const supported = typeof document !== 'undefined' && !!document.documentElement.requestFullscreen;
+    setFullscreenSupported(supported);
+
+    if (supported && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => undefined);
+    }
+
     const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', sync);
     sync();
@@ -146,6 +152,16 @@ export default function Home() {
         onToggleFullscreen={handleToggleFullscreen}
         fullscreenSupported={fullscreenSupported}
       />
+
+      {isFullscreen && (
+        <button
+          type="button"
+          onClick={handleToggleFullscreen}
+          className="absolute right-3 top-3 z-40 cursor-pointer rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 font-mono text-[10px] tracking-[0.08em] text-[var(--ink)] shadow-md hover:bg-[var(--surface2)]"
+        >
+          SAIR DE TELA CHEIA
+        </button>
+      )}
 
       {/* ── Separador de tabs (30 px) ── */}
       <nav
