@@ -210,21 +210,43 @@ export default function Home() {
           <Ruler />
 
           {/* ── A4 page container ─────────────────────────────────────────
-            - Grows with content (no fixed height)
-            - transform:scale applies zoom; marginBottom compensates
-              for the layout gap that transform leaves behind
+            Arquitectura de z-index:
+              z-index: -1  → fundos brancos das páginas (atrás do texto)
+              z-index: auto → texto do RichEditor (fluxo normal)
+              z-index:  50  → separadores entre páginas (à frente do texto)
+            O transform:scale no contentor cria um stacking context; dentro
+            dele z-50 garante cobertura acima do ProseMirror em qualquer
+            versão do TipTap.
           ──────────────────────────────────────────────────────────────── */}
           <div
             ref={pageContainerRef}
-            className="relative w-full max-w-[620px] shrink-0 bg-white"
+            className="relative w-full max-w-[620px] shrink-0"
             style={{
               minHeight: `${pageNaturalHeight}px`,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
               transform: `scale(${zoomScale})`,
               transformOrigin: 'top center',
               marginBottom: `${marginCompensation}px`,
             }}
           >
+            {/* ── Fundos brancos (um por página) — atrás do texto ─────────
+              z-index: -1 dentro do stacking context criado pelo transform:
+              pinta após o background do contentor (transparente) mas antes
+              do fluxo de texto (z-index: auto).
+            ─────────────────────────────────────────────────────────────── */}
+            {Array.from({ length: pageCount }, (_, i) => (
+              <div
+                key={`page-bg-${i}`}
+                className="pointer-events-none absolute left-0 right-0"
+                style={{
+                  top: `${i * pageNaturalHeight}px`,
+                  height: `${pageNaturalHeight}px`,
+                  backgroundColor: 'white',
+                  zIndex: -1,
+                  boxShadow: '0 4px 28px rgba(0,0,0,0.50)',
+                }}
+              />
+            ))}
+
             <RichEditor
               value={markdown}
               onChange={setMarkdown}
@@ -232,74 +254,69 @@ export default function Home() {
               onEditorReady={setEditorInstance}
             />
 
-            {/* ── Inter-page gap overlays ─────────────────────────────────────────
-              Simula as arestas físicas das folhas A4 — um gap com cor do workspace,
-              sombras de papel e número de página, exatamente como o Word faz.
-            ───────────────────────────────────────────────────────────────────── */}
+            {/* ── Separadores entre páginas — à frente do texto ───────────
+              z-index: 50 garante cobertura acima do texto (z-index: auto).
+              Cada separador tem 3 zonas:
+                • BRANCO superior (57px) = margem inferior da pág. N visível
+                • ESCURO central  (14px) = fronteira física entre folhas
+                • BRANCO inferior (57px) = margem superior da pág. N+1 visível
+              As zonas brancas cobrem texto que transborde para a zona de margem.
+            ─────────────────────────────────────────────────────────────── */}
             {Array.from({ length: pageCount - 1 }, (_, i) => {
               const boundary = (i + 1) * pageNaturalHeight;
-              const gapTop = boundary - PAGE_MARGIN;
+              const gapTop = boundary - PAGE_MARGIN; // y = 877n - 64
+              const SEPARATOR_H = 14; // altura da tira escura
+              const separatorTop = PAGE_MARGIN - SEPARATOR_H / 2; // 64 - 7 = 57px
 
               return (
                 <div
                   key={`gap-${i}`}
-                  className="pointer-events-none absolute left-0 right-0 z-10"
-                  style={{ top: `${gapTop}px`, height: `${PAGE_GAP}px` }}
+                  className="pointer-events-none absolute left-0 right-0"
+                  style={{ top: `${gapTop}px`, height: `${PAGE_GAP}px`, zIndex: 50 }}
                 >
-                  {/* Fundo do gap — cor do workspace (herda var() da <main>) */}
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: 'var(--parchment)' }}
-                  />
-
-                  {/* Sombra da página de cima (cai para baixo) */}
-                  <div
-                    className="absolute left-0 right-0 top-0"
-                    style={{
-                      height: '18px',
-                      background: 'linear-gradient(to bottom, rgba(0,0,0,0.30), transparent)',
-                    }}
-                  />
-
-                  {/* Linha de corte da página acima (aresta inferior do papel) */}
+                  {/* Zona branca superior — margem inferior da página N */}
                   <div
                     className="absolute left-0 right-0"
                     style={{
-                      top: `${PAGE_MARGIN - 1}px`,
-                      height: '1px',
-                      background: 'rgba(0,0,0,0.08)',
+                      top: 0,
+                      height: `${separatorTop}px`,
+                      backgroundColor: 'white',
                     }}
                   />
 
-                  {/* Rótulo de página */}
+                  {/* Tira escura — fronteira física entre as duas folhas */}
                   <div
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap"
+                    className="absolute left-0 right-0"
                     style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '8px',
-                      letterSpacing: '0.12em',
-                      color: 'var(--dim)',
+                      top: `${separatorTop}px`,
+                      height: `${SEPARATOR_H}px`,
+                      backgroundColor: themeMode === 'dark' ? '#111010' : '#b8ae9e',
+                      boxShadow:
+                        '0 2px 10px rgba(0,0,0,0.50), ' +
+                        '0 -2px 10px rgba(0,0,0,0.40)',
                     }}
                   >
-                    — Pág. {i + 1} / {pageCount} —
+                    {/* Rótulo de página — centrado na tira escura */}
+                    <div
+                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap"
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: '7px',
+                        letterSpacing: '0.14em',
+                        color: themeMode === 'dark' ? '#4a4440' : '#9a9080',
+                      }}
+                    >
+                      — Pág. {i + 1} / {pageCount} —
+                    </div>
                   </div>
 
-                  {/* Linha de corte da página abaixo (aresta superior do papel) */}
+                  {/* Zona branca inferior — margem superior da página N+1 */}
                   <div
                     className="absolute left-0 right-0"
                     style={{
-                      bottom: `${PAGE_MARGIN - 1}px`,
-                      height: '1px',
-                      background: 'rgba(0,0,0,0.08)',
-                    }}
-                  />
-
-                  {/* Sombra da margem superior da página abaixo */}
-                  <div
-                    className="absolute bottom-0 left-0 right-0"
-                    style={{
-                      height: '18px',
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.22), transparent)',
+                      top: `${separatorTop + SEPARATOR_H}px`,
+                      bottom: 0,
+                      backgroundColor: 'white',
                     }}
                   />
                 </div>
