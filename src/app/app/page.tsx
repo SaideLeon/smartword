@@ -16,7 +16,6 @@ import { EditorRibbon } from '@/components/EditorRibbon';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
 import { IaMiniPanel } from '@/components/IaMiniPanel';
-import { StylesPanel } from '@/components/StylesPanel';
 
 type RibbonTab = 'inicio' | 'inserir' | 'design' | 'layout' | 'referencias' | 'revisao';
 
@@ -393,8 +392,6 @@ export default function Home() {
             className="flex w-60 shrink-0 flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)]"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border2) transparent' }}
           >
-            <StylesPanel editor={editorInstance} />
-
             {mode === 'tcc' && (
               <div className="flex flex-1 flex-col border-t border-[var(--border)]">
                 <TccPanel
