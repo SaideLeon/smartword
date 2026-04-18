@@ -122,6 +122,31 @@ export default function Home() {
     };
   }, [fullscreenSupported]);
 
+  useEffect(() => {
+    if (!fullscreenSupported || getFullscreenElement()) return;
+
+    // Alguns browsers bloqueiam fullscreen sem gesto do utilizador.
+    // Neste caso, tentamos novamente no primeiro clique/toque/tecla.
+    const requestOnFirstInteraction = () => {
+      if (!getFullscreenElement()) {
+        requestAppFullscreen().catch(() => undefined);
+      }
+      window.removeEventListener('pointerdown', requestOnFirstInteraction);
+      window.removeEventListener('keydown', requestOnFirstInteraction);
+      window.removeEventListener('touchstart', requestOnFirstInteraction);
+    };
+
+    window.addEventListener('pointerdown', requestOnFirstInteraction, { once: true });
+    window.addEventListener('keydown', requestOnFirstInteraction, { once: true });
+    window.addEventListener('touchstart', requestOnFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', requestOnFirstInteraction);
+      window.removeEventListener('keydown', requestOnFirstInteraction);
+      window.removeEventListener('touchstart', requestOnFirstInteraction);
+    };
+  }, [fullscreenSupported]);
+
   const handleToggleFullscreen = useCallback(async () => {
     if (!fullscreenSupported) return;
     if (getFullscreenElement()) await exitAppFullscreen();
