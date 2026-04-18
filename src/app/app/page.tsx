@@ -16,6 +16,12 @@ import { EditorRibbon } from '@/components/EditorRibbon';
 import { EditorFileToolbar } from '@/components/EditorFileToolbar';
 import { EditorStatusBar } from '@/components/EditorStatusBar';
 import { IaMiniPanel } from '@/components/IaMiniPanel';
+import {
+  exitAppFullscreen,
+  getFullscreenElement,
+  isFullscreenSupported as detectFullscreenSupport,
+  requestAppFullscreen,
+} from '@/lib/fullscreen';
 
 type RibbonTab = 'inicio' | 'inserir' | 'design' | 'layout' | 'referencias' | 'revisao';
 
@@ -79,7 +85,7 @@ export default function Home() {
   const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [zoom, setZoom]               = useState(90);
   const [isFullscreen, setIsFullscreen]     = useState(false);
-  const [fullscreenSupported, setFullscreenSupported] = useState(false);
+  const [fullscreenSupported] = useState(() => detectFullscreenSupport());
 
   // ── Tema ───────────────────────────────────────────────────────────────────
   const themeVars = themeMode === 'dark'
@@ -100,23 +106,26 @@ export default function Home() {
   const handleClosePanel = useCallback(() => setMode(null), []);
 
   useEffect(() => {
-    const supported = typeof document !== 'undefined' && !!document.documentElement.requestFullscreen;
-    setFullscreenSupported(supported);
-
-    if (supported && !document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => undefined);
+    if (fullscreenSupported && !getFullscreenElement()) {
+      requestAppFullscreen().catch(() => undefined);
     }
 
-    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    const sync = () => setIsFullscreen(Boolean(getFullscreenElement()));
     document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync as EventListener);
+    document.addEventListener('MSFullscreenChange', sync as EventListener);
     sync();
-    return () => document.removeEventListener('fullscreenchange', sync);
-  }, []);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync as EventListener);
+      document.removeEventListener('MSFullscreenChange', sync as EventListener);
+    };
+  }, [fullscreenSupported]);
 
   const handleToggleFullscreen = useCallback(async () => {
     if (!fullscreenSupported) return;
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
+    if (getFullscreenElement()) await exitAppFullscreen();
+    else await requestAppFullscreen();
   }, [fullscreenSupported]);
 
   const showRightSidebar = !isMobile && mode !== null;
