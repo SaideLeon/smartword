@@ -66,6 +66,80 @@ const TextAlignExtension = Extension.create({
   },
 });
 
+const ParagraphLayoutExtension = Extension.create({
+  name: 'paragraphLayout',
+
+  addOptions() {
+    return {
+      types: ['heading', 'paragraph'],
+      maxIndent: 6,
+      lineHeights: ['1.5', '1.8', '2'],
+      defaultLineHeight: '1.8',
+    };
+  },
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          indent: {
+            default: 0,
+            parseHTML: element => Number(element.getAttribute('data-indent') ?? 0),
+            renderHTML: attributes => {
+              if (!attributes.indent) return {};
+              return { 'data-indent': String(attributes.indent) };
+            },
+          },
+          lineHeight: {
+            default: this.options.defaultLineHeight,
+            parseHTML: element => element.getAttribute('data-line-height') || this.options.defaultLineHeight,
+            renderHTML: attributes => {
+              if (!attributes.lineHeight || attributes.lineHeight === this.options.defaultLineHeight) return {};
+              return { 'data-line-height': String(attributes.lineHeight) };
+            },
+          },
+        },
+      },
+    ];
+  },
+
+  addCommands() {
+    const getCurrentIndent = () => {
+      for (const type of this.options.types as string[]) {
+        if (this.editor.isActive(type)) {
+          const value = Number(this.editor.getAttributes(type).indent ?? 0);
+          return Number.isNaN(value) ? 0 : value;
+        }
+      }
+      return 0;
+    };
+
+    return {
+      increaseIndent:
+        () =>
+        ({ commands }) => {
+          const nextIndent = Math.min(this.options.maxIndent, getCurrentIndent() + 1);
+          return (this.options.types as string[]).every((type: string) => commands.updateAttributes(type, { indent: nextIndent }));
+        },
+      decreaseIndent:
+        () =>
+        ({ commands }) => {
+          const nextIndent = Math.max(0, getCurrentIndent() - 1);
+          return (this.options.types as string[]).every((type: string) => commands.updateAttributes(type, { indent: nextIndent }));
+        },
+      setLineHeight:
+        (lineHeight: string) =>
+        ({ commands }) => {
+          if (!(this.options.lineHeights as string[]).includes(lineHeight)) {
+            return false;
+          }
+          return (this.options.types as string[]).every((type: string) => commands.updateAttributes(type, { lineHeight }));
+        },
+    };
+  },
+});
+
 // ── Marker Decoration Extension ───────────────────────────────────────────────
 // Decora parágrafos que contêm marcadores especiais ({pagebreak}, {toc},
 // {section}) com classes CSS para renderização visual, mantendo o texto
@@ -77,6 +151,11 @@ declare module '@tiptap/core' {
     textAlign: {
       setTextAlign: (alignment: string) => ReturnType;
       unsetTextAlign: () => ReturnType;
+    };
+    paragraphLayout: {
+      increaseIndent: () => ReturnType;
+      decreaseIndent: () => ReturnType;
+      setLineHeight: (lineHeight: string) => ReturnType;
     };
   }
 }
@@ -191,6 +270,7 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
     CharacterCount,
     Markdown.configure({ html: false, tightLists: true, transformPastedText: true, transformCopiedText: false }),
     TextAlignExtension,
+    ParagraphLayoutExtension,
     MarkerDecorationExtension,
     ...(collab.active && collab.ydoc
       ? [
@@ -286,6 +366,16 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
         /* ── Paragraphs ─────────────────────────────────────────────────── */
         .rich-prose p { margin: 0 0 0.8em; text-align: justify; }
         .rich-prose p:last-child { margin-bottom: 0; }
+        .rich-prose.show-paragraph-marks p::after { content: '¶'; margin-left: 0.25rem; color: #b8b8b8; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+        .rich-prose [data-indent="1"] { margin-left: 2rem; }
+        .rich-prose [data-indent="2"] { margin-left: 4rem; }
+        .rich-prose [data-indent="3"] { margin-left: 6rem; }
+        .rich-prose [data-indent="4"] { margin-left: 8rem; }
+        .rich-prose [data-indent="5"] { margin-left: 10rem; }
+        .rich-prose [data-indent="6"] { margin-left: 12rem; }
+        .rich-prose [data-line-height="1.5"] { line-height: 1.5; }
+        .rich-prose [data-line-height="1.8"] { line-height: 1.8; }
+        .rich-prose [data-line-height="2"] { line-height: 2; }
 
         /* ── Headings — ABNT ────────────────────────────────────────────── */
         .rich-prose h1 { font-size: 1.4em; font-weight: 700; text-align: center; text-transform: uppercase; margin: 1.6em 0 0.5em; line-height: 1.3; }
