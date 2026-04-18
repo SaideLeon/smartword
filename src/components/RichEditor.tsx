@@ -16,6 +16,7 @@ import { Decoration, DecorationSet } from 'prosemirror-view';
 import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { AiBubbleMenu } from '@/components/AiBubbleMenu';
+import { MathRendererExtension } from '@/components/MathExtension';
 
 // ── Marker Decoration Extension ───────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
       transformCopiedText: false,
     }),
     MarkerDecorationExtension,
+    MathRendererExtension,
     ...(collab.active && collab.ydoc
       ? [
           Collaboration.configure({ document: collab.ydoc }),
@@ -391,6 +393,86 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           letter-spacing: 0.08em;
           color: #c8c0b8;
           pointer-events: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           MATH RENDERING — MathRendererExtension
+           Modo view:   widget temml + fonte oculta
+           Modo edição: fonte LaTeX destacada (cursor dentro de $...$)
+        ════════════════════════════════════════════════════════════════════ */
+
+        /* Fonte oculta em modo view */
+        .rich-prose .math-src-hidden {
+          font-size: 0 !important;
+          line-height: 0 !important;
+          color: transparent !important;
+          pointer-events: none;
+          display: inline;
+        }
+
+        /* Fonte activa em modo edição — cursor está dentro do range $...$ */
+        .rich-prose .math-src-active {
+          background: rgba(201, 169, 110, 0.10);
+          border-radius: 3px;
+          outline: 1.5px dashed rgba(201, 169, 110, 0.55);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.84em;
+          color: #8b6914;
+          padding: 1px 3px;
+          cursor: text;
+        }
+
+        /* Widget: fórmula renderizada — modo view */
+        .rich-prose .math-widget {
+          cursor: text;
+          transition: background 0.15s;
+        }
+
+        .rich-prose .math-widget:hover {
+          outline: 1px solid rgba(201, 169, 110, 0.30);
+          border-radius: 4px;
+        }
+
+        /* Bloco centrado ($$...$$) */
+        .rich-prose .math-widget-block {
+          display: block;
+          text-align: center;
+          padding: 14px 24px;
+          margin: 10px 0;
+          background: white;
+          border: 1px solid #f0ece6;
+          border-radius: 5px;
+          overflow-x: auto;
+          line-height: 1.5;
+        }
+
+        /* Inline ($...$) */
+        .rich-prose .math-widget-inline {
+          display: inline-flex;
+          align-items: center;
+          vertical-align: middle;
+          padding: 0 2px;
+          line-height: 1;
+        }
+
+        /* Erro de renderização */
+        .rich-prose .math-widget .math-error {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.82em;
+          background: #fff8e1;
+          border: 1px solid #ffc107;
+          border-radius: 3px;
+          padding: 2px 5px;
+          color: #856404;
+        }
+
+        /* temml: ajustes visuais para o tema do editor */
+        .rich-prose .math-widget math {
+          font-size: 1.05em;
+        }
+
+        .rich-prose .math-widget-block math {
+          font-size: 1.15em;
         }
       `}</style>
     </div>
