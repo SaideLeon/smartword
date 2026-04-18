@@ -54,41 +54,6 @@ function Ruler() {
   );
 }
 
-// ── Page separator between A4 cards ───────────────────────────────────────────
-function PageSeparator() {
-  return (
-    <div
-      style={{
-        width: '100%',
-        maxWidth: '620px',
-        margin: '0 auto',
-        height: '24px',
-        background: 'transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '8px',
-        userSelect: 'none',
-        pointerEvents: 'none',
-      }}
-    >
-      <div style={{ flex: 1, height: '1px', background: 'var(--border2, #3a332a)' }} />
-      <span
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '9px',
-          letterSpacing: '0.06em',
-          color: 'var(--dim, #5a5248)',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        quebra automática de página
-      </span>
-      <div style={{ flex: 1, height: '1px', background: 'var(--border2, #3a332a)' }} />
-    </div>
-  );
-}
-
 // ── Main page component ────────────────────────────────────────────────────────
 export default function Home() {
   const {
@@ -172,23 +137,8 @@ export default function Home() {
 
   const showRightSidebar = !isMobile && mode !== null;
 
-  // ── Page separator lines via background-image ──────────────────────────────
-  // Draws a subtle dashed line every pageNaturalHeight px to simulate page edges.
-  // Using two stops so the line is exactly 2px wide.
-  const pageLineBg = `repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent ${pageNaturalHeight - 2}px,
-    #d0cbc4 ${pageNaturalHeight - 2}px,
-    #d0cbc4 ${pageNaturalHeight}px
-  )`;
-
-  // Page number positions (absolute inside the container, one per page)
-  // Each page number sits 32px from the bottom of its page section
-  const pageNumbers = Array.from({ length: pageCount }, (_, i) => ({
-    page: i + 1,
-    top: (i + 1) * pageNaturalHeight - 32,
-  }));
+  // ── Physical page break gap ────────────────────────────────────────────────
+  const PAGE_GAP = 28; // altura total do gap entre páginas (px)
 
   return (
     <main className={`${themeVars} flex h-dvh flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}>
@@ -257,10 +207,6 @@ export default function Home() {
 
           {/* ── A4 page container ─────────────────────────────────────────
             - Grows with content (no fixed height)
-            - background-image draws a subtle horizontal line every
-              pageNaturalHeight px to simulate page boundaries
-            - Page number spans are positioned absolutely at the footer
-              of each page section
             - transform:scale applies zoom; marginBottom compensates
               for the layout gap that transform leaves behind
           ──────────────────────────────────────────────────────────────── */}
@@ -273,8 +219,6 @@ export default function Home() {
               transform: `scale(${zoomScale})`,
               transformOrigin: 'top center',
               marginBottom: `${marginCompensation}px`,
-              // Visual A4 page-break lines
-              backgroundImage: pageLineBg,
             }}
           >
             <RichEditor
@@ -284,32 +228,58 @@ export default function Home() {
               onEditorReady={setEditorInstance}
             />
 
-            {/* Page numbers — one per page section */}
-            {pageNumbers.map(({ page, top }) => (
-              <div
-                key={page}
-                className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-[13px] text-[#888]"
-                style={{
-                  fontFamily: "'Times New Roman', Times, serif",
-                  top: `${top}px`,
-                }}
-              >
-                {page}
-              </div>
-            ))}
-          </div>
+            {/* ── Inter-page gap overlays ─────────────────────────────────────────
+              Simula as arestas físicas das folhas A4 — um gap com cor do workspace,
+              sombras de papel e número de página, exatamente como o Word faz.
+            ───────────────────────────────────────────────────────────────────── */}
+            {Array.from({ length: pageCount - 1 }, (_, i) => {
+              const gapTop = (i + 1) * pageNaturalHeight - PAGE_GAP / 2;
+              return (
+                <div
+                  key={`gap-${i}`}
+                  className="pointer-events-none absolute left-0 right-0 z-10"
+                  style={{ top: `${gapTop}px`, height: `${PAGE_GAP}px` }}
+                >
+                  {/* Fundo do gap — cor do workspace (herda var() da <main>) */}
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: 'var(--parchment)' }}
+                  />
 
-          {/* Page separator labels between pages (purely visual, outside the scaled div) */}
-          {pageCount > 1 && (
-            <div
-              className="w-full max-w-[620px]"
-              style={{ transform: `scale(${zoomScale})`, transformOrigin: 'top center' }}
-            >
-              {Array.from({ length: pageCount - 1 }, (_, i) => (
-                <PageSeparator key={i} />
-              ))}
-            </div>
-          )}
+                  {/* Sombra da página de cima (cai para baixo) */}
+                  <div
+                    className="absolute left-0 right-0 top-0"
+                    style={{
+                      height: '10px',
+                      background: 'linear-gradient(to bottom, rgba(0,0,0,0.28), transparent)',
+                    }}
+                  />
+
+                  {/* Sombra da página de baixo (sobe para cima) */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0"
+                    style={{
+                      height: '10px',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.18), transparent)',
+                    }}
+                  />
+
+                  {/* Rótulo de página */}
+                  <div
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap"
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '8px',
+                      letterSpacing: '0.12em',
+                      color: 'var(--dim)',
+                    }}
+                  >
+                    — Pág. {i + 1} / {pageCount} —
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Right sidebar (240px) */}
