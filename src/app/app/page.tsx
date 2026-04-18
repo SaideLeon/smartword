@@ -21,15 +21,15 @@ import { StylesPanel } from '@/components/StylesPanel';
 type RibbonTab = 'inicio' | 'inserir' | 'design' | 'layout' | 'referencias' | 'revisao';
 
 const TABS: { key: RibbonTab; label: string }[] = [
-  { key: 'inicio', label: 'PÁGINA INICIAL' },
-  { key: 'inserir', label: 'INSERIR' },
-  { key: 'design', label: 'DESIGN' },
-  { key: 'layout', label: 'LAYOUT' },
-  { key: 'referencias', label: 'REFERÊNCIAS' },
-  { key: 'revisao', label: 'REVISÃO' },
+  { key: 'inicio',     label: 'PÁGINA INICIAL' },
+  { key: 'inserir',    label: 'INSERIR' },
+  { key: 'design',     label: 'DESIGN' },
+  { key: 'layout',     label: 'LAYOUT' },
+  { key: 'referencias',label: 'REFERÊNCIAS' },
+  { key: 'revisao',    label: 'REVISÃO' },
 ];
 
-// ── Ruler component ────────────────────────────────────────────────────────────
+// ── Régua ──────────────────────────────────────────────────────────────────────
 function Ruler() {
   const marks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   return (
@@ -54,7 +54,26 @@ function Ruler() {
   );
 }
 
-// ── Main page component ────────────────────────────────────────────────────────
+// ── Constantes de página A4 ────────────────────────────────────────────────────
+//
+// Altura total da página A4 renderizada (877 px ≈ 297 mm a 96 dpi).
+// Margens: 64 px topo + 64 px base → área de conteúdo = 749 px.
+// Os separadores têm 128 px de altura total (64 + 14 + 50 px).
+//
+// NOTA SOBRE O TRANSBORDAMENTO:
+// O texto que flui para a zona de margem (64 px acima/abaixo do conteúdo)
+// é coberto pelas zonas brancas do separador, que usam position:absolute
+// com z-index superior ao do editor. Isto impede visualmente o texto de
+// "aparecer" entre páginas sem precisar de clipar o editor.
+//
+const PAGE_H        = 877;   // altura total A4 em px
+const MARGIN_V      = 64;    // margem vertical (topo e base) em px
+const CONTENT_H     = PAGE_H - MARGIN_V * 2; // 749 px de conteúdo útil
+const SEP_COVER     = 57;    // px de zona branca que cobre cada margem
+const SEP_BAR       = 14;    // px da tira escura entre páginas
+const SEP_TOTAL     = SEP_COVER * 2 + SEP_BAR; // 128 px total do separador
+
+// ── Componente principal ───────────────────────────────────────────────────────
 export default function Home() {
   const {
     markdown, setMarkdown, filename, includeCover,
@@ -63,50 +82,49 @@ export default function Home() {
   } = useDocumentEditor();
 
   const { canRedo, canUndo } = useEditorMeta();
-  const { redo, undo } = useEditorActions();
+  const { redo, undo }       = useEditorActions();
   const { themeMode, toggleThemeMode } = useThemeMode();
   const isMobile = useIsMobile();
 
-  const [mode, setMode] = useState<AppMode>('tcc');
-  const [ribbonTab, setRibbonTab] = useState<RibbonTab>('inicio');
+  const [mode, setMode]               = useState<AppMode>('tcc');
+  const [ribbonTab, setRibbonTab]     = useState<RibbonTab>('inicio');
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
-  const [zoom, setZoom] = useState(90);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom]               = useState(90);
+  const [isFullscreen, setIsFullscreen]     = useState(false);
   const [fullscreenSupported, setFullscreenSupported] = useState(false);
 
-  // ── Multi-page tracking ────────────────────────────────────────────────────
-  // pageNaturalHeight: A4 page height in px at 100% zoom (≈ 297mm @ 96dpi)
-  const pageNaturalHeight = 877;
-  const [pageCount, setPageCount] = useState(1);
-  const [actualContentHeight, setActualContentHeight] = useState(pageNaturalHeight);
-  const pageContainerRef = useRef<HTMLDivElement>(null);
+  // ── Rastreamento de páginas ────────────────────────────────────────────────
+  // pageCount é calculado medindo a altura real do conteúdo do editor
+  // e dividindo pelo tamanho de uma página A4 (877 px).
+  const [pageCount, setPageCount]           = useState(1);
+  const [actualContentHeight, setActualContentHeight] = useState(PAGE_H);
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Track the actual rendered height of the editor content
+  // ResizeObserver — atualiza pageCount sempre que o conteúdo cresce ou encolhe.
+  // Usa a altura do wrapper interno do editor (não do contentor da página)
+  // para ter a medida exata do texto renderizado.
   useEffect(() => {
-    const el = pageContainerRef.current;
+    const el = editorWrapperRef.current;
     if (!el) return;
 
     const observer = new ResizeObserver(([entry]) => {
       const h = entry.contentRect.height;
       setActualContentHeight(h);
-      setPageCount(Math.max(1, Math.ceil(h / pageNaturalHeight)));
+      setPageCount(Math.max(1, Math.ceil(h / PAGE_H)));
     });
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [pageNaturalHeight]);
+  }, []);
 
-  // ── Theme vars ─────────────────────────────────────────────────────────────
+  // ── Tema ───────────────────────────────────────────────────────────────────
   const themeVars = themeMode === 'dark'
     ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--surface:#1a1714] [--surface2:#141210] [--gold:#d4b37b] [--gold2:#c9a96e] [--gold3:#8b6914] [--muted:#c8bfb4] [--faint:#8a7d6e] [--dim:#5a5248] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--border2:#3a332a] [--navBg:#1a1714] [--heroRight:#090908]'
     : '[--ink:#0f0e0d] [--parchment:#f5f0e8] [--surface:#ece8df] [--surface2:#e5e0d5] [--gold:#c9a96e] [--gold2:#8b6914] [--gold3:#6a4e10] [--muted:#6b6254] [--faint:#c4b8a4] [--dim:#a09585] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--border2:#c8baa0] [--navBg:#f5f0e8] [--heroRight:#1e1a14]';
 
-  // ── Zoom math ──────────────────────────────────────────────────────────────
-  const zoomScale = zoom / 100;
-  const actualVisualHeight = actualContentHeight * zoomScale;
-  // Compensate for the gap that transform:scale leaves in the layout flow
-  const marginCompensation = zoomScale < 1 ? -(actualContentHeight - actualVisualHeight) : 0;
+  // Cor de fundo do separador entre páginas
+  const sepBarColor = themeMode === 'dark' ? '#111010' : '#b8ae9e';
 
   const handleInsert = useCallback((text: string) => {
     setMarkdown(prev => prev ? `${prev}\n\n${text}` : text);
@@ -137,17 +155,25 @@ export default function Home() {
 
   const showRightSidebar = !isMobile && mode !== null;
 
-  // ── Physical page break gap ────────────────────────────────────────────────
-  // Cobre a margem inferior (64px) + margem superior (64px) de cada par de páginas.
-  // O texto que flui para essa zona fica oculto atrás do gap — exatamente como
-  // o Word esconde texto nas margens ao renderizar em modo de impressão.
-  const PAGE_GAP = 128; // = margem inferior + margem superior
-  const PAGE_MARGIN = PAGE_GAP / 2; // 64px de cada lado da fronteira
+  // ── Zoom ───────────────────────────────────────────────────────────────────
+  // Usamos a propriedade CSS `zoom` em vez de `transform: scale`.
+  //
+  // Diferença crítica:
+  //   transform:scale → não afeta o espaço ocupado no layout, requer
+  //                     compensação manual com marginBottom negativo
+  //                     e cria um stacking context que interfere com z-index.
+  //
+  //   zoom            → afeta o espaço ocupado no layout corretamente,
+  //                     não requer compensação, não cria stacking context.
+  //
+  // Com zoom CSS, o contentor cresce/encolhe proporcionalmente e os
+  // separadores posicionados com `position:absolute` seguem automaticamente.
+  const zoomFactor = zoom / 100;
 
   return (
     <main className={`${themeVars} flex h-dvh flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}>
 
-      {/* ── Header bar (44px) ── */}
+      {/* ── Cabeçalho (44 px) ── */}
       <EditorHeader
         mode={mode}
         onModeChange={handleModeChange}
@@ -162,7 +188,7 @@ export default function Home() {
         fullscreenSupported={fullscreenSupported}
       />
 
-      {/* ── Tabs bar (30px) ── */}
+      {/* ── Separador de tabs (30 px) ── */}
       <nav
         className="flex h-[30px] shrink-0 items-stretch border-b border-[var(--border)] bg-[var(--surface2)] px-2"
         style={{ scrollbarWidth: 'none' }}
@@ -183,158 +209,192 @@ export default function Home() {
         ))}
       </nav>
 
-      {/* ── Ribbon (72px) ── */}
+      {/* ── Ribbon (72 px) ── */}
       <EditorRibbon editor={editorInstance} activeTab={ribbonTab} />
 
-      {/* ── File toolbar (32px) ── */}
+      {/* ── Barra de ficheiro (32 px) ── */}
       <EditorFileToolbar
         filename={filename}
         onFilenameChange={setFilename}
         onImportFile={importTextFile}
       />
 
-      {/* ── Workspace (flex:1) ── */}
+      {/* ── Área de trabalho principal ── */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
 
-        {/* Left gutter (40px) */}
+        {/* Calha lateral esquerda (40 px) */}
         <aside className="flex w-10 shrink-0 flex-col items-center border-r border-[var(--border)] bg-[var(--surface)] pt-4">
           <div className="h-10 w-0.5 rounded bg-[linear-gradient(to_bottom,transparent,var(--gold),transparent)]" />
         </aside>
 
-        {/* Document area */}
+        {/* ── Área de documento ── */}
         <div
           className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden bg-[var(--parchment)] px-5 pb-12 pt-4"
           style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border2) transparent' }}
         >
-          {/* Ruler */}
+          {/* Régua */}
           <Ruler />
 
-          {/* ── A4 page container ─────────────────────────────────────────
-            Arquitectura de z-index:
-              z-index: -1  → fundos brancos das páginas (atrás do texto)
-              z-index: auto → texto do RichEditor (fluxo normal)
-              z-index:  50  → separadores entre páginas (à frente do texto)
-            O transform:scale no contentor cria um stacking context; dentro
-            dele z-50 garante cobertura acima do ProseMirror em qualquer
-            versão do TipTap.
-          ──────────────────────────────────────────────────────────────── */}
+          {/*
+           * ── Contentor principal do documento ──────────────────────────────
+           *
+           * ARQUITECTURA DE PÁGINAS:
+           *
+           *  ┌─────────────────────────────────┐  ← contentor (posição relativa)
+           *  │  fundo branco A4 (absoluto, z=0)│  ← cresce com o conteúdo
+           *  │  ┌───────────────────────────┐  │
+           *  │  │  editor TipTap (z=1)      │  │  ← texto flui livremente
+           *  │  └───────────────────────────┘  │
+           *  │  separador pág 1→2 (abs, z=10)  │  ← COBRE o texto nas margens
+           *  │  separador pág 2→3 (abs, z=10)  │
+           *  │  ...                            │
+           *  └─────────────────────────────────┘
+           *
+           * Os separadores têm z-index superior ao editor e cobrem a zona
+           * de margem (64 px em cima + 64 px em baixo de cada fronteira),
+           * impedindo que o texto apareça visualmente entre páginas.
+           *
+           * O texto NÃO é clipado — continua a fluir normalmente no TipTap.
+           * O efeito visual de "páginas separadas" é obtido por cobertura,
+           * não por clipping, o que mantém o editor 100% funcional.
+           *
+           * ZOOM: aplicado via propriedade CSS `zoom` no contentor.
+           * Ao contrário de transform:scale, o zoom CSS afeta o espaço
+           * ocupado no layout, pelo que não é necessária nenhuma compensação.
+           ──────────────────────────────────────────────────────────────────── */}
           <div
-            ref={pageContainerRef}
             className="relative w-full max-w-[620px] shrink-0"
             style={{
-              minHeight: `${pageNaturalHeight}px`,
-              transform: `scale(${zoomScale})`,
-              transformOrigin: 'top center',
-              marginBottom: `${marginCompensation}px`,
+              // zoom CSS: escala o conteúdo E o espaço ocupado no layout
+              zoom: zoomFactor,
+
+              // Altura mínima de uma página A4
+              minHeight: `${PAGE_H}px`,
             }}
           >
-            {/* ── Fundos brancos (um por página) — atrás do texto ─────────
-              z-index: -1 dentro do stacking context criado pelo transform:
-              pinta após o background do contentor (transparente) mas antes
-              do fluxo de texto (z-index: auto).
-            ─────────────────────────────────────────────────────────────── */}
-            {Array.from({ length: pageCount }, (_, i) => (
-              <div
-                key={`page-bg-${i}`}
-                className="pointer-events-none absolute left-0 right-0"
-                style={{
-                  top: `${i * pageNaturalHeight}px`,
-                  height: `${pageNaturalHeight}px`,
-                  backgroundColor: 'white',
-                  zIndex: -1,
-                  boxShadow: '0 4px 28px rgba(0,0,0,0.50)',
-                }}
-              />
-            ))}
-
-            <RichEditor
-              value={markdown}
-              onChange={setMarkdown}
-              isMobile={isMobile}
-              onEditorReady={setEditorInstance}
+            {/*
+             * Fundo branco — simula a folha de papel.
+             * Cresce com o conteúdo do editor graças ao position:absolute + inset:0.
+             * z-index: 0 — fica atrás de tudo, incluindo o editor.
+             */}
+            <div
+              style={{
+                position:        'absolute',
+                inset:           0,
+                backgroundColor: 'white',
+                boxShadow:       '0 4px 28px rgba(0,0,0,0.50)',
+                zIndex:          0,
+                // Altura mínima garante que a primeira página tem sempre 877 px
+                minHeight:       `${PAGE_H}px`,
+              }}
             />
 
-            {/* ── Separadores entre páginas — à frente do texto ───────────
-              z-index: 50 garante cobertura acima do texto (z-index: auto).
-              Cada separador tem 3 zonas:
-                • BRANCO superior (57px) = margem inferior da pág. N visível
-                • ESCURO central  (14px) = fronteira física entre folhas
-                • BRANCO inferior (57px) = margem superior da pág. N+1 visível
-              As zonas brancas cobrem texto que transborde para a zona de margem.
-            ─────────────────────────────────────────────────────────────── */}
+            {/*
+             * Wrapper do editor — z-index: 1, acima do fundo branco.
+             * É este elemento que o ResizeObserver mede para calcular pageCount.
+             */}
+            <div
+              ref={editorWrapperRef}
+              style={{ position: 'relative', zIndex: 1 }}
+            >
+              <RichEditor
+                value={markdown}
+                onChange={setMarkdown}
+                isMobile={isMobile}
+                onEditorReady={setEditorInstance}
+              />
+            </div>
+
+            {/*
+             * ── Separadores entre páginas ──────────────────────────────────
+             *
+             * Existe um separador por cada fronteira entre páginas.
+             * (pageCount - 1) separadores no total.
+             *
+             * Cada separador é composto por 3 zonas verticais:
+             *
+             *   ┌────────────────────────────────────────┐
+             *   │  BRANCO SUPERIOR (SEP_COVER = 57 px)   │ ← cobre margem inf. da pág. N
+             *   ├────────────────────────────────────────┤
+             *   │  BARRA ESCURA    (SEP_BAR   = 14 px)   │ ← fronteira visual
+             *   ├────────────────────────────────────────┤
+             *   │  BRANCO INFERIOR (SEP_COVER = 57 px)   │ ← cobre margem sup. da pág. N+1
+             *   └────────────────────────────────────────┘
+             *
+             * Posicionamento:
+             *   top = (i+1) * PAGE_H - SEP_COVER
+             *   (i+1)*PAGE_H é a fronteira entre as páginas i e i+1)
+             *   Subtraímos SEP_COVER para que a zona branca superior comece
+             *   64 px antes da fronteira, cobrindo a margem inferior da pág. N.
+             *
+             * z-index: 10 — acima do editor (z=1) e do fundo (z=0).
+             * pointer-events: none — não interfere com a edição de texto.
+             ──────────────────────────────────────────────────────────────── */}
             {Array.from({ length: pageCount - 1 }, (_, i) => {
-              const boundary = (i + 1) * pageNaturalHeight;
-              const gapTop = boundary - PAGE_MARGIN; // y = 877n - 64
-              const SEPARATOR_H = 14; // altura da tira escura
-              const separatorTop = PAGE_MARGIN - SEPARATOR_H / 2; // 64 - 7 = 57px
+              const boundaryY = (i + 1) * PAGE_H;
+              const sepTop    = boundaryY - SEP_COVER;
 
               return (
                 <div
-                  key={`gap-${i}`}
-                  className="pointer-events-none absolute left-0 right-0"
-                  style={{ top: `${gapTop}px`, height: `${PAGE_GAP}px`, zIndex: 50 }}
+                  key={`sep-${i}`}
+                  aria-hidden="true"
+                  style={{
+                    position:      'absolute',
+                    left:          0,
+                    right:         0,
+                    top:           `${sepTop}px`,
+                    height:        `${SEP_TOTAL}px`,
+                    zIndex:        10,
+                    pointerEvents: 'none',
+                    display:       'flex',
+                    flexDirection: 'column',
+                  }}
                 >
-                  {/* Zona branca superior — margem inferior da página N */}
-                  <div
-                    className="absolute left-0 right-0"
-                    style={{
-                      top: 0,
-                      height: `${separatorTop}px`,
-                      backgroundColor: 'white',
-                    }}
-                  />
+                  {/* Zona branca superior — cobre margem inferior da página N */}
+                  <div style={{ height: `${SEP_COVER}px`, backgroundColor: 'white' }} />
 
                   {/* Tira escura — fronteira física entre as duas folhas */}
                   <div
-                    className="absolute left-0 right-0"
                     style={{
-                      top: `${separatorTop}px`,
-                      height: `${SEPARATOR_H}px`,
-                      backgroundColor: themeMode === 'dark' ? '#111010' : '#b8ae9e',
-                      boxShadow:
-                        '0 2px 10px rgba(0,0,0,0.50), ' +
-                        '0 -2px 10px rgba(0,0,0,0.40)',
+                      height:          `${SEP_BAR}px`,
+                      backgroundColor: sepBarColor,
+                      boxShadow:       '0 2px 10px rgba(0,0,0,0.50), 0 -2px 10px rgba(0,0,0,0.40)',
+                      display:         'flex',
+                      alignItems:      'center',
+                      justifyContent:  'center',
+                      flexShrink:      0,
                     }}
                   >
-                    {/* Rótulo de página — centrado na tira escura */}
-                    <div
-                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none whitespace-nowrap"
+                    <span
                       style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '7px',
+                        fontFamily:    '"JetBrains Mono", monospace',
+                        fontSize:      '7px',
                         letterSpacing: '0.14em',
-                        color: themeMode === 'dark' ? '#4a4440' : '#9a9080',
+                        color:         themeMode === 'dark' ? '#4a4440' : '#9a9080',
+                        userSelect:    'none',
+                        whiteSpace:    'nowrap',
                       }}
                     >
                       — Pág. {i + 1} / {pageCount} —
-                    </div>
+                    </span>
                   </div>
 
-                  {/* Zona branca inferior — margem superior da página N+1 */}
-                  <div
-                    className="absolute left-0 right-0"
-                    style={{
-                      top: `${separatorTop + SEPARATOR_H}px`,
-                      bottom: 0,
-                      backgroundColor: 'white',
-                    }}
-                  />
+                  {/* Zona branca inferior — cobre margem superior da página N+1 */}
+                  <div style={{ height: `${SEP_COVER}px`, backgroundColor: 'white' }} />
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Right sidebar (240px) */}
+        {/* ── Sidebar direita (240 px) ── */}
         {showRightSidebar && (
           <aside
             className="flex w-60 shrink-0 flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)]"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border2) transparent' }}
           >
-            {/* Styles panel — always visible */}
             <StylesPanel editor={editorInstance} />
 
-            {/* Mode panel */}
             {mode === 'tcc' && (
               <div className="flex flex-1 flex-col border-t border-[var(--border)]">
                 <TccPanel
@@ -371,7 +431,7 @@ export default function Home() {
           </aside>
         )}
 
-        {/* Mobile panels */}
+        {/* ── Painéis mobile ── */}
         {isMobile && mode === 'tcc' && (
           <div className="absolute inset-0 z-20 animate-[slideUp_0.25s_ease] bg-[var(--parchment)] shadow-2xl">
             <TccPanel
@@ -397,7 +457,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* ── Status bar (28px) ── */}
+      {/* ── Barra de estado (28 px) ── */}
       <EditorStatusBar
         markdown={markdown}
         loading={loading}
@@ -410,7 +470,7 @@ export default function Home() {
         editor={editorInstance}
       />
 
-      {/* ── Full AI Chat Drawer (overlay) ── */}
+      {/* ── Drawer de chat IA ── */}
       <AiChatDrawer
         open={showChatDrawer || (isMobile && mode === 'ia')}
         onClose={() => {
