@@ -199,8 +199,8 @@ export default function Home() {
 
       {/* ── Separador de tabs (30 px) ── */}
       <nav
-        className="flex h-[30px] shrink-0 items-stretch border-b border-[var(--border)] bg-[var(--surface2)] px-2"
-        style={{ scrollbarWidth: 'none' }}
+        className="flex h-[30px] shrink-0 items-stretch overflow-x-auto border-b border-[var(--border)] bg-[var(--surface2)] px-2"
+        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
       >
         {TABS.map(tab => (
           <button
