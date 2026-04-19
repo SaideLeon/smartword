@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useThemeMode } from '@/hooks/useThemeMode';
 import { ProcessingBars } from '@/components/ProcessingBars';
+import { isEduEmailDomain } from '@/lib/edu-domain';
 
 function LoginContent() {
   const router = useRouter();
@@ -19,6 +20,9 @@ function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Detectar se o e-mail digitado é de domínio educativo
+  const isEduEmail = isEduEmailDomain(email);
 
   const themeVars =
     themeMode === 'dark'
@@ -80,12 +84,38 @@ function LoginContent() {
             Inicia sessão para continuar no editor de trabalhos académicos.
           </p>
 
+          {/* Banner edu — aparece quando o e-mail digitado é de domínio educativo */}
+          {isEduEmail && (
+            <div className="mt-5 flex items-start gap-3 rounded-lg border border-[var(--green)]/50 bg-[var(--green)]/10 px-4 py-3">
+              <GraduationCap size={18} className="mt-0.5 shrink-0 text-[var(--green)]" />
+              <div>
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--green)]">
+                  Conta educativa detectada
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--muted)]">
+                  Estudantes e docentes com conta institucional (domínio{' '}
+                  <span className="font-mono text-[var(--green)]">.edu</span>) que entrem
+                  com o Google recebem{' '}
+                  <strong className="text-[var(--ink)]">30 dias do plano Premium grátis</strong>{' '}
+                  no primeiro acesso.
+                </p>
+                <p className="mt-2 font-mono text-[10px] text-[var(--faint)]">
+                  ↳ Use o botão "Continuar com Google" abaixo para activar o benefício.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Google OAuth */}
           <button
             type="button"
             onClick={() => signInGoogle()}
             disabled={loading || submitting}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded border border-[var(--border)] bg-transparent px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)] disabled:cursor-not-allowed disabled:opacity-50"
+            className={`mt-5 flex w-full items-center justify-center gap-2 rounded border px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.08em] transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              isEduEmail
+                ? 'border-[var(--green)]/60 bg-[var(--green)]/10 text-[var(--green)] hover:bg-[var(--green)]/20'
+                : 'border-[var(--border)] bg-transparent text-[var(--muted)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]'
+            }`}
           >
             {loading || submitting ? (
               <>
@@ -100,7 +130,7 @@ function LoginContent() {
                   <path fill="#FBBC05" d="M5.3 14.37A7.2 7.2 0 0 1 4.92 12c0-.82.14-1.62.38-2.37V6.54H1.31A12 12 0 0 0 0 12c0 1.94.46 3.77 1.31 5.46l3.99-3.09Z" />
                   <path fill="#EA4335" d="M12 4.69c1.76 0 3.35.61 4.6 1.81l3.45-3.45C17.95 1.09 15.24 0 12 0A12 12 0 0 0 1.31 6.54L5.3 9.63A7.16 7.16 0 0 1 12 4.69Z" />
                 </svg>
-                Continuar com Google
+                {isEduEmail ? 'Continuar com Google · Activar 30 dias grátis' : 'Continuar com Google'}
               </>
             )}
           </button>
@@ -141,6 +171,14 @@ function LoginContent() {
                 className="mt-1.5 w-full rounded border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-sm text-[var(--ink)] placeholder-[var(--faint)] outline-none transition focus:border-[var(--gold2)]"
               />
             </div>
+
+            {/* Aviso quando é conta edu mas tenta fazer login por email/senha */}
+            {isEduEmail && (
+              <p className="rounded border border-[var(--faint)]/30 bg-[var(--border)]/20 px-3 py-2 font-mono text-[10px] leading-relaxed text-[var(--faint)]">
+                ℹ️ O login por email/senha não activa o período gratuito de 30 dias.
+                Use o Google para aproveitar o benefício da conta educativa.
+              </p>
+            )}
 
             <button
               type="submit"
