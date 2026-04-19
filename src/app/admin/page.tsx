@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
@@ -265,6 +266,14 @@ export default function AdminPage() {
               {item.label}
             </button>
           ))}
+
+          {/* Botão para a página de convites (rota separada) */}
+          <Link
+            href="/admin/invite"
+            className="flex items-center gap-1.5 rounded border border-[var(--green)]/50 bg-[var(--green)]/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--green)] transition hover:bg-[var(--green)]/20"
+          >
+            ✉ Convidar estudantes
+          </Link>
         </nav>
 
         {/* ── TAB: Pagamentos ── */}
