@@ -232,7 +232,7 @@ export default function Home() {
       <div className="flex min-h-0 flex-1 overflow-hidden">
 
         {/* Calha lateral esquerda (40 px) */}
-        <aside className="flex w-10 shrink-0 flex-col items-center border-r border-[var(--border)] bg-[var(--surface)] pt-4">
+        <aside className="hidden w-10 shrink-0 flex-col items-center border-r border-[var(--border)] bg-[var(--surface)] pt-4 sm:flex">
           <div className="h-10 w-0.5 rounded bg-[linear-gradient(to_bottom,transparent,var(--gold),transparent)]" />
         </aside>
 
