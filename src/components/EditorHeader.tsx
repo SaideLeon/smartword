@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Maximize, Minimize, Moon, Settings, Sun, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { ThemeMode } from '@/hooks/useThemeMode';
 
@@ -30,7 +30,19 @@ export function EditorHeader({
 }: Props) {
   const { user, profile, plan, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const userName = profile?.full_name || user?.email || 'Utilizador';
+
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (!userMenuRef.current) return;
+      if (userMenuRef.current.contains(event.target as Node)) return;
+      setShowUserMenu(false);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, []);
 
   const ModeBtn = ({ id, label, highlight = false }: { id: AppMode & string; label: string; highlight?: boolean }) => {
     const isActive = mode === id;
@@ -124,7 +136,7 @@ export function EditorHeader({
         )}
 
         {/* User settings */}
-        <div className="relative shrink-0">
+        <div ref={userMenuRef} className="relative shrink-0">
           <IconBtn title="Configurações" onClick={() => setShowUserMenu(v => !v)}>
             <Settings size={13} />
           </IconBtn>
@@ -149,19 +161,22 @@ export function EditorHeader({
                 </p>
               </div>
 
-              <Link href="/planos" className="mt-2 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+              <Link href="/planos" onClick={() => setShowUserMenu(false)} className="mt-2 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
                 Ver todos os planos
               </Link>
 
               {profile?.role === 'admin' && (
-                <Link href="/admin" className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+                <Link href="/admin" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
                   Área administrativa
                 </Link>
               )}
 
               <button
                 type="button"
-                onClick={() => signOut()}
+                onClick={() => {
+                  setShowUserMenu(false);
+                  signOut();
+                }}
                 className="mt-2 w-full rounded border border-red-500/40 bg-red-500/10 px-2.5 py-2 font-mono text-[11px] text-red-400 transition hover:bg-red-500/20"
               >
                 Terminar sessão
