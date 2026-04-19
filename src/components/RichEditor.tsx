@@ -98,6 +98,7 @@ interface CollabState {
 
 const CURSOR_COLORS = ['#f59e0b', '#00d6a0', '#7dd3fc', '#f97316', '#a78bfa', '#fb7185'];
 function randomColor() { return CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)]; }
+const MARKDOWN_PASTE_RE = /(\*\*[^*\n]+\*\*|^#{1,6} |\n#{1,6} |^[*\-+] |\n[*\-+] |\$\$|`[^`]+`)/m;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,19 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
       handleDOMEvents: {
         contextmenu: (_view, event) => {
           event.preventDefault();
+          return true;
+        },
+        paste: (view, event: Event) => {
+          const e = event as ClipboardEvent;
+          const plain = e.clipboardData?.getData('text/plain') ?? '';
+          const html = e.clipboardData?.getData('text/html') ?? '';
+
+          if (!html || !plain) return false;
+          if (!MARKDOWN_PASTE_RE.test(plain)) return false;
+
+          e.preventDefault();
+          const editorInstance = (view as typeof view & { editor?: Editor }).editor;
+          editorInstance?.commands.insertContent(plain);
           return true;
         },
       },

@@ -5,15 +5,6 @@ import type { CoverData } from '@/lib/docx/cover-types';
 export type SidePanel = 'none' | 'chat' | 'tcc' | 'work';
 
 const HISTORY_LIMIT = 100;
-const DEFAULT_MARKDOWN = `# Matemática — Equações do 2.º Grau e Logaritmos
-
-## 1. Equações do 2.º Grau
-
-Uma equação do 2.º grau (ou equação quadrática) é toda equação da forma:
-
-$$ax^2 + bx + c = 0$$
-
-onde $a \\neq 0$ e $a, b, c \\in \\mathbb{R}$.`;
 
 function buildFilenameFromTopic(topic: string) {
   const normalized = topic
@@ -54,8 +45,8 @@ interface EditorState {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   sidePanel: 'none',
-  content: DEFAULT_MARKDOWN,
-  filename: 'matematica-teste',
+  content: '',
+  filename: 'documento',
   includeCover: false,
   coverData: null,
   currentStructure: [],
@@ -79,11 +70,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
   },
 
-  clearDefaultContent: () => {
-    if (get().content === DEFAULT_MARKDOWN) {
-      get().setContent('');
-    }
-  },
+  clearDefaultContent: () => {},
 
   undo: () => {
     const { undoStack, content, redoStack } = get();
