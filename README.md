@@ -33,6 +33,7 @@ GEMINI_API_KEY="sua_chave_gemini"
 GROQ_API_KEY="sua_chave_groq"
 NEXT_PUBLIC_SUPABASE_URL="https://<project>.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="<sua_chave_anon>"
+NEXT_PUBLIC_APP_URL="https://muneri.nativespeak.app"
 ```
 
 > Observação: `GEMINI_API_KEY` é usada nos fluxos de geração escolar e chat (incluindo capa, TCC e trabalhos) via SDK Gemini no modelo `gemini-3.1-flash-lite-preview`, e aceita uma ou várias chaves separadas por vírgula. `GROQ_API_KEY` fica reservada apenas para transcrição de áudio (`/api/transcribe`).

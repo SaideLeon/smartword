@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 // ── Cliente Supabase (singleton no browser) ────────────────────────────────
 const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
 export const supabaseClient = createBrowserClient(supabaseUrl, supabaseAnon);
 
@@ -96,7 +97,7 @@ export function useAuth() {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${(appUrl ?? window.location.origin).replace(/\/$/, '')}/auth/callback`,
         queryParams: { prompt: 'select_account' },
       },
     });

@@ -1,15 +1,19 @@
 // src/app/auth/callback/route.ts
 // Recebe o redirect do Google OAuth e troca o code por sessão.
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-export async function GET(request: NextRequest) {
+function normalizeNext(next: string | null) {
+  if (!next || !next.startsWith('/')) return '/app';
+  return next;
+}
+
+export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  const code  = searchParams.get('code');
-  const next  = searchParams.get('next') ?? '/app';
+  const code = searchParams.get('code');
+  const next = normalizeNext(searchParams.get('next'));
 
   if (code) {
     const cookieStore = await cookies();
@@ -18,11 +22,14 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string)               { return cookieStore.get(name)?.value; },
-          set(name: string, value: string, options: any) { cookieStore.set({ name, value, ...options }); },
-          remove(name: string, options: any) { cookieStore.delete({ name, ...options }); },
+          getAll: () => cookieStore.getAll(),
+          setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
         },
-      }
+      },
     );
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
