@@ -128,19 +128,13 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
       emptyEditorClass: 'rich-is-empty',
     }),
     CharacterCount,
-    // ── TextAlign ────────────────────────────────────────────────────────────
-    // Aplica-se a parágrafos e todos os níveis de heading.
-    // defaultAlignment: 'justify' — mantém o comportamento ABNT existente.
-    // O tiptap-markdown com html:true serializa o alinhamento como atributo
-    // style inline: <p style="text-align: center">…</p>
-    // O parser.ts lê esse atributo e passa textAlign ao DocumentNode.
     TextAlign.configure({
       types: ['heading', 'paragraph'],
       alignments: ['left', 'center', 'right', 'justify'],
       defaultAlignment: 'justify',
     }),
     Markdown.configure({
-      html: true,              // IMPORTANTE: preserva os <p style="text-align:…"> no output
+      html: true,
       tightLists: true,
       transformPastedText: true,
       transformCopiedText: false,
@@ -198,6 +192,9 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
     editor.commands.setContent(value, { emitUpdate: false });
     requestAnimationFrame(() => { suppressNextUpdate.current = false; });
   }, [value, editor, ready]);
+
+  // ── Padding values (must match .rich-prose padding below) ─────────────────
+  const hPad = isMobile ? 32 : 72;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -286,9 +283,9 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
            SPECIAL MARKER NODES
         ════════════════════════════════════════════════════════════════════ */
 
+        /* Base reset para todos os marcadores */
         .rich-prose p.rich-marker {
           position: relative !important;
-          margin: 10px 0 !important;
           padding: 0 !important;
           text-indent: 0 !important;
           text-align: center !important;
@@ -299,10 +296,58 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           cursor: default;
         }
 
+        /* ═══════════════════════════════════════════════════════════════════
+           PAGE BREAK — Folha A4 separada visualmente
+        ════════════════════════════════════════════════════════════════════ */
+
         .rich-prose p.rich-marker-pagebreak {
-          height: 30px !important;
-          min-height: 30px !important;
+          /*
+           * Sangramento total: anula o padding horizontal do editor.
+           * O valor ${hPad}px deve coincidir com o padding horizontal de .rich-prose.
+           * Desktop: padding 64px 72px  → margin 0 -72px
+           * Mobile:  padding 40px 32px  → margin 0 -32px
+           */
+          margin: 0 -${hPad}px !important;
+
+          height: 72px !important;
+          min-height: 72px !important;
+
+          /*
+           * Fundo: simula a "secretária" atrás das folhas de papel.
+           * Neutro quente — não compete com o conteúdo branco.
+           */
+          background: #c8c2ba !important;
+
+          /*
+           * Bordas brancas topo e base = extremidades físicas do papel.
+           * São as "arestas" das folhas A4.
+           */
+          border-top: 3px solid rgba(255, 255, 255, 0.97) !important;
+          border-bottom: 3px solid rgba(255, 255, 255, 0.97) !important;
+          border-left: none !important;
+          border-right: none !important;
+
+          /*
+           * Sombras internas simétricas:
+           * - inset de cima → sombra que a folha superior projecta para baixo (no gap)
+           * - inset de baixo → sombra que a folha inferior recebe vindo de cima (no gap)
+           * Resultado: profundidade real de "gaveta entre páginas".
+           */
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.28),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.28) !important;
+
+          transition: box-shadow 0.14s ease;
         }
+
+        /* Hover: aprofunda levemente — dá feedback visual ao utilizador */
+        .rich-prose p.rich-marker-pagebreak:hover {
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.36),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.36) !important;
+        }
+
+        /* Legenda centrada no gap */
         .rich-prose p.rich-marker-pagebreak::before {
           content: '↕  QUEBRA DE PÁGINA';
           position: absolute;
@@ -312,28 +357,69 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           justify-content: center;
           font-family: 'JetBrains Mono', monospace;
           font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.18em;
-          color: #b0a898;
-          pointer-events: none;
-        }
-        .rich-prose p.rich-marker-pagebreak::after {
-          content: '';
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 50%;
-          height: 0;
-          border-top: 2px dashed #d8d0c6;
+          font-weight: 700;
+          letter-spacing: 0.26em;
+          color: #857567;
           pointer-events: none;
         }
 
-        .rich-prose p.rich-marker-section {
-          height: 30px !important;
-          min-height: 30px !important;
+        /* Remove a linha tracejada da versão anterior */
+        .rich-prose p.rich-marker-pagebreak::after {
+          display: none !important;
         }
+
+        /* ── Dark mode — page break ──────────────────────────────────────── */
+        html[data-theme="dark"] .rich-prose p.rich-marker-pagebreak {
+          background: #171412 !important;
+          border-top-color: rgba(255, 255, 255, 0.90) !important;
+          border-bottom-color: rgba(255, 255, 255, 0.90) !important;
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.72),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.72) !important;
+        }
+        html[data-theme="dark"] .rich-prose p.rich-marker-pagebreak:hover {
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.84),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.84) !important;
+        }
+        html[data-theme="dark"] .rich-prose p.rich-marker-pagebreak::before {
+          color: #49403a;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           SECTION BREAK — Nova secção (reinício de paginação)
+           Mesmo conceito do page break mas com tinte verde
+        ════════════════════════════════════════════════════════════════════ */
+
+        .rich-prose p.rich-marker-section {
+          margin: 0 -${hPad}px !important;
+
+          height: 72px !important;
+          min-height: 72px !important;
+
+          /* Verde neutro — distingue visualmente da quebra de página simples */
+          background: #bccfba !important;
+
+          border-top: 3px solid rgba(255, 255, 255, 0.97) !important;
+          border-bottom: 3px solid rgba(255, 255, 255, 0.97) !important;
+          border-left: none !important;
+          border-right: none !important;
+
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.20),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.20) !important;
+
+          transition: box-shadow 0.14s ease;
+        }
+
+        .rich-prose p.rich-marker-section:hover {
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.28),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.28) !important;
+        }
+
         .rich-prose p.rich-marker-section::before {
-          content: '≡  NOVA SECÇÃO  (numeração reinicia)';
+          content: '≡  NOVA SECÇÃO  ·  paginação reinicia';
           position: absolute;
           inset: 0;
           display: flex;
@@ -341,29 +427,39 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           justify-content: center;
           font-family: 'JetBrains Mono', monospace;
           font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.18em;
-          color: #6a9e5f;
-          pointer-events: none;
-        }
-        .rich-prose p.rich-marker-section::after {
-          content: '';
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 50%;
-          height: 0;
-          border-top: 2px solid #c8e6c2;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          color: #3d6e38;
           pointer-events: none;
         }
 
+        .rich-prose p.rich-marker-section::after {
+          display: none !important;
+        }
+
+        html[data-theme="dark"] .rich-prose p.rich-marker-section {
+          background: #131a12 !important;
+          border-top-color: rgba(255, 255, 255, 0.90) !important;
+          border-bottom-color: rgba(255, 255, 255, 0.90) !important;
+          box-shadow:
+            inset 0 14px 32px -6px rgba(0, 0, 0, 0.65),
+            inset 0 -14px 32px -6px rgba(0, 0, 0, 0.65) !important;
+        }
+        html[data-theme="dark"] .rich-prose p.rich-marker-section::before {
+          color: #334f30;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           TOC — Índice automático
+        ════════════════════════════════════════════════════════════════════ */
+
         .rich-prose p.rich-marker-toc {
-          height: 72px !important;
-          min-height: 72px !important;
-          border: 2px dashed #d8d0c6 !important;
+          height: 80px !important;
+          min-height: 80px !important;
+          margin: 16px 0 !important;
+          border: 1px dashed #cec9c2 !important;
           border-radius: 6px !important;
           background: #faf8f5 !important;
-          margin: 16px 0 !important;
         }
         .rich-prose p.rich-marker-toc::before {
           content: '☰  ÍNDICE AUTOMÁTICO';
@@ -394,6 +490,12 @@ export function RichEditor({ value, onChange, isMobile = false, onEditorReady }:
           color: #c8c0b8;
           pointer-events: none;
         }
+
+        html[data-theme="dark"] .rich-prose p.rich-marker-toc {
+          background: #1a1714 !important;
+          border-color: #2e2922 !important;
+        }
+
 
         /* ═══════════════════════════════════════════════════════════════════
            MATH RENDERING — MathRendererExtension
