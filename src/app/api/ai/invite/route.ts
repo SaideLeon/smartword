@@ -84,7 +84,7 @@ async function sendEmail(params: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: params.from ?? process.env.INVITE_FROM_EMAIL ?? 'Muneri <noreply@muneri.app>',
+        from: params.from ?? process.env.INVITE_FROM_EMAIL ?? 'Muneri <suporte@muneri.nativespeak.app>',
         to: [params.to],
         subject: params.subject,
         text: params.text,
