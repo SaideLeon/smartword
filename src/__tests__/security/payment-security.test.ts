@@ -473,6 +473,10 @@ describe('Security suite — /api/payment', () => {
     );
 
     expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toMatchObject({
+      error: 'PAYMENT_ATTEMPT_LIMIT',
+      retry_after: 300,
+    });
     expect(rpc).toHaveBeenCalledWith('log_fraud_event', expect.objectContaining({
       p_actor_id: 'user-1',
       p_transaction_id: 'ps_123',
