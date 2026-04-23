@@ -168,7 +168,7 @@ export async function POST(req: Request) {
     const paySuitePayment = await createPaySuitePaymentRequest({
       amountMzn: planAmountMzn,
       reference,
-      description: `Plano ${plan.label} - ${plan.key}`,
+      description: `Muneri - Plano ${plan.label} - ${plan.key}`,
       method: toPaySuiteMethod(paymentMethod),
       callbackUrl,
       returnUrl,
