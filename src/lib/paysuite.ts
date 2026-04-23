@@ -113,10 +113,13 @@ export function verifyPaySuiteWebhookSignature(payload: string, signature: strin
   const secret = process.env.PAYSUITE_WEBHOOK_SECRET?.trim();
   if (!secret || !signature) return false;
 
+  const normalizedSignature = signature.startsWith('sha256=')
+    ? signature.slice('sha256='.length)
+    : signature;
   const digest = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
   try {
-    return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
+    return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(normalizedSignature));
   } catch {
     return false;
   }

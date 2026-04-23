@@ -99,3 +99,9 @@ APP_URL="http://localhost:3000" ADVERSARIAL_COOKIE="sb-..." npm run test:adversa
 - Após pagamento, a PaySuite chama `POST /api/payment/webhook` com assinatura HMAC (`X-Webhook-Signature`).
 - O webhook confirma/rejeita automaticamente o registo em `payment_history` e atualiza o plano do utilizador em `profiles`.
 - Como fallback, `GET /api/payment?sync_provider_payment_id=<id>` tenta sincronizar estado diretamente com `GET /payments/{id}` da PaySuite.
+
+### Configuração no dashboard PaySuite (produção)
+
+- **Webhook URL:** `https://muneri.nativespeak.app/api/payment/webhook`
+- **Webhook Secret:** copiar do dashboard e guardar em `PAYSUITE_WEBHOOK_SECRET` no ambiente da aplicação.
+- Sempre que rodar localmente/staging, use a URL pública correspondente (ex.: `https://staging.seu-dominio.com/api/payment/webhook`).

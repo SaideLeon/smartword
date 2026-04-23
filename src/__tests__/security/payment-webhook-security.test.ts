@@ -4,6 +4,7 @@ const mockEnforceRateLimit = vi.fn();
 const mockVerifySignature = vi.fn();
 const mockConfirmAuto = vi.fn();
 const mockRejectAuto = vi.fn();
+const mockRegisterWebhookEventIfNew = vi.fn();
 
 vi.mock('@/lib/rate-limit', () => ({
   enforceRateLimit: mockEnforceRateLimit,
@@ -16,6 +17,7 @@ vi.mock('@/lib/paysuite', () => ({
 vi.mock('@/lib/payment-automation', () => ({
   confirmPaymentAutomaticallyByTransactionId: mockConfirmAuto,
   markPaymentAsRejectedByTransactionId: mockRejectAuto,
+  registerWebhookEventIfNew: mockRegisterWebhookEventIfNew,
 }));
 
 import { POST } from '@/app/api/payment/webhook/route';
@@ -27,6 +29,7 @@ describe('Security suite — /api/payment/webhook', () => {
     mockVerifySignature.mockReturnValue(true);
     mockConfirmAuto.mockResolvedValue({ ok: true, alreadyConfirmed: false });
     mockRejectAuto.mockResolvedValue({ ok: true });
+    mockRegisterWebhookEventIfNew.mockResolvedValue({ isDuplicate: false });
   });
 
   it('recusa webhook com assinatura inválida', async () => {
@@ -60,5 +63,23 @@ describe('Security suite — /api/payment/webhook', () => {
     expect(mockConfirmAuto).toHaveBeenCalledWith(
       expect.objectContaining({ transactionId: 'ps_1' }),
     );
+  });
+
+  it('ignora webhook duplicado via request_id', async () => {
+    mockRegisterWebhookEventIfNew.mockResolvedValueOnce({ isDuplicate: true });
+
+    const res = await POST(
+      new Request('http://localhost/api/payment/webhook', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-webhook-signature': 'abc',
+        },
+        body: JSON.stringify({ event: 'payment.success', request_id: 'req-duplicate', data: { id: 'ps_1' } }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockConfirmAuto).not.toHaveBeenCalled();
   });
 });

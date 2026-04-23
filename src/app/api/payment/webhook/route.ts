@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { enforceRateLimit } from '@/lib/rate-limit';
-import { markPaymentAsRejectedByTransactionId, confirmPaymentAutomaticallyByTransactionId } from '@/lib/payment-automation';
+import {
+  markPaymentAsRejectedByTransactionId,
+  confirmPaymentAutomaticallyByTransactionId,
+  registerWebhookEventIfNew,
+} from '@/lib/payment-automation';
 import { verifyPaySuiteWebhookSignature } from '@/lib/paysuite';
 
 type PaySuiteWebhookPayload = {
@@ -32,16 +37,27 @@ export async function POST(req: Request) {
 
   const event = (body.event || '').trim();
   const providerPaymentId = (body.data?.id || '').trim();
+  const requestId = (body.request_id || '').trim() || crypto.createHash('sha256').update(rawPayload).digest('hex');
 
   if (!event || !providerPaymentId) {
     return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
   }
 
   try {
+    const webhookEvent = await registerWebhookEventIfNew({
+      requestId,
+      eventType: event,
+      providerPaymentId,
+      payload: body,
+    });
+    if (webhookEvent.isDuplicate) {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+
     if (event === 'payment.success') {
       const result = await confirmPaymentAutomaticallyByTransactionId({
         transactionId: providerPaymentId,
-        notes: `PaySuite webhook success (${body.request_id ?? 'sem-request-id'})`,
+        notes: `PaySuite webhook success (${requestId})`,
       });
       return NextResponse.json({ ok: true, result });
     }

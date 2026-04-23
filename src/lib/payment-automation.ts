@@ -126,3 +126,29 @@ export async function markPaymentAsRejectedByTransactionId(params: { transaction
 
   return { ok: true as const };
 }
+
+export async function registerWebhookEventIfNew(params: {
+  requestId: string;
+  eventType: string;
+  providerPaymentId: string;
+  payload: unknown;
+}) {
+  const supabase = getServiceSupabase();
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from('payment_webhook_events')
+    .insert({
+      request_id: params.requestId,
+      event_type: params.eventType,
+      provider_payment_id: params.providerPaymentId,
+      payload: params.payload,
+      created_at: now,
+      processed_at: now,
+    });
+
+  if (!error) return { isDuplicate: false as const };
+  if (error.code === '23505') return { isDuplicate: true as const };
+
+  throw new Error(`Falha ao registrar evento de webhook: ${error.message}`);
+}

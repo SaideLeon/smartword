@@ -242,7 +242,6 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'premium',
-          transaction_id: 'TRX-OWN-1',
           payment_method: 'mpesa',
           work_session_id: 'd6f5c2a1-b8e1-4e7d-9c7e-5ae2de5f1b9c',
         }),
