@@ -2,17 +2,20 @@
 // A responsabilidade de inserir {pagebreak} pertence EXCLUSIVAMENTE ao cliente (WorkPanel.tsx).
 // O servidor devolve conteúdo puro, sem marcadores estruturais.
 //
-// ── ARQUITECTURA DE 2 PASSES ─────────────────────────────────────────────────
+// ── ARQUITECTURA ADAPTATIVA ──────────────────────────────────────────────────
 //
-// PASS 1 (interno):  rascunho rápido ~300 palavras via geminiGenerateText
-// AGENTE REVISOR:    10 perguntas → busca RAG/web → matriz de conhecimento
-// PASS 2 (stream):   refinamento com enrichedContext como base obrigatória
+// COM documentos RAG carregados → arquitectura de 2 passes:
+//   PASS 1: rascunho rápido ~300 palavras via geminiGenerateText
+//   AGENTE REVISOR: 10 perguntas → busca RAG → matriz de conhecimento
+//   PASS 2 (stream): refinamento com enrichedContext como base obrigatória
 //
-// SSE custom events emitidos antes do streaming:
+// SEM documentos RAG → passe único directo:
+//   PASS 2 (stream): geração directa com conhecimento nativo do modelo
+//   (sem RAG, sem revisor, sem embeddings desnecessários)
+//
+// SSE custom events emitidos antes do streaming (apenas com RAG activo):
 //   {"type":"phase","phase":"reviewing","questionCount":10}
 //   {"type":"phase","phase":"refining","sourceCount":N,"usedWeb":bool,"ragCount":N}
-//
-// Se o agente falhar, continua com pass 2 sem enriquecimento (graceful fallback).
 
 import { NextResponse } from 'next/server';
 import { getWorkSession, saveWorkResearchBrief, saveWorkSectionContent } from '@/lib/work/service';
@@ -151,8 +154,7 @@ PROIBIÇÕES ABSOLUTAS:
   return `Desenvolve o conteúdo de forma académica adequada ao ensino secundário, entre 220 e 380 palavras. NÃO incluas conclusão nem referências no final.`;
 }
 
-// ── Prompt do rascunho rápido (Pass 1) ────────────────────────────────────────
-// Mais curto e focado em estrutura — será enriquecido no Pass 2.
+// ── Prompt do rascunho rápido (Pass 1 — apenas com RAG activo) ────────────────
 
 function buildDraftPrompt(
   sectionTitle: string,
@@ -179,7 +181,7 @@ REGRAS DO RASCUNHO:
 - NÃO incluas conclusão nem referências bibliográficas no final`;
 }
 
-// ── Prompt do refinamento (Pass 2) ────────────────────────────────────────────
+// ── Prompt do refinamento / geração directa (Pass 2) ─────────────────────────
 
 function buildRefinedSystemPrompt(params: {
   topic: string;
@@ -291,14 +293,23 @@ export async function POST(req: Request) {
     const section = session.sections.find(s => s.index === sectionIndex);
     if (!section) return NextResponse.json({ error: 'Secção não encontrada' }, { status: 404 });
 
-    // ── Garantir ficha de pesquisa ─────────────────────────────────────────
+    // ── Determinar modo de operação ────────────────────────────────────────
+    // Se não há documentos RAG carregados, salta toda a pipeline de embeddings
+    // e agente revisor — usa directamente o conhecimento nativo do modelo.
+    const hasRagDocuments = !!session.rag_enabled;
 
-    if (!session.research_brief) {
-      const research = await generateResearchBrief(session.topic, outline);
-      await saveWorkResearchBrief(session.id, research.keywords, research.brief);
-      session.research_keywords = research.keywords;
-      session.research_brief = research.brief;
-      session.research_generated_at = new Date().toISOString();
+    // ── Garantir ficha de pesquisa (apenas sem RAG; com RAG, o revisor trata disto) ──
+    if (!hasRagDocuments && !session.research_brief) {
+      try {
+        const research = await generateResearchBrief(session.topic, outline);
+        await saveWorkResearchBrief(session.id, research.keywords, research.brief);
+        session.research_keywords = research.keywords;
+        session.research_brief = research.brief;
+        session.research_generated_at = new Date().toISOString();
+      } catch (researchError) {
+        // Não bloqueia a geração — continua sem ficha de pesquisa.
+        console.warn('[work/develop] Falha ao gerar ficha de pesquisa (sem RAG):', researchError);
+      }
     }
 
     // ── Contexto das secções anteriores ───────────────────────────────────
@@ -317,10 +328,12 @@ export async function POST(req: Request) {
           )}\n`
         : '\n[SECÇÕES ANTERIORES]\n(nenhuma secção anterior disponível)\n';
 
-    // ── Contexto RAG multimodal (para Pass 2) ─────────────────────────────
+    // ── Contexto RAG multimodal (apenas se há documentos carregados) ──────
 
     let ragContext = '';
-    if (session.rag_enabled) {
+
+    if (hasRagDocuments) {
+      // Garantir ficha RAG
       if (!session.rag_ficha) {
         const supabase = await (await import('@/lib/supabase')).createClient();
         const ficha = await generateRagFicha(session.id, session.topic);
@@ -366,75 +379,83 @@ export async function POST(req: Request) {
 
     const encoder = new TextEncoder();
 
-    // ── Stream orquestrado: Pass1 → Revisor → Pass2 ────────────────────────
+    // ── Stream orquestrado ─────────────────────────────────────────────────
 
     const orchestratedStream = new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
-          // ── PASS 1: Rascunho rápido (não streaming) ───────────────────────
-          const draft = await geminiGenerateText({
-            model: 'gemini-3.1-flash-lite-preview',
-            messages: [
-              {
-                role: 'system',
-                content: buildDraftPrompt(
-                  section.title,
-                  session.topic,
-                  outline,
-                  specificInstruction,
-                ),
-              },
-              {
-                role: 'user',
-                content: `Gera o rascunho inicial da secção "${section.title}".`,
-              },
-            ],
-            maxOutputTokens: 700,
-            temperature: 0.5,
-          });
+          let enrichedContext = '';
 
-          // ── Anunciar fase: revisão ────────────────────────────────────────
-          const reviewingEvt = JSON.stringify({
-            type: 'phase',
-            phase: 'reviewing',
-            questionCount: 10,
-          });
-          controller.enqueue(encoder.encode(`data: ${reviewingEvt}\n\n`));
-
-          // ── AGENTE REVISOR ────────────────────────────────────────────────
-          let reviewResult: ReviewerResult = {
-            knowledgeMatrix: [],
-            enrichedContext: '',
-            sourceCount: 0,
-            usedWeb: false,
-            ragCount: 0,
-            questionCount: 0,
-          };
-
-          try {
-            reviewResult = await runSectionReviewer({
-              draft,
-              sectionTitle: section.title,
-              topic: session.topic,
-              sessionId: session.id,
-              ragEnabled: !!session.rag_enabled,
-              researchBrief: session.research_brief,
+          if (hasRagDocuments) {
+            // ── PASS 1: Rascunho rápido (apenas com RAG activo) ─────────────
+            const draft = await geminiGenerateText({
+              model: 'gemini-3.1-flash-lite-preview',
+              messages: [
+                {
+                  role: 'system',
+                  content: buildDraftPrompt(
+                    section.title,
+                    session.topic,
+                    outline,
+                    specificInstruction,
+                  ),
+                },
+                {
+                  role: 'user',
+                  content: `Gera o rascunho inicial da secção "${section.title}".`,
+                },
+              ],
+              maxOutputTokens: 700,
+              temperature: 0.5,
             });
-          } catch (reviewErr) {
-            console.error('[work/develop] Agente revisor falhou — continuando sem enriquecimento:', reviewErr);
+
+            // ── Anunciar fase: revisão ──────────────────────────────────────
+            const reviewingEvt = JSON.stringify({
+              type: 'phase',
+              phase: 'reviewing',
+              questionCount: 10,
+            });
+            controller.enqueue(encoder.encode(`data: ${reviewingEvt}\n\n`));
+
+            // ── AGENTE REVISOR (apenas com RAG activo) ──────────────────────
+            let reviewResult: ReviewerResult = {
+              knowledgeMatrix: [],
+              enrichedContext: '',
+              sourceCount: 0,
+              usedWeb: false,
+              ragCount: 0,
+              questionCount: 0,
+            };
+
+            try {
+              reviewResult = await runSectionReviewer({
+                draft,
+                sectionTitle: section.title,
+                topic: session.topic,
+                sessionId: session.id,
+                ragEnabled: true,
+                researchBrief: session.research_brief,
+              });
+            } catch (reviewErr) {
+              console.error('[work/develop] Agente revisor falhou — continuando sem enriquecimento:', reviewErr);
+            }
+
+            enrichedContext = reviewResult.enrichedContext;
+
+            // ── Anunciar fase: refinamento ──────────────────────────────────
+            const refiningEvt = JSON.stringify({
+              type: 'phase',
+              phase: 'refining',
+              sourceCount: reviewResult.sourceCount,
+              usedWeb: reviewResult.usedWeb,
+              ragCount: reviewResult.ragCount,
+            });
+            controller.enqueue(encoder.encode(`data: ${refiningEvt}\n\n`));
           }
+          // Sem RAG: salta Pass 1 e revisor inteiramente —
+          // vai directamente para o Pass 2 com conhecimento nativo do modelo.
 
-          // ── Anunciar fase: refinamento ────────────────────────────────────
-          const refiningEvt = JSON.stringify({
-            type: 'phase',
-            phase: 'refining',
-            sourceCount: reviewResult.sourceCount,
-            usedWeb: reviewResult.usedWeb,
-            ragCount: reviewResult.ragCount,
-          });
-          controller.enqueue(encoder.encode(`data: ${refiningEvt}\n\n`));
-
-          // ── PASS 2: Refinamento com contexto enriquecido (streaming) ──────
+          // ── PASS 2: Geração final (streaming) ─────────────────────────────
           const refinedSystemPrompt = buildRefinedSystemPrompt({
             topic: session.topic,
             outline,
@@ -443,7 +464,7 @@ export async function POST(req: Request) {
             previousContext,
             researchBrief: session.research_brief,
             ragContext,
-            enrichedContext: reviewResult.enrichedContext,
+            enrichedContext,
           });
 
           const refinedStream = await geminiGenerateTextStreamSSE({
@@ -452,7 +473,7 @@ export async function POST(req: Request) {
               { role: 'system', content: refinedSystemPrompt },
               {
                 role: 'user',
-                content: `Desenvolve a secção "${section.title}" com máximo rigor académico. ${reviewResult.enrichedContext ? 'Integra os achados das fontes fornecidas no sistema.' : ''} Escreve APENAS o conteúdo desta secção, sem conclusão, sem referências no final.`,
+                content: `Desenvolve a secção "${section.title}" com máximo rigor académico. ${enrichedContext ? 'Integra os achados das fontes fornecidas no sistema.' : ''} Escreve APENAS o conteúdo desta secção, sem conclusão, sem referências no final.`,
               },
             ],
             maxOutputTokens: 1800,
@@ -481,7 +502,7 @@ export async function POST(req: Request) {
             controller.enqueue(value);
           }
 
-          // ── Guardar conteúdo refinado ─────────────────────────────────────
+          // ── Guardar conteúdo gerado ───────────────────────────────────────
           if (accumulated) {
             const cleaned = stripSpuriousBlocks(accumulated, section.title);
             await saveWorkSectionContent(sessionId, sectionIndex, cleaned, session.sections);
