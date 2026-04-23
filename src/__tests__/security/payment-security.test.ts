@@ -4,6 +4,7 @@ const mockCookies = vi.fn();
 const mockCreateServerClient = vi.fn();
 const mockEnforceRateLimit = vi.fn();
 const mockCheckPaymentFraud = vi.fn();
+const mockCreatePaySuitePaymentRequest = vi.fn();
 
 vi.mock('next/headers', () => ({
   cookies: mockCookies,
@@ -19,6 +20,15 @@ vi.mock('@/lib/rate-limit', () => ({
 
 vi.mock('@/lib/payment-fraud-detection', () => ({
   checkPaymentFraud: mockCheckPaymentFraud,
+}));
+vi.mock('@/lib/paysuite', () => ({
+  createPaySuitePaymentRequest: mockCreatePaySuitePaymentRequest,
+  generatePaySuiteReference: vi.fn(() => 'MNR-PREMIUM-USER1-ABCD1234'),
+  getPaySuitePaymentStatus: vi.fn(),
+  isPaySuitePaidStatus: vi.fn(() => false),
+}));
+vi.mock('@/lib/payment-automation', () => ({
+  confirmPaymentAutomaticallyByTransactionId: vi.fn(),
 }));
 
 import { GET, PATCH, POST } from '@/app/api/payment/route';
@@ -49,6 +59,13 @@ describe('Security suite — /api/payment', () => {
     });
     mockEnforceRateLimit.mockReturnValue(null);
     mockCheckPaymentFraud.mockResolvedValue({ flagged: false, reasons: [] });
+    mockCreatePaySuitePaymentRequest.mockResolvedValue({
+      id: 'ps_123',
+      amount: 640,
+      reference: 'MNR-PREMIUM-USER1-ABCD1234',
+      status: 'pending',
+      checkoutUrl: 'https://checkout.paysuite.test/ps_123',
+    });
   });
 
   it('POST sem autenticação retorna 401', async () => {
@@ -93,6 +110,14 @@ describe('Security suite — /api/payment', () => {
   });
 
   it('POST ignora amount_mzn enviado pelo cliente e usa price_mzn do plano', async () => {
+    const planSingle = vi.fn().mockResolvedValue({
+      data: { key: 'premium', label: 'Premium', price_mzn: 640 },
+      error: null,
+    });
+    const planEqActive = vi.fn().mockReturnValue({ single: planSingle });
+    const planEqKey = vi.fn().mockReturnValue({ eq: planEqActive });
+    const planSelect = vi.fn().mockReturnValue({ eq: planEqKey });
+
     const rpc = vi.fn().mockResolvedValue({
       data: { payment_id: 'payment-1', amount_mzn: 640 },
       error: null,
@@ -102,7 +127,10 @@ describe('Security suite — /api/payment', () => {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn(),
+      from: vi.fn((table: string) => {
+        if (table === 'plans') return { select: planSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
       rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
@@ -112,7 +140,6 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'premium',
-          transaction_id: 'TRX-123',
           amount_mzn: 1,
           payment_method: 'mpesa',
         }),
@@ -124,12 +151,16 @@ describe('Security suite — /api/payment', () => {
       'register_payment',
       expect.objectContaining({
         p_plan_key: 'premium',
-        p_transaction_id: 'TRX-123',
+        p_transaction_id: 'ps_123',
       }),
     );
   });
 
   it('POST com plan_key inválido retorna 400', async () => {
+    const planSingle = vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } });
+    const planEqActive = vi.fn().mockReturnValue({ single: planSingle });
+    const planEqKey = vi.fn().mockReturnValue({ eq: planEqActive });
+    const planSelect = vi.fn().mockReturnValue({ eq: planEqKey });
     const rpc = vi.fn().mockResolvedValue({
       data: null,
       error: { code: 'P0002', message: 'Plano inválido ou inactivo' },
@@ -139,7 +170,10 @@ describe('Security suite — /api/payment', () => {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn(),
+      from: vi.fn((table: string) => {
+        if (table === 'plans') return { select: planSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
       rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
@@ -149,7 +183,6 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'invalid',
-          transaction_id: 'TRX-124',
           payment_method: 'mpesa',
         }),
       }),
@@ -157,7 +190,7 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(400);
   });
 
-  it('POST rejeita transaction_id com mais de 100 caracteres (R07)', async () => {
+  it('POST rejeita método não suportado no fluxo automático (R07)', async () => {
     const rpc = vi.fn();
     const supabase: MockSupabase = {
       auth: {
@@ -173,8 +206,7 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'premium',
-          transaction_id: 'A'.repeat(101),
-          payment_method: 'mpesa',
+          payment_method: 'bank_transfer',
         }),
       }),
     );
@@ -210,7 +242,6 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'premium',
-          transaction_id: 'TRX-OWN-1',
           payment_method: 'mpesa',
           work_session_id: 'd6f5c2a1-b8e1-4e7d-9c7e-5ae2de5f1b9c',
         }),
@@ -363,6 +394,14 @@ describe('Security suite — /api/payment', () => {
   });
 
   it('POST com fraude potencial regista via RPC e bloqueia pagamento (R21)', async () => {
+    const planSingle = vi.fn().mockResolvedValue({
+      data: { key: 'premium', label: 'Premium', price_mzn: 640 },
+      error: null,
+    });
+    const planEqActive = vi.fn().mockReturnValue({ single: planSingle });
+    const planEqKey = vi.fn().mockReturnValue({ eq: planEqActive });
+    const planSelect = vi.fn().mockReturnValue({ eq: planEqKey });
+
     mockCheckPaymentFraud.mockResolvedValueOnce({
       flagged: true,
       reasons: ['transaction_id já usado por outro utilizador'],
@@ -378,7 +417,10 @@ describe('Security suite — /api/payment', () => {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn(),
+      from: vi.fn((table: string) => {
+        if (table === 'plans') return { select: planSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
       rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
@@ -388,7 +430,6 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'premium',
-          transaction_id: 'TRX-123',
           payment_method: 'mpesa',
         }),
       }),
@@ -397,12 +438,19 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(409);
     expect(rpc).toHaveBeenCalledWith('log_fraud_event', expect.objectContaining({
       p_actor_id: 'user-1',
-      p_transaction_id: 'TRX-123',
+      p_transaction_id: 'ps_123',
     }));
     expect(rpc).not.toHaveBeenCalledWith('register_payment', expect.anything());
   });
 
   it('POST com fraude e falha no log retorna 500 (R21)', async () => {
+    const planSingle = vi.fn().mockResolvedValue({
+      data: { key: 'premium', label: 'Premium', price_mzn: 640 },
+      error: null,
+    });
+    const planEqActive = vi.fn().mockReturnValue({ single: planSingle });
+    const planEqKey = vi.fn().mockReturnValue({ eq: planEqActive });
+    const planSelect = vi.fn().mockReturnValue({ eq: planEqKey });
     mockCheckPaymentFraud.mockResolvedValueOnce({
       flagged: true,
       reasons: ['suspeita'],
@@ -417,7 +465,10 @@ describe('Security suite — /api/payment', () => {
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
-      from: vi.fn(),
+      from: vi.fn((table: string) => {
+        if (table === 'plans') return { select: planSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
       rpc,
     };
     mockCreateServerClient.mockReturnValue(supabase);
@@ -427,7 +478,6 @@ describe('Security suite — /api/payment', () => {
         method: 'POST',
         body: JSON.stringify({
           plan_key: 'premium',
-          transaction_id: 'TRX-999',
           payment_method: 'mpesa',
         }),
       }),
