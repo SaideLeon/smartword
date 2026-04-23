@@ -190,6 +190,43 @@ describe('Security suite — /api/payment', () => {
     expect(res.status).toBe(400);
   });
 
+  it('POST bloqueia plano sem valor mínimo para PaySuite', async () => {
+    const planSingle = vi.fn().mockResolvedValue({
+      data: { key: 'free', label: 'Gratuito', price_mzn: 0 },
+      error: null,
+    });
+    const planEqActive = vi.fn().mockReturnValue({ single: planSingle });
+    const planEqKey = vi.fn().mockReturnValue({ eq: planEqActive });
+    const planSelect = vi.fn().mockReturnValue({ eq: planEqKey });
+    const rpc = vi.fn();
+
+    const supabase: MockSupabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === 'plans') return { select: planSelect };
+        throw new Error(`unexpected table ${table}`);
+      }),
+      rpc,
+    };
+    mockCreateServerClient.mockReturnValue(supabase);
+
+    const res = await POST(
+      makeReq('http://localhost/api/payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan_key: 'free',
+          payment_method: 'mpesa',
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(mockCreatePaySuitePaymentRequest).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('POST rejeita método não suportado no fluxo automático (R07)', async () => {
     const rpc = vi.fn();
     const supabase: MockSupabase = {

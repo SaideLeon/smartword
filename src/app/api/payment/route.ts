@@ -152,13 +152,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
     }
 
+    const planAmountMzn = Number(plan.price_mzn);
+    if (!Number.isFinite(planAmountMzn) || planAmountMzn < 1) {
+      return NextResponse.json(
+        { error: 'Este plano não requer pagamento via PaySuite.' },
+        { status: 400 },
+      );
+    }
+
     const reference = generatePaySuiteReference(plan.key, user.id);
     const appUrl = process.env.APP_URL?.trim() || new URL(req.url).origin;
     const callbackUrl = `${appUrl}/api/payment/webhook`;
     const returnUrl = `${appUrl}/planos?payment_reference=${encodeURIComponent(reference)}`;
 
     const paySuitePayment = await createPaySuitePaymentRequest({
-      amountMzn: Number(plan.price_mzn),
+      amountMzn: planAmountMzn,
       reference,
       description: `Plano ${plan.label} - ${plan.key}`,
       method: toPaySuiteMethod(paymentMethod),

@@ -177,6 +177,17 @@ export default function PlanosPage() {
   }, []);
 
   async function startPayment(plan: PlanRow) {
+    if (Number(plan.price_mzn) < 1) {
+      setFeedbackByPlan((prev) => ({
+        ...prev,
+        [plan.key]: {
+          type: 'error',
+          text: 'O plano gratuito não requer checkout. Pode continuar a usar sem pagar.',
+        },
+      }));
+      return;
+    }
+
     const paymentMethod = paymentMethods[plan.key] ?? 'mpesa';
 
     setSubmittingPlan(plan.key);
@@ -458,11 +469,15 @@ export default function PlanosPage() {
                 <button
                   type="button"
                   onClick={() => startPayment(plan)}
-                  disabled={submittingPlan === plan.key}
+                  disabled={submittingPlan === plan.key || Number(plan.price_mzn) < 1}
                   className="flex w-full items-center justify-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-5 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow transition hover:opacity-90 disabled:opacity-50"
                 >
                   <ArrowDown size={13} />
-                  {submittingPlan === plan.key ? 'A iniciar…' : `Pagar ${plan.label}`}
+                  {submittingPlan === plan.key
+                    ? 'A iniciar…'
+                    : Number(plan.price_mzn) < 1
+                      ? 'Plano gratuito'
+                      : `Pagar ${plan.label}`}
                 </button>
               </article>
             ))
