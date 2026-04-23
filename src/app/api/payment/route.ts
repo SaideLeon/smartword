@@ -1,33 +1,43 @@
 // src/app/api/payment/route.ts
-// POST /api/payment — utilizador regista uma transação de pagamento
-// PATCH /api/payment — admin confirma ou rejeita o pagamento
+// POST /api/payment — cria automaticamente um pedido na PaySuite
+// PATCH /api/payment — fallback admin para confirmação/rejeição manual
 
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { checkPaymentFraud } from '@/lib/payment-fraud-detection';
+import {
+  createPaySuitePaymentRequest,
+  generatePaySuiteReference,
+  getPaySuitePaymentStatus,
+  isPaySuitePaidStatus,
+  type PaySuiteMethod,
+} from '@/lib/paysuite';
+import { confirmPaymentAutomaticallyByTransactionId } from '@/lib/payment-automation';
 
-const PAYMENT_METHODS = ['mpesa', 'emola', 'bank_transfer', 'card'] as const;
+const PAYMENT_METHODS = ['mpesa', 'emola', 'card'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type PaymentPostInput = {
   planKey: string;
-  transactionId: string;
   paymentMethod: PaymentMethod;
   workSessionId: string | null;
 };
+
+function toPaySuiteMethod(method: PaymentMethod): PaySuiteMethod {
+  if (method === 'card') return 'credit_card';
+  return method;
+}
 
 function parsePaymentPostBody(body: unknown): PaymentPostInput | null {
   if (!body || typeof body !== 'object') return null;
   const payload = body as Record<string, unknown>;
 
-  if (typeof payload.plan_key !== 'string' || typeof payload.transaction_id !== 'string') return null;
+  if (typeof payload.plan_key !== 'string') return null;
   const planKey = payload.plan_key.trim();
-  const transactionId = payload.transaction_id.trim();
   if (!planKey || planKey.length > 50) return null;
-  if (transactionId.length < 3 || transactionId.length > 100) return null;
   if (!PAYMENT_METHODS.includes(payload.payment_method as PaymentMethod)) return null;
 
   let workSessionId: string | null = null;
@@ -40,7 +50,6 @@ function parsePaymentPostBody(body: unknown): PaymentPostInput | null {
 
   return {
     planKey,
-    transactionId,
     paymentMethod: payload.payment_method as PaymentMethod,
     workSessionId,
   };
@@ -88,21 +97,28 @@ async function makeSupabase() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string)                    { return cookieStore.get(name)?.value; },
-        set(name: string, value: string, o: any) { cookieStore.set({ name, value, ...o }); },
-        remove(name: string, o: any)         { cookieStore.delete({ name, ...o }); },
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, o: any) {
+          cookieStore.set({ name, value, ...o });
+        },
+        remove(name: string, o: any) {
+          cookieStore.delete({ name, ...o });
+        },
       },
-    }
+    },
   );
 }
 
-// ── POST: utilizador submete comprovativo de pagamento ───────────────────────
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'payment:post', maxRequests: 5, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   try {
@@ -110,7 +126,7 @@ export async function POST(req: Request) {
     if (!parsedBody) {
       return NextResponse.json({ error: 'Campos obrigatórios em falta ou inválidos' }, { status: 400 });
     }
-    const { planKey, transactionId, paymentMethod, workSessionId } = parsedBody;
+    const { planKey, paymentMethod, workSessionId } = parsedBody;
 
     if (workSessionId) {
       const { data: workSession, error: workSessionError } = await supabase
@@ -121,42 +137,57 @@ export async function POST(req: Request) {
         .maybeSingle();
 
       if (workSessionError || !workSession) {
-        return NextResponse.json(
-          { error: 'Sessão de trabalho inválida ou não autorizada' },
-          { status: 403 },
-        );
+        return NextResponse.json({ error: 'Sessão de trabalho inválida ou não autorizada' }, { status: 403 });
       }
     }
 
-    const fraudCheck = await checkPaymentFraud(user.id, transactionId, supabase);
-    if (fraudCheck.flagged) {
-      console.warn('[payment POST] fraude potencial detectada', {
-        userId: user.id,
-        transactionId,
-        reasons: fraudCheck.reasons,
-      });
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('key, label, price_mzn')
+      .eq('key', planKey)
+      .eq('is_active', true)
+      .single();
 
+    if (planError || !plan) {
+      return NextResponse.json({ error: 'Plano inválido ou inexistente' }, { status: 400 });
+    }
+
+    const reference = generatePaySuiteReference(plan.key, user.id);
+    const appUrl = process.env.APP_URL?.trim() || new URL(req.url).origin;
+    const callbackUrl = `${appUrl}/api/payment/webhook`;
+    const returnUrl = `${appUrl}/planos?payment_reference=${encodeURIComponent(reference)}`;
+
+    const paySuitePayment = await createPaySuitePaymentRequest({
+      amountMzn: Number(plan.price_mzn),
+      reference,
+      description: `Plano ${plan.label} - ${plan.key}`,
+      method: toPaySuiteMethod(paymentMethod),
+      callbackUrl,
+      returnUrl,
+    });
+
+    const fraudCheck = await checkPaymentFraud(user.id, paySuitePayment.id, supabase);
+    if (fraudCheck.flagged) {
       const { error: fraudAuditError } = await supabase.rpc('log_fraud_event', {
         p_actor_id: user.id,
-        p_transaction_id: transactionId,
+        p_transaction_id: paySuitePayment.id,
         p_reasons: fraudCheck.reasons,
       });
 
       if (fraudAuditError) {
-        console.error('[payment POST] Falha crítica ao registrar flag de fraude:', fraudAuditError.message);
         return NextResponse.json({ error: 'Erro interno de segurança' }, { status: 500 });
       }
 
       return NextResponse.json(
         { error: 'Transação não pode ser processada. Contacte o suporte.' },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     const { data, error } = await supabase.rpc('register_payment', {
       p_user_id: user.id,
-      p_plan_key: planKey,
-      p_transaction_id: transactionId,
+      p_plan_key: plan.key,
+      p_transaction_id: paySuitePayment.id,
       p_payment_method: paymentMethod,
       p_work_session_id: workSessionId,
     });
@@ -175,27 +206,30 @@ export async function POST(req: Request) {
 
     if (error) throw new Error(error.message);
 
-    return NextResponse.json({ ok: true, payment_id: data.payment_id });
+    return NextResponse.json({
+      ok: true,
+      payment_id: data.payment_id,
+      provider_payment_id: paySuitePayment.id,
+      provider_reference: paySuitePayment.reference,
+      provider_status: paySuitePayment.status,
+      checkout_url: paySuitePayment.checkoutUrl,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
-// ── PATCH: admin confirma ou rejeita o pagamento ─────────────────────────────
 export async function PATCH(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'payment:patch', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-  // Verificar role admin
-  const { data: adminProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  const { data: adminProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
 
   if (adminProfile?.role !== 'admin') {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
@@ -234,46 +268,35 @@ export async function PATCH(req: Request) {
   }
 }
 
-// ── GET: listar pagamentos (admin vê todos, utilizador vê os seus) ───────────
 export async function GET(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'payment:get', maxRequests: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const supabase = await makeSupabase();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
-    console.error('[payment GET] Sessão inválida:', userError?.message);
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) {
-    console.error('[payment GET] Erro ao ler perfil:', profileError.message);
-  }
-
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   const isAdmin = profile?.role === 'admin';
 
   if (isAdmin) {
-    const { error: auditError } = await supabase
-      .from('audit_log')
-      .insert({
-        actor_id: user.id,
-        action: 'admin_list_payments',
-        resource: 'payment_history',
-        metadata: {
-          endpoint: '/api/payment',
-          method: 'GET',
-          queried_at: new Date().toISOString(),
-        },
-      });
+    const { error: auditError } = await supabase.from('audit_log').insert({
+      actor_id: user.id,
+      action: 'admin_list_payments',
+      resource: 'payment_history',
+      metadata: {
+        endpoint: '/api/payment',
+        method: 'GET',
+        queried_at: new Date().toISOString(),
+      },
+    });
 
     if (auditError) {
-      console.error('[payment GET] Falha crítica ao registrar auditoria admin:', auditError.message);
       return NextResponse.json(
         { error: 'Falha no registo de auditoria. Operação bloqueada por segurança.' },
         { status: 500 },
@@ -286,14 +309,12 @@ export async function GET(req: Request) {
     .select('id, user_id, created_at, plan_key, transaction_id, amount_mzn, payment_method, status, notes, confirmed_at')
     .order('created_at', { ascending: false });
 
-  // Admin vê todos; utilizador comum só os seus
   if (!isAdmin) {
     paymentsQuery = paymentsQuery.eq('user_id', user.id);
   }
 
   const { data: payments, error: paymentsError } = await paymentsQuery;
   if (paymentsError) {
-    console.error('[payment GET] Erro na query de pagamentos:', paymentsError.message, 'isAdmin:', isAdmin);
     return NextResponse.json({ error: paymentsError.message }, { status: 500 });
   }
 
@@ -301,18 +322,30 @@ export async function GET(req: Request) {
     return NextResponse.json([]);
   }
 
+  const paymentReferenceToSync = new URL(req.url).searchParams.get('sync_provider_payment_id')?.trim();
+  if (paymentReferenceToSync) {
+    const targetPayment = payments.find((p) => p.transaction_id === paymentReferenceToSync && p.status === 'pending');
+    if (targetPayment) {
+      try {
+        const providerStatus = await getPaySuitePaymentStatus(paymentReferenceToSync);
+        if (isPaySuitePaidStatus(providerStatus.status, providerStatus.transactionStatus)) {
+          await confirmPaymentAutomaticallyByTransactionId({
+            transactionId: paymentReferenceToSync,
+            notes: 'Confirmado por polling de estado PaySuite',
+          });
+        }
+      } catch (syncError) {
+        console.warn('[payment GET] sync pay suite falhou:', syncError);
+      }
+    }
+  }
+
   const userIds = [...new Set(payments.map((payment) => payment.user_id))];
   const planKeys = [...new Set(payments.map((payment) => payment.plan_key))];
 
   const [profilesResult, plansResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, email, full_name')
-      .in('id', userIds),
-    supabase
-      .from('plans')
-      .select('key, label, price_mzn')
-      .in('key', planKeys),
+    supabase.from('profiles').select('id, email, full_name').in('id', userIds),
+    supabase.from('plans').select('key, label, price_mzn').in('key', planKeys),
   ]);
 
   const profilesMap = Object.fromEntries((profilesResult.data ?? []).map((profileItem) => [profileItem.id, profileItem]));
