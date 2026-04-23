@@ -61,6 +61,8 @@ type PaymentPatchInput = {
   notes: string | null;
 };
 
+const PAYMENT_ATTEMPT_COOLDOWN_SECONDS = 300;
+
 function sanitizeNotes(input: string): string {
   return input
     .normalize('NFKC')
@@ -187,7 +189,17 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json(
-        { error: 'Transação não pode ser processada. Contacte o suporte.' },
+        {
+          error: 'PAYMENT_ATTEMPT_LIMIT',
+          message:
+            'Detectamos várias tentativas de criar pagamento sem conclusão. Por segurança, bloqueámos novas solicitações temporariamente.',
+          retry_after: PAYMENT_ATTEMPT_COOLDOWN_SECONDS,
+          guidance: [
+            'Finalize o pagamento já iniciado',
+            'Atualize a página',
+            'Aguarde alguns minutos antes de tentar novamente',
+          ],
+        },
         { status: 409 },
       );
     }
@@ -201,7 +213,14 @@ export async function POST(req: Request) {
     });
 
     if (error?.code === '23505' || error?.code === 'P0003') {
-      return NextResponse.json({ error: 'Transação já registada' }, { status: 409 });
+      return NextResponse.json(
+        {
+          error: 'PAYMENT_ALREADY_REGISTERED',
+          message: 'Já existe um pagamento em processamento para esta tentativa.',
+          guidance: ['Atualize a página e continue com o checkout aberto', 'Aguarde alguns minutos e tente novamente'],
+        },
+        { status: 409 },
+      );
     }
 
     if (error?.code === 'P0002') {

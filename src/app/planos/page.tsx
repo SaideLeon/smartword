@@ -22,8 +22,39 @@ interface PlanRow {
   export_full: boolean;
 }
 
+type PaymentApiErrorPayload = {
+  error?: string;
+  message?: string;
+  retry_after?: number;
+};
+
 function formatUsd(value: number) {
   return value === 0 ? '—' : `$${Number(value).toFixed(2)}`;
+}
+
+function formatRetryAfter(seconds: number) {
+  const total = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function mapPaymentError(payload: PaymentApiErrorPayload | null | undefined): string {
+  if (!payload) return 'Erro inesperado ao iniciar pagamento.';
+
+  if (payload.error === 'PAYMENT_ATTEMPT_LIMIT') {
+    const retryText =
+      typeof payload.retry_after === 'number'
+        ? ` Tente novamente em ${formatRetryAfter(payload.retry_after)}.`
+        : '';
+    return `Você já iniciou um pagamento recentemente. Finalize esse pagamento ou aguarde alguns minutos antes de tentar novamente.${retryText}`;
+  }
+
+  if (payload.error === 'PAYMENT_ALREADY_REGISTERED') {
+    return 'Já existe um pagamento iniciado para este plano. Atualize a página e continue no checkout anterior.';
+  }
+
+  return payload.message || payload.error || 'Falha ao iniciar pagamento.';
 }
 
 function PlanosNav({
@@ -207,7 +238,7 @@ export default function PlanosPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Falha ao iniciar pagamento.');
+      if (!res.ok) throw new Error(mapPaymentError(data as PaymentApiErrorPayload));
       if (typeof data?.checkout_url !== 'string' || !data.checkout_url) {
         throw new Error('Link de checkout não recebido da PaySuite.');
       }
