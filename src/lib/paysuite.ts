@@ -126,9 +126,11 @@ export function verifyPaySuiteWebhookSignature(payload: string, signature: strin
 }
 
 export function generatePaySuiteReference(planKey: string, userId: string): string {
+  const sanitizeAlphaNumeric = (value: string) => value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
-  const compactUser = userId.replace(/-/g, '').slice(0, 8).toUpperCase();
-  return `MNR-${planKey.slice(0, 8).toUpperCase()}-${compactUser}-${entropy}`.slice(0, 50);
+  const compactUser = sanitizeAlphaNumeric(userId).slice(0, 8);
+  const compactPlan = sanitizeAlphaNumeric(planKey).slice(0, 8);
+  return `MNR${compactPlan}${compactUser}${entropy}`.slice(0, 50);
 }
 
 export function isPaySuitePaidStatus(status: string | null | undefined, transactionStatus: string | null | undefined): boolean {

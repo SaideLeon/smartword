@@ -96,6 +96,7 @@ APP_URL="http://localhost:3000" ADVERSARIAL_COOKIE="sb-..." npm run test:adversa
 ## Fluxo de pagamentos (PaySuite)
 
 - O endpoint `POST /api/payment` cria um pedido na PaySuite e retorna `checkout_url` para redirecionar o utilizador.
+- A referência enviada à PaySuite é gerada no backend em formato **alfanumérico** (sem símbolos) para cumprir validações do provider.
 - O checkout PaySuite é aplicado apenas para planos pagos (`price_mzn >= 1`); planos gratuitos não criam pedido no provider.
 - Após pagamento, a PaySuite chama `POST /api/payment/webhook` com assinatura HMAC (`X-Webhook-Signature`).
 - O webhook confirma/rejeita automaticamente o registo em `payment_history` e atualiza o plano do utilizador em `profiles`.
