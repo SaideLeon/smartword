@@ -150,9 +150,8 @@ export default function PlanosPage() {
   const { profile } = useAuth();
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
-  const [transactionIds, setTransactionIds] = useState<Record<string, string>>({});
   const [paymentMethods, setPaymentMethods] = useState<
-    Record<string, 'bank_transfer' | 'mpesa' | 'emola' | 'card'>
+    Record<string, 'mpesa' | 'emola' | 'card'>
   >({});
   const [submittingPlan, setSubmittingPlan] = useState<string | null>(null);
   const [feedbackByPlan, setFeedbackByPlan] = useState<
@@ -177,17 +176,8 @@ export default function PlanosPage() {
     void loadPlans();
   }, []);
 
-  async function submitTransactionProof(plan: PlanRow) {
-    const transactionId = transactionIds[plan.key] ?? '';
-    const paymentMethod = paymentMethods[plan.key] ?? 'bank_transfer';
-
-    if (!transactionId.trim()) {
-      setFeedbackByPlan((prev) => ({
-        ...prev,
-        [plan.key]: { type: 'error', text: 'Insira o ID de confirmação da transação.' },
-      }));
-      return;
-    }
+  async function startPayment(plan: PlanRow) {
+    const paymentMethod = paymentMethods[plan.key] ?? 'mpesa';
 
     setSubmittingPlan(plan.key);
     setFeedbackByPlan((prev) => {
@@ -202,26 +192,27 @@ export default function PlanosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan_key: plan.key,
-          transaction_id: transactionId.trim(),
-          amount_mzn: plan.price_mzn,
           payment_method: paymentMethod,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Falha ao registar comprovativo.');
+      if (!res.ok) throw new Error(data?.error || 'Falha ao iniciar pagamento.');
+      if (typeof data?.checkout_url !== 'string' || !data.checkout_url) {
+        throw new Error('Link de checkout não recebido da PaySuite.');
+      }
 
       setFeedbackByPlan((prev) => ({
         ...prev,
         [plan.key]: {
           type: 'success',
-          text: 'Pedido enviado e pendente de validação do administrador.',
+          text: 'Pedido criado. A redireccionar para o checkout seguro...',
         },
       }));
-      setTransactionIds((prev) => ({ ...prev, [plan.key]: '' }));
+      window.location.assign(data.checkout_url);
     } catch (error: any) {
       setFeedbackByPlan((prev) => ({
         ...prev,
-        [plan.key]: { type: 'error', text: error?.message || 'Erro inesperado ao enviar comprovativo.' },
+        [plan.key]: { type: 'error', text: error?.message || 'Erro inesperado ao iniciar pagamento.' },
       }));
     } finally {
       setSubmittingPlan(null);
@@ -244,7 +235,7 @@ export default function PlanosPage() {
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
           Plano actual:{' '}
           <span className="font-mono text-[var(--gold2)]">{profile?.plan_key || 'free'}</span>
-          . Escolha o plano, informe o ID da transação e envie para validação.
+          . Escolha o plano e finalize automaticamente via checkout PaySuite.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
@@ -427,24 +418,6 @@ export default function PlanosPage() {
                 <div className="space-y-3 border-t border-[var(--border)] pt-4">
                   <div>
                     <label
-                      htmlFor={`transaction-id-${plan.key}`}
-                      className="block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]"
-                    >
-                      ID da transação
-                    </label>
-                    <input
-                      id={`transaction-id-${plan.key}`}
-                      value={transactionIds[plan.key] ?? ''}
-                      onChange={(e) =>
-                        setTransactionIds((prev) => ({ ...prev, [plan.key]: e.target.value }))
-                      }
-                      placeholder={`Ex: ${plan.key.toUpperCase()}-TRX-000123`}
-                      className="mt-1.5 w-full rounded border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-sm text-[var(--ink)] placeholder-[var(--faint)] outline-none transition focus:border-[var(--gold2)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label
                       htmlFor={`payment-method-${plan.key}`}
                       className="block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]"
                     >
@@ -452,16 +425,15 @@ export default function PlanosPage() {
                     </label>
                     <select
                       id={`payment-method-${plan.key}`}
-                      value={paymentMethods[plan.key] ?? 'bank_transfer'}
+                      value={paymentMethods[plan.key] ?? 'mpesa'}
                       onChange={(e) =>
                         setPaymentMethods((prev) => ({
                           ...prev,
-                          [plan.key]: e.target.value as 'bank_transfer' | 'mpesa' | 'emola' | 'card',
+                          [plan.key]: e.target.value as 'mpesa' | 'emola' | 'card',
                         }))
                       }
                       className="mt-1.5 w-full rounded border border-[var(--border)] bg-[var(--parchment)] px-3 py-2 font-mono text-sm text-[var(--ink)] outline-none transition focus:border-[var(--gold2)]"
                     >
-                      <option value="bank_transfer">Transferência bancária</option>
                       <option value="mpesa">M-Pesa</option>
                       <option value="emola">e-Mola</option>
                       <option value="card">Cartão</option>
@@ -485,12 +457,12 @@ export default function PlanosPage() {
                 {/* Submit button */}
                 <button
                   type="button"
-                  onClick={() => submitTransactionProof(plan)}
+                  onClick={() => startPayment(plan)}
                   disabled={submittingPlan === plan.key}
                   className="flex w-full items-center justify-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-5 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow transition hover:opacity-90 disabled:opacity-50"
                 >
                   <ArrowDown size={13} />
-                  {submittingPlan === plan.key ? 'A enviar…' : `Comprar ${plan.label}`}
+                  {submittingPlan === plan.key ? 'A iniciar…' : `Pagar ${plan.label}`}
                 </button>
               </article>
             ))
