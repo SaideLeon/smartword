@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg"
-     width="900" height="900" viewBox="0 0 900 900">
+     width="900" height="900" viewBox="210 210 480 480">
   <defs>
     <!-- Petal gradients -->
     <linearGradient id="pg0" x1="0.500" y1="0.050" x2="0.500" y2="0.950" gradientUnits="objectBoundingBox">
