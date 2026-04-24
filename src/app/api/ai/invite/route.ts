@@ -11,6 +11,7 @@
 // substitui apenas a função sendEmail() abaixo.
 
 import { NextResponse } from 'next/server';
+import MuneriInviteEmail, { renderMuneriInviteEmail as renderMuneriInviteEmailNamed } from '@/emails/MuneriInviteEmail';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
@@ -21,6 +22,26 @@ const MAX_EMAILS_PER_REQUEST = 50;       // máx. destinatários por chamada
 const MAX_SUBJECT_CHARS      = 150;
 const MAX_BODY_CHARS         = 20_000;
 const EMAIL_REGEX            = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+function renderInviteHtml(body: string): string {
+  const renderer =
+    (typeof renderMuneriInviteEmailNamed === 'function' ? renderMuneriInviteEmailNamed : null)
+    ?? (typeof MuneriInviteEmail === 'function' ? MuneriInviteEmail : null);
+
+  if (renderer) {
+    const rendered = renderer({ body });
+    if (typeof rendered === 'string' && rendered.trim()) return rendered;
+  }
+
+  const safeBody = body
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+
+  return `<html lang="pt"><body><p>${safeBody}</p></body></html>`;
+}
+
 
 // ── Verificação de admin ────────────────────────────────────────────────────
 
@@ -62,6 +83,7 @@ async function sendEmail(params: {
   to: string;
   subject: string;
   text: string;
+  html: string;
   from?: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -88,6 +110,7 @@ async function sendEmail(params: {
         to: [params.to],
         subject: params.subject,
         text: params.text,
+        html: params.html,
       }),
     });
 
@@ -181,11 +204,13 @@ export async function POST(req: Request) {
     );
   }
 
+  const emailHtml = renderInviteHtml(emailBody);
+
   // Enviar e-mails (sequencialmente para não sobrecarregar o fornecedor)
   const results: Array<{ email: string; ok: boolean; error?: string }> = [];
 
   for (const to of validEmails) {
-    const result = await sendEmail({ to, subject, text: emailBody });
+    const result = await sendEmail({ to, subject, text: emailBody, html: emailHtml });
     results.push({ email: to, ...result });
 
     // Pequena pausa entre envios para respeitar rate limits do fornecedor
