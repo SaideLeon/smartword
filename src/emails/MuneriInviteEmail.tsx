@@ -27,16 +27,54 @@ export function renderMuneriInviteEmail({ body }: Props): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
                style="max-width:560px;background-color:#141210;border-radius:12px;
                       border:1px solid #2A2418;overflow:hidden;">
+
+          <!-- HEADER -->
           <tr>
             <td align="center"
-                style="padding:40px 40px 28px;
-                       border-bottom:1px solid #2A2418;">
-              <span style="font-family:'Georgia',serif;font-size:26px;font-weight:normal;
-                           letter-spacing:6px;color:#D4A535;">TRABALHO ACADÉMICO AUTOMÁTICO COM O MUNERI IA</span>
-              <div style="margin-top:8px;width:40px;height:1px;background:#D4A535;
-                          opacity:0.4;margin-left:auto;margin-right:auto;"></div>
+                style="padding:44px 40px 32px;
+                       border-bottom:1px solid #2A2418;
+                       background:linear-gradient(180deg,#1A1710 0%,#141210 100%);">
+
+              <!-- Símbolo ∂ -->
+              <div style="font-family:'Georgia',serif;font-size:36px;
+                          color:#D4A535;letter-spacing:2px;
+                          margin-bottom:16px;opacity:0.85;">&#8706;</div>
+
+              <!-- Badge de exclusividade -->
+              <div style="display:inline-block;
+                          padding:4px 14px;
+                          border:1px solid #2A2418;
+                          border-radius:20px;
+                          font-family:'Georgia',serif;
+                          font-size:10px;letter-spacing:3px;
+                          color:#8A6010;margin-bottom:20px;">
+                CONVITE EXCLUSIVO
+              </div>
+
+              <!-- Headline principal -->
+              <div style="font-family:'Georgia',serif;
+                          font-size:22px;font-weight:normal;
+                          letter-spacing:3px;color:#FBF0C8;
+                          line-height:1.4;margin-bottom:10px;">
+                O teu TCC, entregue.<br/>
+                <span style="color:#D4A535;">Sem o caos habitual.</span>
+              </div>
+
+              <!-- Subtítulo -->
+              <div style="font-family:'Georgia',serif;font-size:12px;
+                          color:#7A6A4A;letter-spacing:1.5px;
+                          margin-top:6px;">
+                MUNERI &middot; IA PARA TRABALHOS ACADéMICOS
+              </div>
+
+              <!-- Divisor -->
+              <div style="margin-top:20px;width:32px;height:1px;
+                          background:#D4A535;opacity:0.35;
+                          margin-left:auto;margin-right:auto;"></div>
             </td>
           </tr>
+
+          <!-- CORPO -->
           <tr>
             <td style="padding:36px 40px;
                        font-size:15px;line-height:1.75;color:#D4C89A;
@@ -44,6 +82,8 @@ export function renderMuneriInviteEmail({ body }: Props): string {
               ${safeBody}
             </td>
           </tr>
+
+          <!-- CTA -->
           <tr>
             <td align="center" style="padding:0 40px 36px;">
               <a href="https://muneri.nativespeak.app"
@@ -60,17 +100,20 @@ export function renderMuneriInviteEmail({ body }: Props): string {
               </a>
             </td>
           </tr>
+
+          <!-- FOOTER -->
           <tr>
             <td align="center"
                 style="padding:20px 40px 32px;
                        border-top:1px solid #2A2418;
                        font-size:11px;color:#5A5040;
                        font-family:'Georgia',serif;letter-spacing:1px;">
-              © ${new Date().getFullYear()} Muneri · Quelimane, Moçambique<br/>
+              &copy; ${new Date().getFullYear()} Muneri &middot; Quelimane, Mo&ccedil;ambique<br/>
               <a href="https://muneri.nativespeak.app"
                  style="color:#8A6010;text-decoration:none;">muneri.nativespeak.app</a>
             </td>
           </tr>
+
         </table>
       </td>
     </tr>
@@ -81,4 +124,4 @@ export function renderMuneriInviteEmail({ body }: Props): string {
 
 export default function MuneriInviteEmail({ body }: Props) {
   return <div dangerouslySetInnerHTML={{ __html: renderMuneriInviteEmail({ body }) }} />;
-}
+                }
