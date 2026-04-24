@@ -11,7 +11,7 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-export function renderMuneriInviteEmail({ body }: Props): string {
+function renderMuneriInviteEmail({ body }: Props): string {
   const customParagraphs = body
     .split(/\n+/)
     .map((line) => line.trim())
@@ -153,3 +153,7 @@ const styles = {
   footerText: 'color:#5a5248;font-size:12px;margin:2px 0',
   footerMuted: 'color:#5a5248;font-size:10px;margin-top:8px',
 };
+
+
+export default renderMuneriInviteEmail;
+export { renderMuneriInviteEmail };

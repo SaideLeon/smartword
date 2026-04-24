@@ -11,7 +11,7 @@
 // substitui apenas a função sendEmail() abaixo.
 
 import { NextResponse } from 'next/server';
-import { renderMuneriInviteEmail } from '@/emails/MuneriInviteEmail';
+import renderMuneriInviteEmail from '@/emails/MuneriInviteEmail';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
