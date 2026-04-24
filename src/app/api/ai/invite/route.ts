@@ -11,6 +11,7 @@
 // substitui apenas a função sendEmail() abaixo.
 
 import { NextResponse } from 'next/server';
+import renderMuneriInviteEmail from '@/emails/MuneriInviteEmail';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
@@ -62,6 +63,7 @@ async function sendEmail(params: {
   to: string;
   subject: string;
   text: string;
+  html: string;
   from?: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -88,6 +90,7 @@ async function sendEmail(params: {
         to: [params.to],
         subject: params.subject,
         text: params.text,
+        html: params.html,
       }),
     });
 
@@ -181,11 +184,13 @@ export async function POST(req: Request) {
     );
   }
 
+  const emailHtml = renderMuneriInviteEmail({ body: emailBody });
+
   // Enviar e-mails (sequencialmente para não sobrecarregar o fornecedor)
   const results: Array<{ email: string; ok: boolean; error?: string }> = [];
 
   for (const to of validEmails) {
-    const result = await sendEmail({ to, subject, text: emailBody });
+    const result = await sendEmail({ to, subject, text: emailBody, html: emailHtml });
     results.push({ email: to, ...result });
 
     // Pequena pausa entre envios para respeitar rate limits do fornecedor
