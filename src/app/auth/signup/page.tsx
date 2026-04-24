@@ -39,14 +39,15 @@ export default function SignupPage() {
   }, [isLoggedIn, router]);
 
   useEffect(() => {
-    const ref = searchParams.get('ref')?.trim().toUpperCase();
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref')?.trim().toUpperCase();
     if (!ref || !/^[A-Z0-9]{6,8}$/.test(ref)) return;
 
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('affiliate_ref_code', ref);
-      document.cookie = `affiliate_ref_code=${encodeURIComponent(ref)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-    }
-  }, [searchParams]);
+    window.localStorage.setItem('affiliate_ref_code', ref);
+    document.cookie = `affiliate_ref_code=${encodeURIComponent(ref)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
