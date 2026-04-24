@@ -1,6 +1,223 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="96" fill="#0f0e0d"/>
-  <rect x="72" y="72" width="368" height="368" rx="76" fill="#c9a96e"/>
-  <rect x="128" y="128" width="256" height="256" rx="48" fill="#8b6914"/>
-  <path d="M286.858 151.696C299.08 151.696 308.708 155.292 315.742 162.484C322.776 169.518 326.294 178.436 326.294 189.238C326.294 202.258 322.146 213.142 313.85 221.892C305.712 230.642 294.036 236.55 278.822 239.616L304.054 363H259.132L236.038 245.524H203.766L180.672 363H135.75L163.14 224.336C166.836 205.36 174.58 190.464 186.372 179.648C198.164 168.832 213.926 160.984 233.658 156.104C251.182 152.998 268.915 151.529 286.858 151.696ZM230.488 193.754C221.608 196.094 214.166 200.744 208.162 207.704C202.316 214.506 198.254 223.714 195.976 235.328H243.134C256.288 235.328 266.744 232.188 274.502 225.908C282.26 219.47 286.138 211.25 286.138 201.248C286.138 190.674 280.922 185.386 270.49 185.386C257.498 185.386 244.164 188.175 230.488 193.754Z" fill="#0f0e0d"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="900" height="900" viewBox="0 0 900 900">
+  <defs>
+    <!-- Petal gradients -->
+    <linearGradient id="pg0" x1="0.500" y1="0.050" x2="0.500" y2="0.950" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#F7E09A" stop-opacity="0.96"/>
+      <stop offset="48%"  stop-color="#D4A535" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#8A6010" stop-opacity="0.62"/>
+    </linearGradient>
+    <linearGradient id="pg1" x1="0.890" y1="0.275" x2="0.110" y2="0.725" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#F7E09A" stop-opacity="0.96"/>
+      <stop offset="48%"  stop-color="#D4A535" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#8A6010" stop-opacity="0.62"/>
+    </linearGradient>
+    <linearGradient id="pg2" x1="0.890" y1="0.725" x2="0.110" y2="0.275" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#F7E09A" stop-opacity="0.96"/>
+      <stop offset="48%"  stop-color="#D4A535" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#8A6010" stop-opacity="0.62"/>
+    </linearGradient>
+    <linearGradient id="pg3" x1="0.500" y1="0.950" x2="0.500" y2="0.050" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#F7E09A" stop-opacity="0.96"/>
+      <stop offset="48%"  stop-color="#D4A535" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#8A6010" stop-opacity="0.62"/>
+    </linearGradient>
+    <linearGradient id="pg4" x1="0.110" y1="0.725" x2="0.890" y2="0.275" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#F7E09A" stop-opacity="0.96"/>
+      <stop offset="48%"  stop-color="#D4A535" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#8A6010" stop-opacity="0.62"/>
+    </linearGradient>
+    <linearGradient id="pg5" x1="0.110" y1="0.275" x2="0.890" y2="0.725" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#F7E09A" stop-opacity="0.96"/>
+      <stop offset="48%"  stop-color="#D4A535" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#8A6010" stop-opacity="0.62"/>
+    </linearGradient>
+
+    <!-- Background -->
+    <radialGradient id="bgR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#1E1A0E"/>
+      <stop offset="100%" stop-color="#0A0907"/>
+    </radialGradient>
+
+    <!-- Halo -->
+    <radialGradient id="haloR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#D4A535" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#D4A535" stop-opacity="0.0"/>
+    </radialGradient>
+
+    <!-- Vignette -->
+    <radialGradient id="vignR" cx="50%" cy="50%" r="50%">
+      <stop offset="58%"  stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.65"/>
+    </radialGradient>
+
+    <!-- Filters -->
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="haloF" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="pulseGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <style>
+      /* ── Petal rotations ─────────────────────────── */
+      /* Outer ring: all 6 petals as one group — slow, clockwise */
+      @keyframes spinSlow {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      /* Inner ring (alternating petals): counter-clockwise, slightly faster */
+      @keyframes spinCCW {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(-360deg); }
+      }
+      /* Halo breathe */
+      @keyframes breathe {
+        0%, 100% { opacity: 0.7;  r: 215; }
+        50%       { opacity: 1.0;  r: 235; }
+      }
+      /* Central dot pulse */
+      @keyframes pulse {
+        0%, 100% { opacity: 0.90; r: 44; }
+        50%       { opacity: 0.70; r: 40; }
+      }
+      /* Inner ring pulse */
+      @keyframes ringFade {
+        0%, 100% { stroke-opacity: 0.22; }
+        50%       { stroke-opacity: 0.50; }
+      }
+      /* Outer hairline rotate opposite */
+      @keyframes hairlineSpin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(-360deg); }
+      }
+      /* Tick ring */
+      @keyframes tickSpin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+
+      /* Fade in on load */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+
+      #root-group {
+        animation: fadeIn 1.4s cubic-bezier(0.4,0,0.2,1) both;
+      }
+
+      /* Outer 3 petals — slow clockwise */
+      #petals-outer {
+        transform-origin: 450px 450px;
+        animation: spinSlow 28s linear infinite;
+      }
+      /* Inner 3 petals — slightly faster counter-clockwise */
+      #petals-inner {
+        transform-origin: 450px 450px;
+        animation: spinCCW 18s linear infinite;
+      }
+      /* Tick ring counter-clockwise */
+      #tick-ring {
+        transform-origin: 450px 450px;
+        animation: tickSpin 40s linear infinite;
+      }
+      /* Outer hairline: barely moves */
+      #outer-hairline {
+        transform-origin: 450px 450px;
+        animation: hairlineSpin 90s linear infinite;
+      }
+      /* Halo breathe */
+      #halo-circle {
+        animation: breathe 5s ease-in-out infinite;
+      }
+      /* Central void */
+      #center-void {
+        animation: pulse 5s ease-in-out infinite;
+      }
+      /* Inner ring hairline */
+      #center-ring {
+        animation: ringFade 5s ease-in-out infinite;
+      }
+    </style>
+  </defs>
+
+  <!-- Background (static) -->
+  <rect width="900" height="900" fill="url(#bgR)"/>
+
+  <g id="root-group">
+
+    <!-- Ambient halo (breathes) -->
+    <circle id="halo-circle" cx="450" cy="450" r="220"
+            fill="url(#haloR)" filter="url(#haloF)"/>
+
+    <!-- Outer petals group (petals 0, 2, 4 — every other) -->
+    <g id="petals-outer" filter="url(#glow)">
+      <path d="M 626.0682,450.0000 A 205.0000,205.0000 0 0,1 273.9318,450.0000 A 205.0000,205.0000 0 0,1 626.0682,450.0000 Z"
+            fill="url(#pg0)" fill-opacity="0.58" style="mix-blend-mode:screen"/>
+      <path d="M 361.9659,602.4795 A 205.0000,205.0000 0 0,1 538.0341,297.5205 A 205.0000,205.0000 0 0,1 361.9659,602.4795 Z"
+            fill="url(#pg2)" fill-opacity="0.58" style="mix-blend-mode:screen"/>
+      <path d="M 361.9659,297.5205 A 205.0000,205.0000 0 0,1 538.0341,602.4795 A 205.0000,205.0000 0 0,1 361.9659,297.5205 Z"
+            fill="url(#pg4)" fill-opacity="0.58" style="mix-blend-mode:screen"/>
+    </g>
+
+    <!-- Inner petals group (petals 1, 3, 5) — counter-rotate -->
+    <g id="petals-inner" filter="url(#glow)">
+      <path d="M 538.0341,602.4795 A 205.0000,205.0000 0 0,1 361.9659,297.5205 A 205.0000,205.0000 0 0,1 538.0341,602.4795 Z"
+            fill="url(#pg1)" fill-opacity="0.58" style="mix-blend-mode:screen"/>
+      <path d="M 273.9318,450.0000 A 205.0000,205.0000 0 0,1 626.0682,450.0000 A 205.0000,205.0000 0 0,1 273.9318,450.0000 Z"
+            fill="url(#pg3)" fill-opacity="0.58" style="mix-blend-mode:screen"/>
+      <path d="M 538.0341,297.5205 A 205.0000,205.0000 0 0,1 361.9659,602.4795 A 205.0000,205.0000 0 0,1 538.0341,297.5205 Z"
+            fill="url(#pg5)" fill-opacity="0.58" style="mix-blend-mode:screen"/>
+    </g>
+
+    <!-- Tick ring (rotates slowly) -->
+    <g id="tick-ring">
+      <line x1="450.00" y1="395.00" x2="450.00" y2="382.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.40"/>
+      <line x1="465.53" y1="392.04" x2="466.56" y2="388.18" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="480.00" y1="398.04" x2="482.00" y2="394.57" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="492.43" y1="407.57" x2="495.25" y2="404.75" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="497.63" y1="422.50" x2="508.89" y2="416.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.40"/>
+      <line x1="507.96" y1="434.47" x2="511.82" y2="433.44" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="510.00" y1="450.00" x2="514.00" y2="450.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="507.96" y1="465.53" x2="511.82" y2="466.56" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="497.63" y1="477.50" x2="508.89" y2="484.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.40"/>
+      <line x1="492.43" y1="492.43" x2="495.25" y2="495.25" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="480.00" y1="501.96" x2="482.00" y2="505.43" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="465.53" y1="507.96" x2="466.56" y2="511.82" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="450.00" y1="505.00" x2="450.00" y2="518.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.40"/>
+      <line x1="434.47" y1="507.96" x2="433.44" y2="511.82" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="420.00" y1="501.96" x2="418.00" y2="505.43" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="407.57" y1="492.43" x2="404.75" y2="495.25" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="402.37" y1="477.50" x2="391.11" y2="484.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.40"/>
+      <line x1="392.04" y1="465.53" x2="388.18" y2="466.56" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="390.00" y1="450.00" x2="386.00" y2="450.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="392.04" y1="434.47" x2="388.18" y2="433.44" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="402.37" y1="422.50" x2="391.11" y2="416.00" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.40"/>
+      <line x1="407.57" y1="407.57" x2="404.75" y2="404.75" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="420.00" y1="398.04" x2="418.00" y2="394.57" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+      <line x1="434.47" y1="392.04" x2="433.44" y2="388.18" stroke="#F7E09A" stroke-width="0.8" stroke-opacity="0.18"/>
+    </g>
+
+    <!-- Outer hairline (drifts slowly counter-clockwise) -->
+    <circle id="outer-hairline" cx="450" cy="450" r="240"
+            fill="none" stroke="#F7E09A" stroke-width="0.6" stroke-opacity="0.12"
+            stroke-dasharray="4 18"/>
+
+    <!-- Central void (pulses) -->
+    <circle id="center-void" cx="450" cy="450" r="44"
+            fill="#0A0907" fill-opacity="0.92"/>
+    <circle id="center-ring" cx="450" cy="450" r="38"
+            fill="none" stroke="#F7E09A" stroke-width="0.7" stroke-opacity="0.22"/>
+
+    <!-- Vignette (static) -->
+    <rect width="900" height="900" fill="url(#vignR)"/>
+
+  </g>
 </svg>
