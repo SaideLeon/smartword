@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
-type AdminTab = 'payments' | 'expenses' | 'report';
+type AdminTab = 'payments' | 'expenses' | 'report' | 'users';
 type PaymentStatus = 'pending' | 'confirmed' | 'rejected';
 
 interface Payment {
@@ -40,6 +40,16 @@ interface Report {
   margin_pct: number;
 }
 
+interface AdminUser {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: 'user' | 'admin';
+  plan_key: string | null;
+  payment_status: string | null;
+  created_at: string;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   groq_api:  'API Groq',
   supabase:  'Supabase',
@@ -68,6 +78,9 @@ export default function AdminPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [report, setReport] = useState<Report | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [userQuery, setUserQuery] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [expForm, setExpForm] = useState({
     category:     'groq_api',
     description:  '',
@@ -137,12 +150,33 @@ export default function AdminPage() {
     }
   }, [flash]);
 
+  const loadUsers = useCallback(async (query = '') => {
+    try {
+      const res = await fetch(`/api/admin/users?q=${encodeURIComponent(query.trim())}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        flash(`Erro ao carregar utilizadores: ${data?.error ?? `HTTP ${res.status}`}`);
+        setUsers([]);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? (data as AdminUser[]) : [];
+      setUsers(rows);
+      setSelectedUserIds((current) => current.filter((id) => rows.some((row) => row.id === id)));
+    } catch {
+      flash('Falha de rede ao carregar utilizadores.');
+      setUsers([]);
+    }
+  }, [flash]);
+
   useEffect(() => {
     if (tab === 'payments') { void loadPayments(); return; }
     if (tab === 'expenses') { void loadExpenses(); return; }
+    if (tab === 'users') { void loadUsers(userQuery); return; }
     void loadExpenses();
     void loadReport(expForm.period_month, expForm.period_year);
-  }, [expForm.period_month, expForm.period_year, loadExpenses, loadPayments, loadReport, tab]);
+  }, [expForm.period_month, expForm.period_year, loadExpenses, loadPayments, loadReport, loadUsers, tab, userQuery]);
 
   const handlePaymentAction = async (paymentId: string, action: 'confirm' | 'reject') => {
     const res = await fetch('/api/payment', {
@@ -222,6 +256,55 @@ export default function AdminPage() {
     void loadReport(expForm.period_month, expForm.period_year);
   };
 
+  const toggleSelectedUser = (userId: string) => {
+    setSelectedUserIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+    );
+  };
+
+  const toggleSelectAllUsers = () => {
+    if (selectedUserIds.length === users.length) {
+      setSelectedUserIds([]);
+      return;
+    }
+    setSelectedUserIds(users.map((user) => user.id));
+  };
+
+  const handleDeleteSelectedUsers = async () => {
+    if (selectedUserIds.length < 1) {
+      flash('Seleccione pelo menos um utilizador para eliminar.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Confirma eliminar ${selectedUserIds.length} utilizador(es)? Esta acção remove a conta e dados relacionados em definitivo.`,
+    );
+    if (!confirmed) return;
+
+    const res = await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_ids: selectedUserIds }),
+    });
+    const payload = await res.json();
+
+    if (!res.ok && res.status !== 207) {
+      flash(`Falha ao eliminar utilizadores: ${payload?.error ?? `HTTP ${res.status}`}`);
+      return;
+    }
+
+    if (res.status === 207) {
+      const deleted = Array.isArray(payload?.deleted_ids) ? payload.deleted_ids.length : 0;
+      const failed = Array.isArray(payload?.failures) ? payload.failures.length : 0;
+      flash(`Eliminação parcial: ${deleted} removido(s), ${failed} com falha.`);
+    } else {
+      flash(`${selectedUserIds.length} utilizador(es) eliminado(s) com sucesso.`);
+    }
+
+    setSelectedUserIds([]);
+    void loadUsers(userQuery);
+  };
+
   return (
     <main className={`${themeVars} min-h-screen bg-[var(--parchment)] text-[var(--ink)]`}>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-8 sm:px-6">
@@ -252,6 +335,7 @@ export default function AdminPage() {
             { key: 'payments', label: 'Pagamentos' },
             { key: 'expenses', label: 'Despesas' },
             { key: 'report',   label: 'Relatório' },
+            { key: 'users',    label: 'Utilizadores' },
           ] as const).map(item => (
             <button
               key={item.key}
@@ -522,6 +606,91 @@ export default function AdminPage() {
             ) : (
               <p className="py-6 text-center font-mono text-[11px] text-[var(--faint)]">
                 Seleccione o período e clique em "Gerar relatório".
+              </p>
+            )}
+          </section>
+        )}
+
+        {/* ── TAB: Utilizadores ── */}
+        {tab === 'users' && (
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-4">
+            <p className="mb-4 text-sm text-[var(--muted)]">
+              Filtre utilizadores e seleccione uma ou várias contas para eliminação total.
+            </p>
+
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                placeholder="Pesquisar por nome ou e-mail..."
+                className="min-w-[220px] flex-1 rounded border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-sm text-[var(--ink)] outline-none placeholder-[var(--faint)] transition focus:border-[var(--gold2)]"
+              />
+
+              <button
+                type="button"
+                onClick={() => void loadUsers(userQuery)}
+                className="rounded border border-[var(--border)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+              >
+                Filtrar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteSelectedUsers}
+                className="rounded border border-red-500/40 bg-red-500/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-red-400 transition hover:bg-red-500/20"
+              >
+                Eliminar seleccionados ({selectedUserIds.length})
+              </button>
+            </div>
+
+            <div className="overflow-x-auto rounded border border-[var(--border)]">
+              <table className="min-w-full text-left">
+                <thead className="border-b border-[var(--border)] bg-[var(--border)]/20">
+                  <tr className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">
+                    <th className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={users.length > 0 && selectedUserIds.length === users.length}
+                        onChange={toggleSelectAllUsers}
+                        aria-label="Seleccionar todos os utilizadores"
+                      />
+                    </th>
+                    <th className="px-3 py-2">Utilizador</th>
+                    <th className="px-3 py-2">Plano</th>
+                    <th className="px-3 py-2">Pagamento</th>
+                    <th className="px-3 py-2">Criado em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-[var(--border)]/70 text-sm last:border-b-0">
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedUserIds.includes(user.id)}
+                          onChange={() => toggleSelectedUser(user.id)}
+                          aria-label={`Seleccionar utilizador ${user.email ?? user.full_name ?? user.id}`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="font-medium text-[var(--ink)]">{user.full_name || 'Sem nome'}</p>
+                        <p className="font-mono text-[11px] text-[var(--muted)]">{user.email || 'Sem e-mail'}</p>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-[11px] uppercase text-[var(--muted)]">{user.plan_key ?? '—'}</td>
+                      <td className="px-3 py-2 font-mono text-[11px] uppercase text-[var(--muted)]">{user.payment_status ?? '—'}</td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-[var(--muted)]">
+                        {new Date(user.created_at).toLocaleDateString('pt-PT')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {users.length === 0 && (
+              <p className="py-6 text-center font-mono text-[11px] text-[var(--faint)]">
+                Nenhum utilizador encontrado para o filtro actual.
               </p>
             )}
           </section>
