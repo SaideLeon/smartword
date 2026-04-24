@@ -225,21 +225,41 @@ export default function LandingPage() {
         </div>
 
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--heroRight)] p-6">
-          <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-5 text-sm text-[#c8bfb4]">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--gold)]">Missão</p>
-            <h2 className="mt-2 font-serif text-2xl text-[#f1e8da]">Democratizar a criação de documentos académicos.</h2>
-            <p className="mt-3 leading-relaxed">
-              Queremos que qualquer pessoa — mesmo sem experiência em edição — consiga produzir um trabalho bem apresentado,
-              com linguagem simples, processo guiado e apoio real para cada etapa.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 01</p>
-                <p className="mt-1 text-[#f1e8da]">Simplicidade para o usuário final.</p>
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-5 text-sm text-[#c8bfb4]">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--gold)]">Missão</p>
+              <h2 className="mt-2 font-serif text-2xl text-[#f1e8da]">Democratizar a criação de documentos académicos.</h2>
+              <p className="mt-3 leading-relaxed">
+                Queremos que qualquer pessoa — mesmo sem experiência em edição — consiga produzir um trabalho bem apresentado,
+                com linguagem simples, processo guiado e apoio real para cada etapa.
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 01</p>
+                  <p className="mt-1 text-[#f1e8da]">Simplicidade para o usuário final.</p>
+                </div>
+                <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 02</p>
+                  <p className="mt-1 text-[#f1e8da]">Resultados consistentes e confiáveis.</p>
+                </div>
               </div>
-              <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 02</p>
-                <p className="mt-1 text-[#f1e8da]">Resultados consistentes e confiáveis.</p>
+            </div>
+
+            <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-5 text-[#c8bfb4]">
+              <h3 className="font-serif text-2xl leading-snug text-[#f1e8da]">
+                Seja para estudar melhor ou para indicar e ganhar, o próximo passo é seu.
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed">
+                Entre gratuitamente, experimente os recursos e escolha o caminho que faz mais sentido para você:
+                usuário final, afiliado, ou ambos.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                <a href="/app" className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-black">
+                  Começar grátis
+                </a>
+                <a href="/planos" className="rounded border border-[#3a3530] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-[#c8bfb4] transition hover:border-[var(--gold2)] hover:text-[var(--gold)]">
+                  Ver planos
+                </a>
               </div>
             </div>
           </div>
