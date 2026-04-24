@@ -35,10 +35,13 @@ export function renderMuneriInviteEmail({ body }: Props): string {
                        border-bottom:1px solid #2A2418;
                        background:linear-gradient(180deg,#1A1710 0%,#141210 100%);">
 
-              <!-- Símbolo ∂ -->
-              <div style="font-family:'Georgia',serif;font-size:36px;
-                          color:#D4A535;letter-spacing:2px;
-                          margin-bottom:16px;opacity:0.85;">&#8706;</div>
+              <!-- Logo SVG via img — máxima compatibilidade em clientes de email -->
+              <img
+                src="https://muneri.nativespeak.app/icon.svg"
+                alt="Muneri"
+                width="72"
+                height="72"
+                style="display:block;margin:0 auto 20px;border:0;"/>
 
               <!-- Badge de exclusividade -->
               <div style="display:inline-block;
@@ -64,7 +67,7 @@ export function renderMuneriInviteEmail({ body }: Props): string {
               <div style="font-family:'Georgia',serif;font-size:12px;
                           color:#7A6A4A;letter-spacing:1.5px;
                           margin-top:6px;">
-                MUNERI &middot; IA PARA TRABALHOS ACADéMICOS
+                MUNERI &middot; IA PARA TRABALHOS ACAD&Eacute;MICOS
               </div>
 
               <!-- Divisor -->
@@ -124,4 +127,4 @@ export function renderMuneriInviteEmail({ body }: Props): string {
 
 export default function MuneriInviteEmail({ body }: Props) {
   return <div dangerouslySetInnerHTML={{ __html: renderMuneriInviteEmail({ body }) }} />;
-                }
+}
