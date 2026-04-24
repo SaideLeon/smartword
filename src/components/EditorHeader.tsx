@@ -165,6 +165,10 @@ export function EditorHeader({
                 Ver todos os planos
               </Link>
 
+              <Link href="/app/afiliados" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+                Dashboard de afiliado
+              </Link>
+
               {profile?.role === 'admin' && (
                 <Link href="/admin" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
                   Área administrativa
