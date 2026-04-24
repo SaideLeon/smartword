@@ -1,10 +1,18 @@
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v6';
 const PRECACHE = `muneri-precache-${CACHE_VERSION}`;
 const PAGES_CACHE = `muneri-pages-${CACHE_VERSION}`;
 const ASSETS_CACHE = `muneri-assets-${CACHE_VERSION}`;
 const MEDIA_CACHE = `muneri-media-${CACHE_VERSION}`;
 
-const APP_SHELL = ['/', '/offline', '/manifest.webmanifest', '/icon.svg', '/apple-icon.svg'];
+const APP_SHELL = [
+  '/',
+  '/offline',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-icon-180.png',
+];
 const ASSET_DESTINATIONS = new Set(['style', 'script', 'worker']);
 const MEDIA_DESTINATIONS = new Set(['image', 'font']);
 
