@@ -1,10 +1,10 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const PRECACHE = `muneri-precache-${CACHE_VERSION}`;
 const PAGES_CACHE = `muneri-pages-${CACHE_VERSION}`;
 const ASSETS_CACHE = `muneri-assets-${CACHE_VERSION}`;
 const MEDIA_CACHE = `muneri-media-${CACHE_VERSION}`;
 
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/apple-icon.svg'];
+const APP_SHELL = ['/', '/offline', '/manifest.webmanifest', '/icon.svg', '/apple-icon.svg'];
 const ASSET_DESTINATIONS = new Set(['style', 'script', 'worker']);
 const MEDIA_DESTINATIONS = new Set(['image', 'font']);
 
@@ -32,6 +32,12 @@ self.addEventListener('activate', event => {
   );
 });
 
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', event => {
   const {request} = event;
 
@@ -44,13 +50,22 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, PAGES_CACHE, '/'));
+    event.respondWith(networkFirst(request, PAGES_CACHE, '/offline'));
     return;
   }
 
   if (ASSET_DESTINATIONS.has(request.destination)) {
     event.respondWith(staleWhileRevalidate(request, ASSETS_CACHE, 80));
+    return;
+  }
+
+  if (request.destination === '' && url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(staleWhileRevalidate(request, ASSETS_CACHE, 120));
     return;
   }
 
