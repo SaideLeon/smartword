@@ -9,6 +9,12 @@ import { createClient } from '@/lib/supabase';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuth } from '@/lib/api-auth';
 
+function generateAffiliateCode(size = 7) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(size));
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+}
+
 // ── GET: Dashboard do afiliado ────────────────────────────────────────────────
 
 export async function GET(req: Request) {
@@ -122,19 +128,84 @@ export async function POST(req: Request) {
   if (authError) return authError;
 
   const supabase = await createClient();
+  let affiliate: Record<string, unknown> | null = null;
+  let code: string | null = null;
 
-  const { data: code, error } = await supabase
-    .rpc('get_or_create_affiliate_code', { p_user_id: user.id });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  const { data: affiliate } = await supabase
+  const { data: existingAffiliate, error: existingError } = await supabase
     .from('affiliates')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
+
+  if (existingError) {
+    return NextResponse.json({ error: existingError.message }, { status: 500 });
+  }
+
+  if (existingAffiliate?.code) {
+    affiliate = existingAffiliate;
+    code = String(existingAffiliate.code);
+  } else {
+    const { data: rpcCode, error: rpcError } = await supabase
+      .rpc('get_or_create_affiliate_code', { p_user_id: user.id });
+
+    if (!rpcError && typeof rpcCode === 'string' && rpcCode.trim()) {
+      code = rpcCode.trim().toUpperCase();
+      const { data: byRpcAffiliate, error: byRpcError } = await supabase
+        .from('affiliates')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (byRpcError) {
+        return NextResponse.json({ error: byRpcError.message }, { status: 500 });
+      }
+
+      affiliate = byRpcAffiliate;
+    } else {
+      // Fallback para ambientes sem RPC/migração (produção parcial)
+      for (let attempt = 0; attempt < 8 && !affiliate; attempt += 1) {
+        const candidateCode = generateAffiliateCode();
+        const { data: inserted, error: insertError } = await supabase
+          .from('affiliates')
+          .insert({
+            user_id: user.id,
+            code: candidateCode,
+          })
+          .select('*')
+          .single();
+
+        if (!insertError && inserted) {
+          affiliate = inserted;
+          code = candidateCode;
+          break;
+        }
+
+        // Já existe afiliado para esse user (corrida) -> reaproveitar registro.
+        if (insertError?.code === '23505') {
+          const { data: racedAffiliate, error: racedError } = await supabase
+            .from('affiliates')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (racedError) {
+            return NextResponse.json({ error: racedError.message }, { status: 500 });
+          }
+          if (racedAffiliate) {
+            affiliate = racedAffiliate;
+            code = String(racedAffiliate.code ?? candidateCode);
+            break;
+          }
+        }
+      }
+
+      if (!affiliate || !code) {
+        return NextResponse.json(
+          { error: 'Não foi possível gerar o código de afiliado neste momento.' },
+          { status: 500 },
+        );
+      }
+    }
+  }
 
   const appUrl = process.env.APP_URL ?? 'https://muneri.nativespeak.app';
 
