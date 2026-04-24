@@ -1,12 +1,35 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import {
-  BookOpen, FileText, Building2, Clock, Users, Download,
-  GraduationCap, Library, Briefcase, ThumbsUp, Sun, Moon,
-  ChevronRight, ArrowDown, Maximize, Minimize,
+  ArrowDown,
+  BookOpen,
+  Briefcase,
+  ChevronRight,
+  CircleCheck,
+  Clock3,
+  Download,
+  Gift,
+  GraduationCap,
+  Handshake,
+  Maximize,
+  Minimize,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
+
+interface LandingNavProps {
+  themeMode: 'dark' | 'light';
+  onToggleTheme: () => void;
+  onToggleFullscreen: () => void;
+  isFullscreen: boolean;
+  fullscreenSupported: boolean;
+}
 
 function LandingNav({
   themeMode,
@@ -14,13 +37,7 @@ function LandingNav({
   onToggleFullscreen,
   isFullscreen,
   fullscreenSupported,
-}: {
-  themeMode: 'dark' | 'light';
-  onToggleTheme: () => void;
-  onToggleFullscreen: () => void;
-  isFullscreen: boolean;
-  fullscreenSupported: boolean;
-}) {
+}: LandingNavProps) {
   return (
     <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-4 py-3 backdrop-blur md:px-12 md:py-4">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
@@ -46,9 +63,7 @@ function LandingNav({
               className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
               aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
             >
-              {themeMode === 'dark'
-                ? <><Sun size={11} /> Claro</>
-                : <><Moon size={11} /> Escuro</>}
+              {themeMode === 'dark' ? <><Sun size={11} /> Claro</> : <><Moon size={11} /> Escuro</>}
             </button>
             <a href="/app" className="flex items-center gap-1 rounded bg-[var(--ink)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
               <ArrowDown size={11} /> Abrir
@@ -57,9 +72,9 @@ function LandingNav({
         </div>
 
         <ul className="hidden items-center gap-8 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:flex">
-          <li><a href="#features" className="hover:text-[var(--gold2)]">Vantagens</a></li>
-          <li><a href="#modos" className="hover:text-[var(--gold2)]">Para quem é</a></li>
-          <li><a href="#resultado" className="hover:text-[var(--gold2)]">Resultado final</a></li>
+          <li><a href="#como-funciona" className="hover:text-[var(--gold2)]">Como funciona</a></li>
+          <li><a href="#beneficios" className="hover:text-[var(--gold2)]">Benefícios</a></li>
+          <li><a href="#afiliados" className="hover:text-[var(--gold2)]">Afiliados</a></li>
           <li><a href="/planos" className="hover:text-[var(--gold2)]">Planos</a></li>
         </ul>
 
@@ -81,34 +96,70 @@ function LandingNav({
             className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
             aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
           >
-            {themeMode === 'dark'
-              ? <><Sun size={12} /> Claro</>
-              : <><Moon size={12} /> Escuro</>}
+            {themeMode === 'dark' ? <><Sun size={12} /> Claro</> : <><Moon size={12} /> Escuro</>}
           </button>
           <a href="/app" className="flex items-center gap-1.5 rounded bg-[var(--ink)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
             <ArrowDown size={12} /> Abrir app
           </a>
         </div>
-
-        {/* Mobile nav links */}
-        <ul className="flex w-full items-center gap-5 overflow-x-auto pb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted)] md:hidden">
-          <li><a href="#features" className="whitespace-nowrap hover:text-[var(--gold2)]">Vantagens</a></li>
-          <li><a href="#modos" className="whitespace-nowrap hover:text-[var(--gold2)]">Para quem é</a></li>
-          <li><a href="#resultado" className="whitespace-nowrap hover:text-[var(--gold2)]">Resultado final</a></li>
-          <li><a href="/planos" className="whitespace-nowrap hover:text-[var(--gold2)]">Planos</a></li>
-        </ul>
       </div>
     </nav>
   );
 }
 
-const features: [React.ReactNode, string, string][] = [
-  [<BookOpen size={22} strokeWidth={1.5} />, 'Modelo pronto', 'Trabalho com estrutura académica completa e organizada.'],
-  [<FileText size={22} strokeWidth={1.5} />, 'Capa e contracapa', 'Preencha os seus dados e o sistema monta tudo no formato certo.'],
-  [<Building2 size={22} strokeWidth={1.5} />, 'Logotipo da instituição', 'Adicione facilmente o logotipo da universidade ou escola.'],
-  [<Clock size={22} strokeWidth={1.5} />, 'Mais rapidez', 'Faça em minutos o que normalmente levaria horas para formatar.'],
-  [<Users size={22} strokeWidth={1.5} />, 'Feito para iniciantes', 'Não precisa conhecer regras técnicas de edição para usar.'],
-  [<Download size={22} strokeWidth={1.5} />, 'Arquivo pronto', 'Baixe em Word e faça ajustes finais, se quiser.'],
+const valueCards: { title: string; text: string; icon: ReactNode }[] = [
+  {
+    title: 'Clareza para quem está começando',
+    text: 'Você não precisa dominar regras de formatação. O Muneri guia cada etapa com linguagem simples e objetiva.',
+    icon: <Sparkles size={20} strokeWidth={1.6} />,
+  },
+  {
+    title: 'Foco no que realmente importa',
+    text: 'Em vez de perder horas ajustando margens e estrutura, você investe energia no conteúdo do seu trabalho.',
+    icon: <Clock3 size={20} strokeWidth={1.6} />,
+  },
+  {
+    title: 'Resultado com padrão profissional',
+    text: 'Capa, organização do conteúdo e exportação final em Word para você revisar e entregar com confiança.',
+    icon: <ShieldCheck size={20} strokeWidth={1.6} />,
+  },
+];
+
+const workflowSteps = [
+  ['1', 'Informe o essencial', 'Tema, curso, instituição e os dados principais do documento.'],
+  ['2', 'Escolha como quer trabalhar', 'Modo trabalho rápido, apoio para TCC e recursos inteligentes para acelerar sua escrita.'],
+  ['3', 'Deixe o sistema organizar', 'A plataforma estrutura seu material com uma base pronta para apresentação académica.'],
+  ['4', 'Revise e exporte', 'Baixe em Word, faça ajustes finais e entregue com tranquilidade.'],
+];
+
+const benefitCards: { title: string; text: string; icon: ReactNode }[] = [
+  {
+    title: 'Para estudantes universitários',
+    text: 'Crie trabalhos e TCC com mais segurança, sem começar do zero e sem travar na formatação.',
+    icon: <GraduationCap size={18} strokeWidth={1.6} />,
+  },
+  {
+    title: 'Para ensino médio e técnico',
+    text: 'Estruture tarefas escolares e relatórios com um visual organizado e mais credibilidade na entrega.',
+    icon: <BookOpen size={18} strokeWidth={1.6} />,
+  },
+  {
+    title: 'Para profissionais e equipas',
+    text: 'Monte relatórios e documentos com padrão visual consistente, economizando tempo em cada versão.',
+    icon: <Briefcase size={18} strokeWidth={1.6} />,
+  },
+  {
+    title: 'Para quem quer rapidez',
+    text: 'Em poucos minutos você sai da ideia para um documento utilizável, pronto para revisão e envio.',
+    icon: <Download size={18} strokeWidth={1.6} />,
+  },
+];
+
+const affiliateReasons = [
+  'Qualquer usuário pode ativar seu perfil de afiliado dentro da própria conta.',
+  'Você recebe um link pessoal para compartilhar com colegas, amigos e comunidades.',
+  'Acompanha suas indicações e comissões em um dashboard simples, sem planilhas manuais.',
+  'É uma forma prática de gerar renda indicando uma ferramenta útil para quem estuda e trabalha.',
 ];
 
 export default function LandingPage() {
@@ -121,9 +172,7 @@ export default function LandingPage() {
     const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', syncFullscreenState);
     syncFullscreenState();
-    return () => {
-      document.removeEventListener('fullscreenchange', syncFullscreenState);
-    };
+    return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
   }, []);
 
   const handleToggleFullscreen = useCallback(async () => {
@@ -149,184 +198,160 @@ export default function LandingPage() {
         fullscreenSupported={fullscreenSupported}
       />
 
-      {/* ── HERO ── */}
-      <section className="mx-auto grid w-full max-w-7xl gap-8 overflow-hidden px-5 py-10 sm:px-6 md:grid-cols-2 md:px-12 md:py-20">
+      <section className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-10 sm:px-6 md:grid-cols-2 md:px-12 md:py-20">
         <div className="space-y-5">
-          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--green)]">Trabalho académico pronto em minutos</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--green)]">Uma plataforma para transformar esforço em resultado</p>
           <h1 className="font-serif text-[1.9rem] leading-[1.2] sm:text-4xl md:text-5xl md:leading-tight lg:text-6xl">
-            Crie seu trabalho com{' '}
-            <em className="text-[var(--gold2)]">capa, contracapa</em>{' '}
-            e texto formatado automaticamente.
+            Termine trabalhos académicos com mais calma, mais clareza e{' '}
+            <em className="text-[var(--gold2)]">muito menos stress.</em>
           </h1>
           <p className="max-w-xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-            Mesmo sem experiência, você consegue gerar um trabalho completo: capa, contracapa, sumário, capítulos e referências.
-            Também pode adicionar o logotipo da sua instituição e baixar o arquivo pronto para entregar.
+            O Muneri nasceu para ajudar quem precisa entregar documentos de qualidade sem perder tempo em detalhes técnicos.
+            Você foca no conteúdo e a plataforma ajuda com estrutura, organização e exportação final em Word.
           </p>
-          <div className="overflow-hidden rounded-lg bg-[var(--ink)] p-4 font-mono text-xs leading-7 text-[#8a7d6e] shadow-xl sm:p-5">
-            <div className="text-[var(--parchment)]/60">✓ Capa personalizada</div>
-            <div className="h-1.5" />
-            <div className="text-[var(--gold)]">✓ Contracapa automática</div>
-            <div className="h-1.5" />
-            <div className="text-[var(--green)] opacity-80">✓ Documento final organizado — pronto para o Word</div>
+          <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--heroRight)] p-4 text-sm text-[#c8bfb4]">
+            <p className="flex items-center gap-2"><CircleCheck size={15} className="text-[var(--gold)]" /> Capa, organização e fluxo de escrita em um só lugar.</p>
+            <p className="flex items-center gap-2"><CircleCheck size={15} className="text-[var(--gold)]" /> Recursos para trabalhos rápidos, TCC e apoio com IA.</p>
+            <p className="flex items-center gap-2"><CircleCheck size={15} className="text-[var(--gold)]" /> Dashboard de afiliados para quem quiser indicar e ganhar comissões.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <a href="/app" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-6 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow-lg sm:px-7">
-              <ArrowDown size={13} /> Criar meu trabalho grátis
+              <ArrowDown size={13} /> Começar grátis
             </a>
-            <a href="#features" className="flex items-center gap-1 border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]">
-              Ver funcionalidades <ChevronRight size={12} />
+            <a href="#afiliados" className="flex items-center gap-1 border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]">
+              Ver programa de afiliados <ChevronRight size={12} />
             </a>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--heroRight)] p-4 sm:p-6">
-          <div className="overflow-hidden rounded-2xl border border-[#2a2520] bg-[#141210] p-4 font-mono text-[10px] leading-relaxed text-[#8a7d6e] shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-[#2a2520] pb-3">
-              <div className="grid h-5 w-5 shrink-0 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-[9px] font-bold text-black">∂</div>
-              <span className="italic text-[var(--gold)]">Muneri</span>
-            </div>
-            <div className="mt-3 space-y-2">
-              <div className="text-[#e8e2d9]"># Trabalho Acadêmico</div>
-              <div className="text-[var(--gold)]"># Capa e contracapa</div>
-              <div className="text-[var(--teal)]">Nome da instituição + logotipo</div>
-              <div>Nome do aluno, curso, tema, orientador...</div>
-              <div className="text-[var(--gold)]"># Conteúdo completo</div>
-              <div className="text-[var(--teal)]">Introdução, desenvolvimento e conclusão</div>
-            </div>
-            <div className="mt-4 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] p-2 text-center text-[10px] italic text-black">
-              ↓ Baixar trabalho-final.docx
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--heroRight)] p-6">
+          <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-5 text-sm text-[#c8bfb4]">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--gold)]">Missão</p>
+            <h2 className="mt-2 font-serif text-2xl text-[#f1e8da]">Democratizar a criação de documentos académicos.</h2>
+            <p className="mt-3 leading-relaxed">
+              Queremos que qualquer pessoa — mesmo sem experiência em edição — consiga produzir um trabalho bem apresentado,
+              com linguagem simples, processo guiado e apoio real para cada etapa.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 01</p>
+                <p className="mt-1 text-[#f1e8da]">Simplicidade para o usuário final.</p>
+              </div>
+              <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 02</p>
+                <p className="mt-1 text-[#f1e8da]">Resultados consistentes e confiáveis.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── VANTAGENS ── */}
-      <section id="features" className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Vantagens</p>
+      <section id="beneficios" className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Benefícios principais</p>
         <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
-          Tudo o que você precisa para <em className="text-[var(--gold2)]">entregar um trabalho impecável.</em>
+          Feito para pessoas reais, com rotina corrida e prazos apertados.
         </h2>
-
-        <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-2 md:grid-cols-3">
-          {features.map(([icon, title, desc]) => (
-            <article key={title} className="space-y-3 bg-[var(--parchment)] p-6 sm:p-8">
-              <div className="text-[var(--gold2)]">{icon}</div>
-              <h3 className="font-serif text-xl sm:text-2xl">{title}</h3>
-              <p className="text-sm leading-relaxed text-[var(--muted)]">{desc}</p>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {valueCards.map((card) => (
+            <article key={card.title} className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-6">
+              <div className="mb-3 text-[var(--gold2)]">{card.icon}</div>
+              <h3 className="font-serif text-xl">{card.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{card.text}</p>
             </article>
           ))}
         </div>
       </section>
 
-      {/* ── COMO FUNCIONA ── */}
-      {/* NOTE: --heroRight is always dark (#090908 / #1e1a14), so we use fixed
-          light colours here instead of CSS vars that invert with the theme. */}
-      <section className="bg-[var(--heroRight)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
+      <section id="como-funciona" className="bg-[var(--heroRight)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
         <div className="mx-auto w-full max-w-7xl">
           <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Como funciona</p>
           <h2 className="font-serif text-2xl text-[#f1e8da] sm:text-3xl md:text-4xl lg:text-5xl">
-            Do zero ao trabalho pronto em <em className="text-[var(--gold)]">quatro passos simples.</em>
+            Da ideia ao documento final em <em className="text-[var(--gold)]">4 passos simples.</em>
           </h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
-            {[
-              ['01', 'Informe os dados', 'Digite tema, curso, instituição e outras informações básicas.'],
-              ['02', 'Escolha o tipo de trabalho', 'Selecione o formato: TCC, trabalho académico ou relatório.'],
-              ['03', 'Geração automática', 'A plataforma monta capa, contracapa, conteúdo e organização.'],
-              ['04', 'Baixe e entregue', 'Você recebe o arquivo Word pronto para revisar e enviar.'],
-            ].map(([num, title, desc]) => (
-              <div key={num} className="space-y-3">
-                <div className="grid h-12 w-12 place-items-center rounded-full border border-[#3a3530] bg-[#1a1714] font-mono text-xs text-[var(--gold)]">{num}</div>
-                {/* Fixed light colour — this section background is always dark */}
+            {workflowSteps.map(([number, title, description]) => (
+              <article key={number} className="space-y-3">
+                <div className="grid h-12 w-12 place-items-center rounded-full border border-[#3a3530] bg-[#1a1714] font-mono text-xs text-[var(--gold)]">{number}</div>
                 <h3 className="font-serif text-lg text-[#f1e8da]">{title}</h3>
-                <p className="text-sm leading-relaxed text-[#c8bfb4]">{desc}</p>
-              </div>
+                <p className="text-sm leading-relaxed text-[#c8bfb4]">{description}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── RESULTADO FINAL ── */}
-      <section id="resultado" className="border-y border-[var(--border)] bg-[var(--parchment)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <div className="mx-auto grid w-full max-w-5xl gap-6">
-          <h2 className="text-center font-serif text-2xl sm:text-3xl">
-            Veja o resultado: <em className="text-[var(--gold2)]">trabalho completo e profissional.</em>
-          </h2>
-          <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
-            <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">O que você preenche</p>
-              <div className="rounded border border-[#2a2520] bg-[var(--ink)] p-4 font-mono text-sm text-[var(--teal)]">
-                Tema + curso + instituição + aluno + orientador
-              </div>
-            </div>
-            <div className="text-center font-mono text-xl text-[var(--gold2)]">→</div>
-            <div>
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">O que você recebe</p>
-              <div className="rounded border border-[var(--border)] bg-[var(--parchment)] p-4 text-center font-serif text-lg italic sm:text-xl">
-                Capa + contracapa + sumário + capítulos + referências
-              </div>
+      <section className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Para quem é o Muneri</p>
+        <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
+          Se você precisa entregar melhor, mais rápido, este sistema é para você.
+        </h2>
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {benefitCards.map((card) => (
+            <article key={card.title} className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-5 sm:p-6">
+              <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold2)]">
+                {card.icon} {card.title}
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{card.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="afiliados" className="border-y border-[var(--border)] bg-[var(--parchment)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
+        <div className="mx-auto grid w-full max-w-7xl gap-8 md:grid-cols-[1.15fr_1fr] md:items-start">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Programa de afiliados</p>
+            <h2 className="mt-2 font-serif text-2xl sm:text-3xl md:text-4xl">
+              Indique o Muneri e transforme recomendações em <em className="text-[var(--gold2)]">renda extra.</em>
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)]">
+              Nosso objetivo é criar uma rede de pessoas que ajudam outras a estudar e produzir melhor.
+              Se você já usa a plataforma, pode compartilhar seu link e acompanhar tudo de forma transparente no dashboard.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a href="/app/afiliados" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-6 py-3 font-mono text-xs uppercase tracking-[0.08em] text-[var(--ink)]">
+                <Handshake size={14} /> Quero ser afiliado
+              </a>
+              <a href="/auth/signup" className="flex items-center gap-2 rounded border border-[var(--border)] px-6 py-3 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+                <Users size={14} /> Criar conta
+              </a>
             </div>
           </div>
+
+          <aside className="rounded-xl border border-[var(--border)] bg-[var(--heroRight)] p-5 text-[#c8bfb4] sm:p-6">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--gold)]">Por que participar</p>
+            <ul className="mt-3 space-y-3 text-sm leading-relaxed">
+              {affiliateReasons.map((reason) => (
+                <li key={reason} className="flex gap-2">
+                  <Gift size={14} className="mt-0.5 shrink-0 text-[var(--gold)]" />
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+          </aside>
         </div>
       </section>
 
-      {/* ── PARA QUEM É ── */}
-      <section id="modos" className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Para quem é</p>
-        <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
-          Ideal para quem quer <em className="text-[var(--gold2)]">resultado rápido, sem complicação.</em>
-        </h2>
-
-        <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
-          <article className="rounded-xl border border-[#1e2a1e] bg-[#0b0d0b] p-5 sm:p-6">
-            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[#6a9e5f]">
-              <GraduationCap size={14} strokeWidth={1.5} /> Universitários
-            </p>
-            <h3 className="mt-3 font-serif text-xl text-[#d0dcc8] sm:text-2xl">TCC e trabalhos académicos com padrão profissional.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#4a6644]">Perfeito para quem precisa entregar com qualidade, mesmo sem saber formatar.</p>
-          </article>
-          <article className="rounded-xl border border-[#1a2a1a] bg-[#0a0d0a] p-5 sm:p-6">
-            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[#5a9e8f]">
-              <Library size={14} strokeWidth={1.5} /> Ensino médio
-            </p>
-            <h3 className="mt-3 font-serif text-xl text-[#c8dcd6] sm:text-2xl">Trabalhos escolares bem organizados e fáceis de montar.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#3a6e60]">Ajuda você a estruturar tudo com linguagem clara e formato correto.</p>
-          </article>
-          <article className="rounded-xl border border-[#2a2520] bg-[#0d0c0b] p-5 sm:p-6">
-            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold)]">
-              <Briefcase size={14} strokeWidth={1.5} /> Profissionais
-            </p>
-            <h3 className="mt-3 font-serif text-xl text-[#d8d0c7] sm:text-2xl">Relatórios e documentos formais prontos para apresentação.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#5a5248]">Economize tempo e mantenha um padrão visual organizado.</p>
-          </article>
-          <article className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-5 sm:p-6">
-            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)]">
-              <ThumbsUp size={14} strokeWidth={1.5} /> Iniciantes
-            </p>
-            <h3 className="mt-3 font-serif text-xl sm:text-2xl">Você não precisa saber nada técnico para começar.</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Basta preencher informações simples e deixar o sistema fazer o resto.</p>
-          </article>
-        </div>
-      </section>
-
-      {/* ── CTA FINAL ── */}
-      <section className="border-y border-[var(--border)] px-5 py-12 text-center sm:px-6 md:px-12 md:py-16">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--faint)]">Começa agora</p>
+      <section className="px-5 py-12 text-center sm:px-6 md:px-12 md:py-16">
+        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--faint)]">Comece agora</p>
         <h2 className="mt-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl">
-          O teu próximo documento <em className="text-[var(--gold2)]">começa aqui.</em>
+          Seja para estudar melhor ou para indicar e ganhar, <em className="text-[var(--gold2)]">o próximo passo é seu.</em>
         </h2>
-        <p className="mt-4 text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-          Grátis. Simples. Feito para quem quer terminar o trabalho com tranquilidade.
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
+          Entre gratuitamente, experimente os recursos e escolha o caminho que faz mais sentido para você: usuário final, afiliado, ou ambos.
         </p>
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <a href="/app" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--ink)] sm:px-8 sm:py-[14px]">
-            <ArrowDown size={14} /> Começar agora — é grátis
+            <ArrowDown size={14} /> Começar grátis
+          </a>
+          <a href="/planos" className="rounded border border-[var(--border)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+            Ver planos
           </a>
         </div>
-        <p className="mt-8 font-mono text-[10px] tracking-[0.08em] text-[var(--faint)]">Muneri · Trabalhos acadêmicos automáticos · Quelimane, Moçambique</p>
       </section>
 
-      <footer className="flex flex-col gap-2 px-5 py-6 text-center sm:px-6 md:flex-row md:items-center md:justify-between md:px-12 md:text-left">
-        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · Gerador automático de trabalhos académicos · 2026</div>
+      <footer className="flex flex-col gap-2 border-t border-[var(--border)] px-5 py-6 text-center sm:px-6 md:flex-row md:items-center md:justify-between md:px-12 md:text-left">
+        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · Plataforma para criação de documentos académicos · 2026</div>
         <div className="text-sm italic text-[var(--faint)]">feito com ∂ em Quelimane, Moçambique</div>
       </footer>
     </main>
