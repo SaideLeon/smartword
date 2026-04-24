@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Sun, Moon, GraduationCap } from 'lucide-react';
@@ -54,7 +55,7 @@ function LoginContent() {
       <header className="flex items-center justify-between border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-5 py-3 backdrop-blur md:px-12">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="grid h-7 w-7 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-mono text-sm font-bold text-black">
-            ∂
+            <Image src="/icon.svg" alt="Muneri logo" width={18} height={18} className="h-[18px] w-[18px]" />
           </div>
           <span className="font-serif text-lg italic text-[var(--gold2)]">Muneri</span>
         </Link>
