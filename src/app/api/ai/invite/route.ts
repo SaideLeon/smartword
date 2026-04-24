@@ -11,7 +11,7 @@
 // substitui apenas a função sendEmail() abaixo.
 
 import { NextResponse } from 'next/server';
-import renderMuneriInviteEmail from '@/emails/MuneriInviteEmail';
+import MuneriInviteEmail, { renderMuneriInviteEmail as renderMuneriInviteEmailNamed } from '@/emails/MuneriInviteEmail';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
@@ -22,6 +22,26 @@ const MAX_EMAILS_PER_REQUEST = 50;       // máx. destinatários por chamada
 const MAX_SUBJECT_CHARS      = 150;
 const MAX_BODY_CHARS         = 20_000;
 const EMAIL_REGEX            = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+function renderInviteHtml(body: string): string {
+  const renderer =
+    (typeof renderMuneriInviteEmailNamed === 'function' ? renderMuneriInviteEmailNamed : null)
+    ?? (typeof MuneriInviteEmail === 'function' ? MuneriInviteEmail : null);
+
+  if (renderer) {
+    const rendered = renderer({ body });
+    if (typeof rendered === 'string' && rendered.trim()) return rendered;
+  }
+
+  const safeBody = body
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+
+  return `<html lang="pt"><body><p>${safeBody}</p></body></html>`;
+}
+
 
 // ── Verificação de admin ────────────────────────────────────────────────────
 
@@ -184,7 +204,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const emailHtml = renderMuneriInviteEmail({ body: emailBody });
+  const emailHtml = renderInviteHtml(emailBody);
 
   // Enviar e-mails (sequencialmente para não sobrecarregar o fornecedor)
   const results: Array<{ email: string; ok: boolean; error?: string }> = [];
