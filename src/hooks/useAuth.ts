@@ -48,6 +48,40 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
+  const registerAffiliateReferral = useCallback(async (userId: string) => {
+    if (typeof window === 'undefined') return;
+
+    const storedCode = window.localStorage.getItem('affiliate_ref_code')
+      ?? document.cookie
+        .split('; ')
+        .find((chunk) => chunk.startsWith('affiliate_ref_code='))
+        ?.split('=')[1];
+
+    const code = storedCode ? decodeURIComponent(storedCode).trim().toUpperCase() : '';
+    if (!/^[A-Z0-9]{6,8}$/.test(code)) return;
+
+    const lockKey = `affiliate_ref_registered:${userId}:${code}`;
+    if (window.sessionStorage.getItem(lockKey) === 'done') return;
+
+    try {
+      const response = await fetch('/api/affiliate/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code }),
+      });
+
+      if (response.ok) {
+        window.localStorage.removeItem('affiliate_ref_code');
+        document.cookie = 'affiliate_ref_code=; Path=/; Max-Age=0; SameSite=Lax';
+      }
+    } catch {
+      // Silencioso: não bloqueia login/signup se o registro de indicação falhar.
+    } finally {
+      window.sessionStorage.setItem(lockKey, 'done');
+    }
+  }, []);
+
   // Carrega perfil e plano do utilizador
   const loadProfile = useCallback(async (userId: string) => {
     const { data: profileData, error: profileError } = await supabaseClient
@@ -73,7 +107,10 @@ export function useAuth() {
   useEffect(() => {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
+      if (session?.user) {
+        loadProfile(session.user.id);
+        void registerAffiliateReferral(session.user.id);
+      }
       setLoading(false);
     });
 
@@ -81,6 +118,7 @@ export function useAuth() {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
+        void registerAffiliateReferral(session.user.id);
       } else {
         setProfile(null);
         setPlan(null);
@@ -88,7 +126,7 @@ export function useAuth() {
     });
 
     return () => subscription.unsubscribe();
-  }, [loadProfile]);
+  }, [loadProfile, registerAffiliateReferral]);
 
   // ── Login com Google ─────────────────────────────────────────────────────
   const signInGoogle = useCallback(async () => {
