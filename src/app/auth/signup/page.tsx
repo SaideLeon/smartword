@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Sun, Moon, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useThemeMode } from '@/hooks/useThemeMode';
@@ -11,6 +11,7 @@ import { isEduEmailDomain } from '@/lib/edu-domain';
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { themeMode, toggleThemeMode } = useThemeMode();
   const { isLoggedIn, signInGoogle, signUp, loading, error } = useAuth();
@@ -36,6 +37,16 @@ export default function SignupPage() {
       router.replace('/app');
     }
   }, [isLoggedIn, router]);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref')?.trim().toUpperCase();
+    if (!ref || !/^[A-Z0-9]{6,8}$/.test(ref)) return;
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('affiliate_ref_code', ref);
+      document.cookie = `affiliate_ref_code=${encodeURIComponent(ref)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    }
+  }, [searchParams]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
