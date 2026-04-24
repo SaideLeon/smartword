@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Sun, Moon, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useThemeMode } from '@/hooks/useThemeMode';
@@ -11,7 +11,6 @@ import { isEduEmailDomain } from '@/lib/edu-domain';
 
 export default function SignupPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const { themeMode, toggleThemeMode } = useThemeMode();
   const { isLoggedIn, signInGoogle, signUp, loading, error } = useAuth();
