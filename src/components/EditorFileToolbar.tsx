@@ -1,6 +1,7 @@
 'use client';
 
 import type { ChangeEvent } from 'react';
+import Image from 'next/image';
 
 interface Props {
   filename: string;
@@ -32,7 +33,7 @@ export function EditorFileToolbar({ filename, onFilenameChange, onImportFile }: 
     <div className="flex h-[32px] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--surface2)] px-3">
       {/* Small logo */}
       <div className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-serif text-[11px] font-bold text-black">
-        ∂
+        <Image src="/icon.svg" alt="Muneri logo" width={15} height={15} className="h-[15px] w-[15px]" />
       </div>
 
       {/* Filename input */}
