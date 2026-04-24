@@ -11,8 +11,7 @@
 // substitui apenas a função sendEmail() abaixo.
 
 import { NextResponse } from 'next/server';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { MuneriInviteEmail } from '@/emails/MuneriInviteEmail';
+import { renderMuneriInviteEmail } from '@/emails/MuneriInviteEmail';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
@@ -185,7 +184,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const emailHtml = `<!DOCTYPE html>${renderToStaticMarkup(MuneriInviteEmail({ body: emailBody }))}`;
+  const emailHtml = renderMuneriInviteEmail({ body: emailBody });
 
   // Enviar e-mails (sequencialmente para não sobrecarregar o fornecedor)
   const results: Array<{ email: string; ok: boolean; error?: string }> = [];
