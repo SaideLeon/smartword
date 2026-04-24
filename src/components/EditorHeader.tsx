@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Maximize, Minimize, Moon, Settings, Sun, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,7 +87,7 @@ export function EditorHeader({
       {/* Logo */}
       <div className="flex items-center gap-2 shrink-0">
         <div className="grid h-[26px] w-[26px] place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-serif text-sm font-bold text-black">
-          ∂
+          <Image src="/icon.svg" alt="Muneri logo" width={18} height={18} className="h-[18px] w-[18px]" />
         </div>
         <div className="flex flex-col leading-none">
           <span className="font-serif text-[15px] italic text-[var(--gold2)]">Muneri</span>

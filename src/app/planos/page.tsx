@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Sun, Moon, ArrowDown, ChevronRight } from 'lucide-react';
 import { supabaseClient, useAuth } from '@/hooks/useAuth';
@@ -70,7 +71,7 @@ function PlanosNav({
         <div className="flex items-center justify-between md:justify-start md:gap-3">
           <div className="flex items-center gap-3">
             <div className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-mono text-sm font-bold text-black">
-              ∂
+              <Image src="/icon.svg" alt="Muneri logo" width={20} height={20} className="h-5 w-5" />
             </div>
             <span className="font-serif text-xl italic text-[var(--gold2)]">Muneri</span>
           </div>
@@ -545,7 +546,11 @@ export default function PlanosPage() {
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">
           Muneri · Gerador automático de trabalhos académicos · 2026
         </div>
-        <div className="text-sm italic text-[var(--faint)]">feito com ∂ em Quelimane, Moçambique</div>
+        <div className="flex items-center justify-center gap-1 text-sm italic text-[var(--faint)] md:justify-start">
+          <span>feito com</span>
+          <Image src="/icon.svg" alt="Muneri logo" width={14} height={14} className="h-3.5 w-3.5" />
+          <span>em Quelimane, Moçambique</span>
+        </div>
       </footer>
     </main>
   );
