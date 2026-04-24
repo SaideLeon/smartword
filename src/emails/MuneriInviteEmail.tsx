@@ -32,7 +32,7 @@ export function renderMuneriInviteEmail({ body }: Props): string {
                 style="padding:40px 40px 28px;
                        border-bottom:1px solid #2A2418;">
               <span style="font-family:'Georgia',serif;font-size:26px;font-weight:normal;
-                           letter-spacing:6px;color:#D4A535;">MUNERI</span>
+                           letter-spacing:6px;color:#D4A535;">TRABALHO ACADÉMICO AUTOMÁTICO COM O MUNERI IA</span>
               <div style="margin-top:8px;width:40px;height:1px;background:#D4A535;
                           opacity:0.4;margin-left:auto;margin-right:auto;"></div>
             </td>
