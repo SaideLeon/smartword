@@ -12,6 +12,15 @@ export function PwaRegistrar() {
     }
 
     let updateTimer: number | undefined;
+    let refreshing = false;
+    const onControllerChange = () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
 
     const registerServiceWorker = async () => {
       try {
@@ -49,6 +58,7 @@ export function PwaRegistrar() {
       if (updateTimer) {
         window.clearInterval(updateTimer);
       }
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     };
   }, []);
 
