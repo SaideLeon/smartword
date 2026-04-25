@@ -10,10 +10,16 @@ function normalizeNext(next: string | null) {
   return next;
 }
 
+function normalizeRef(rawRef: string | null) {
+  const ref = rawRef?.trim().toUpperCase() ?? '';
+  return /^[A-Z0-9]{6,8}$/.test(ref) ? ref : null;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = normalizeNext(searchParams.get('next'));
+  const ref = normalizeRef(searchParams.get('ref'));
 
   if (code) {
     const cookieStore = await cookies();
@@ -34,7 +40,15 @@ export async function GET(request: Request) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const response = NextResponse.redirect(`${origin}${next}`);
+      if (ref) {
+        response.cookies.set('affiliate_ref_code', encodeURIComponent(ref), {
+          path: '/',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 30,
+        });
+      }
+      return response;
     }
   }
 
