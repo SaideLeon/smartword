@@ -12,6 +12,8 @@ const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabaseClient = createBrowserClient(supabaseUrl, supabaseAnon);
+const AFFILIATE_CODE_PATTERN = /^[A-Z0-9]{6,8}$/;
+const inFlightAffiliateRegistrations = new Map<string, Promise<void>>();
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 export interface UserProfile {
@@ -58,27 +60,39 @@ export function useAuth() {
         ?.split('=')[1];
 
     const code = storedCode ? decodeURIComponent(storedCode).trim().toUpperCase() : '';
-    if (!/^[A-Z0-9]{6,8}$/.test(code)) return;
+    if (!AFFILIATE_CODE_PATTERN.test(code)) return;
 
     const lockKey = `affiliate_ref_registered:${userId}:${code}`;
     if (window.sessionStorage.getItem(lockKey) === 'done') return;
+    if (inFlightAffiliateRegistrations.has(lockKey)) {
+      await inFlightAffiliateRegistrations.get(lockKey);
+      return;
+    }
 
-    try {
-      const response = await fetch('/api/affiliate/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ code }),
-      });
+    const pending = (async () => {
+      try {
+        const response = await fetch('/api/affiliate/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ code }),
+        });
 
-      if (response.ok) {
-        window.localStorage.removeItem('affiliate_ref_code');
-        document.cookie = 'affiliate_ref_code=; Path=/; Max-Age=0; SameSite=Lax';
+        if (response.ok) {
+          window.localStorage.removeItem('affiliate_ref_code');
+          document.cookie = 'affiliate_ref_code=; Path=/; Max-Age=0; SameSite=Lax';
+          window.sessionStorage.setItem(lockKey, 'done');
+        }
+      } catch {
+        // Silencioso: não bloqueia login/signup se o registro de indicação falhar.
       }
-    } catch {
-      // Silencioso: não bloqueia login/signup se o registro de indicação falhar.
+    })();
+
+    inFlightAffiliateRegistrations.set(lockKey, pending);
+    try {
+      await pending;
     } finally {
-      window.sessionStorage.setItem(lockKey, 'done');
+      inFlightAffiliateRegistrations.delete(lockKey);
     }
   }, []);
 
@@ -131,10 +145,24 @@ export function useAuth() {
   // ── Login com Google ─────────────────────────────────────────────────────
   const signInGoogle = useCallback(async () => {
     setError(null);
+    const callbackUrl = new URL('/auth/callback', window.location.origin);
+    const queryRef = new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase();
+    const storedRef = window.localStorage.getItem('affiliate_ref_code')
+      ?? document.cookie
+        .split('; ')
+        .find((chunk) => chunk.startsWith('affiliate_ref_code='))
+        ?.split('=')[1];
+    const fallbackRef = storedRef ? decodeURIComponent(storedRef).trim().toUpperCase() : '';
+    const refCode = queryRef && AFFILIATE_CODE_PATTERN.test(queryRef) ? queryRef : fallbackRef;
+
+    if (AFFILIATE_CODE_PATTERN.test(refCode)) {
+      callbackUrl.searchParams.set('ref', refCode);
+    }
+
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
         queryParams: { prompt: 'select_account' },
       },
     });
