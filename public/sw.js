@@ -20,7 +20,15 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches
       .open(PRECACHE)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(cache =>
+        Promise.allSettled(
+          APP_SHELL.map(url =>
+            cache
+              .add(url)
+              .catch(error => console.warn('[SW] Precache falhou:', url, error)),
+          ),
+        ),
+      )
       .then(() => self.skipWaiting()),
   );
 });
@@ -62,6 +70,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  if (url.pathname === '/manifest.webmanifest') {
+    event.respondWith(caches.match(request).then(cached => cached ?? fetch(request)));
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request, PAGES_CACHE, '/offline'));
     return;
@@ -79,6 +92,7 @@ self.addEventListener('fetch', event => {
 
   if (MEDIA_DESTINATIONS.has(request.destination)) {
     event.respondWith(staleWhileRevalidate(request, MEDIA_CACHE, 100));
+    return;
   }
 });
 
