@@ -358,6 +358,13 @@ export default function AdminPage() {
           >
             ✉ Convidar estudantes
           </Link>
+
+          <Link
+            href="/admin/premium-links"
+            className="flex items-center gap-1.5 rounded border border-[var(--gold2)]/50 bg-[var(--gold2)]/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--gold2)] transition hover:bg-[var(--gold2)]/20"
+          >
+            🔗 Links premium
+          </Link>
         </nav>
 
         {/* ── TAB: Pagamentos ── */}
