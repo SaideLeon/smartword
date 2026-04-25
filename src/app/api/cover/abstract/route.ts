@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const planError = await requireFeatureAccess(user.id, 'cover');
+  const planError = await requireFeatureAccess(user.id, 'cover', req);
   if (planError) return planError;
 
   try {
