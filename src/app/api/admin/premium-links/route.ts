@@ -11,7 +11,6 @@ type CreatePremiumLinkInput = {
   target_user_id: string;
   expires_at?: string | null;
   max_uses?: number;
-  send_email?: boolean;
   email_subject?: string;
   email_body?: string;
 };
@@ -119,10 +118,6 @@ function parseInput(body: unknown): CreatePremiumLinkInput | null {
     input.max_uses = Math.floor(payload.max_uses);
   }
 
-  if (typeof payload.send_email === 'boolean') {
-    input.send_email = payload.send_email;
-  }
-
   if (typeof payload.email_subject === 'string') {
     input.email_subject = payload.email_subject;
   }
@@ -177,12 +172,16 @@ export async function POST(req: Request) {
 
   const { data: targetProfile, error: targetError } = await service
     .from('profiles')
-    .select('id,email,role')
+    .select('id,email,role,full_name')
     .eq('id', payload.target_user_id)
     .single();
 
   if (targetError || !targetProfile) {
     return NextResponse.json({ error: 'Utilizador alvo não encontrado.' }, { status: 404 });
+  }
+
+  if (!targetProfile.email) {
+    return NextResponse.json({ error: 'Utilizador alvo não possui e-mail.' }, { status: 400 });
   }
 
   const rawToken = generatePremiumAccessToken();
@@ -207,24 +206,21 @@ export async function POST(req: Request) {
   const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
   const redeemLink = `${appBaseUrl}/api/premium/redeem/${encodeURIComponent(rawToken)}`;
 
-  let emailStatus: { ok: boolean; error?: string } | null = null;
-  if (payload.send_email) {
-    if (!targetProfile.email) {
-      return NextResponse.json({ error: 'Utilizador alvo não possui e-mail.' }, { status: 400 });
-    }
+  const subject = payload.email_subject?.trim() || 'Muneri · Link de acesso Premium';
+  const body = (payload.email_body?.trim() || `Olá ${targetProfile.full_name ?? ''}, usa este link para ativar o teu acesso premium no Muneri:`)
+    .slice(0, 10_000);
 
-    const subject = payload.email_subject?.trim() || 'Muneri · Link de acesso Premium';
-    const body = (payload.email_body?.trim() || 'Olá! Usa este link para ativar o teu acesso premium no Muneri:')
-      .slice(0, 10_000);
+  const fullText = `${body}\n\n${redeemLink}`;
+  const fullHtml = `<p>${body.replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</p><p><a href="${redeemLink}">${redeemLink}</a></p>`;
+  const emailStatus = await sendEmail({
+    to: targetProfile.email,
+    subject: subject.slice(0, 150),
+    text: fullText,
+    html: fullHtml,
+  });
 
-    const fullText = `${body}\n\n${redeemLink}`;
-    const fullHtml = `<p>${body.replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</p><p><a href="${redeemLink}">${redeemLink}</a></p>`;
-    emailStatus = await sendEmail({
-      to: targetProfile.email,
-      subject: subject.slice(0, 150),
-      text: fullText,
-      html: fullHtml,
-    });
+  if (!emailStatus.ok) {
+    return NextResponse.json({ error: `Link criado, mas o envio de e-mail falhou: ${emailStatus.error ?? 'erro desconhecido'}` }, { status: 502 });
   }
 
   await service.from('audit_log').insert({
@@ -235,10 +231,10 @@ export async function POST(req: Request) {
       premium_link_id: created.id,
       target_user_id: targetProfile.id,
       target_user_role: targetProfile.role,
+      target_user_email: targetProfile.email,
       expires_at: created.expires_at,
       max_uses: created.max_uses,
-      email_sent: emailStatus?.ok ?? false,
-      email_error: emailStatus?.error ?? null,
+      email_sent: true,
       created_at: created.created_at,
     },
   });
@@ -247,6 +243,7 @@ export async function POST(req: Request) {
     ok: true,
     premium_link_id: created.id,
     target_user_id: targetProfile.id,
+    target_user_email: targetProfile.email,
     expires_at: created.expires_at,
     max_uses: created.max_uses,
     redeem_link: redeemLink,
