@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const { user, error: authError } = await requireAuth();
   if (authError) return authError;
 
-  const planError = await requireFeatureAccess(user.id, 'ai_chat');
+  const planError = await requireFeatureAccess(user.id, 'ai_chat', req);
   if (planError) return planError;
 
   try {

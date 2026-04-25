@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
   }
 
-  const planError = await requireFeatureAccess(user.id, 'export_full');
+  const planError = await requireFeatureAccess(user.id, 'export_full', req);
   const exportFull = !planError;
 
   try {
