@@ -18,6 +18,7 @@ const inFlightAffiliateRegistrations = new Map<string, Promise<void>>();
 // ── Tipos ──────────────────────────────────────────────────────────────────
 export interface UserProfile {
   id:                  string;
+  created_at:          string;
   email:               string | null;
   full_name:           string | null;
   avatar_url:          string | null;
@@ -201,6 +202,15 @@ export function useAuth() {
   // ── Verificação de funcionalidades ───────────────────────────────────────
   const canUse = useCallback((feature: 'export_full' | 'tcc' | 'ai_chat' | 'cover' | 'create_work') => {
     if (!plan || !profile) return false;
+
+    const createdAtMs = Date.parse(profile.created_at);
+    const isNewAccountWithWelcomeAccess =
+      Number.isFinite(createdAtMs) &&
+      (Date.now() - createdAtMs) < (5 * 24 * 60 * 60 * 1000);
+
+    if (isNewAccountWithWelcomeAccess) {
+      return true;
+    }
 
     // Plano expirado → limites do free
     const expired = plan.duration_months > 0 &&
