@@ -7,7 +7,7 @@ import Link from 'next/link';
 // ── Assunto e corpo do e-mail pré-configurados ──────────────────────────────
 
 const DEFAULT_SUBJECT =
-  'Muneri · O teu trabalho académico em minutos — 30 dias Premium grátis';
+  'Muneri · O teu trabalho académico em minutos — 5 dias de acesso ilimitado';
 
 const DEFAULT_BODY = `Olá,
 
@@ -53,21 +53,18 @@ completo, formatado e pronto a entregar, em minutos.
   O ficheiro abre correctamente no Google Docs, LibreOffice e WPS.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🎓  OFERTA ESPECIAL PARA CONTAS EDUCATIVAS
+  ✨  ACESSO DE BOAS-VINDAS (5 DIAS)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Se tens uma conta institucional (domínio .edu, como @unisced.edu.mz,
-@up.edu.mz, @uem.ac.mz), ao registares com o Google recebes automaticamente:
+Ao criares a tua conta no Muneri, recebes automaticamente:
 
-→ 30 dias do plano Premium completamente gratuito
-→ Acesso ilimitado a todas as funcionalidades:
-   TCC completo, IA de chat, geração de capas e exportação integral
+→ 5 dias de acesso ilimitado a todas as funcionalidades
+→ Geração completa de trabalhos, TCC, chat IA, capa/contracapa e exportação integral
 
 Como activar:
   1. Acede a https://muneri.nativespeak.app/auth/login
-  2. Clica em "Continuar com Google"
-  3. Usa a tua conta institucional (@...edu.mz)
-  4. O período gratuito é activado automaticamente — sem cartão de crédito
+  2. Cria a tua conta (Google ou e-mail/senha)
+  3. O período de 5 dias é activado automaticamente — sem cartão de crédito
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -375,7 +372,7 @@ export default function AdminInvitePage() {
                   ['✦', 'Geração automática de capa + contracapa personalizada'],
                   ['✦', 'Exportação em Word compatível com qualquer leitor'],
                   ['✦', 'Contexto moçambicano nas referências e exemplos'],
-                  ['🎓', '30 dias Premium grátis para contas .edu via Google'],
+                  ['✨', '5 dias de acesso ilimitado para novas contas'],
                 ].map(([icon, text], i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className={`mt-0.5 shrink-0 text-[11px] ${icon === '🎓' ? '' : 'text-[var(--gold2)]'}`}>{icon}</span>
@@ -385,23 +382,23 @@ export default function AdminInvitePage() {
               </ul>
             </div>
 
-            {/* Destaque: condição do trial edu */}
+            {/* Destaque: condição do acesso de boas-vindas */}
             <div className="rounded-xl border border-[var(--green)]/40 bg-[var(--green)]/8 p-5">
               <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--green)]">
-                🎓 Condição do trial educativo
+                ✨ Condição do acesso de boas-vindas
               </p>
               <div className="space-y-2 font-mono text-[10px] leading-[1.65] text-[var(--muted)]">
                 <p className="flex items-start gap-2">
                   <span className="mt-0.5 text-[var(--green)]">✓</span>
-                  <span>Google OAuth + domínio edu (.edu.mz, .edu, etc.)</span>
+                  <span>Novas contas (Google OAuth ou e-mail/senha)</span>
                 </p>
                 <p className="flex items-start gap-2">
-                  <span className="mt-0.5 text-[var(--faint)]">✗</span>
-                  <span>Google OAuth + domínio normal → sem benefício</span>
+                  <span className="mt-0.5 text-[var(--faint)]">ℹ</span>
+                  <span>Após 5 dias, aplicam-se os limites do plano activo</span>
                 </p>
                 <p className="flex items-start gap-2">
-                  <span className="mt-0.5 text-[var(--faint)]">✗</span>
-                  <span>Email/senha + domínio edu → sem benefício</span>
+                  <span className="mt-0.5 text-[var(--faint)]">ℹ</span>
+                  <span>Não depende de domínio educativo (.edu)</span>
                 </p>
                 <p className="mt-3 rounded border border-[var(--green)]/20 bg-[var(--green)]/5 px-2.5 py-2 text-[var(--green)]">
                   O benefício é concedido <strong>automaticamente</strong> e apenas
