@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { generatePremiumAccessToken, hashPremiumAccessToken } from '@/lib/admin-premium-links';
+import { renderMuneriPremiumLinkEmail } from '@/emails/MuneriPremiumLinkEmail';
 
 const MAX_LINK_VALIDITY_DAYS = 180;
 
@@ -211,7 +212,10 @@ export async function POST(req: Request) {
     .slice(0, 10_000);
 
   const fullText = `${body}\n\n${redeemLink}`;
-  const fullHtml = `<p>${body.replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</p><p><a href="${redeemLink}">${redeemLink}</a></p>`;
+  const fullHtml = renderMuneriPremiumLinkEmail({
+    body,
+    redeemLink,
+  });
   const emailStatus = await sendEmail({
     to: targetProfile.email,
     subject: subject.slice(0, 150),
