@@ -18,6 +18,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import type { TccSession, TccSection } from '@/lib/tcc/types';
+import { readApiErrorMessage } from '@/lib/api-error';
 import {
   buildTccSectionMarkdown,
   buildReconstructedTccContent,
@@ -162,7 +163,10 @@ export function useTccSession(): UseTccSession {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ topic }),
         });
-        if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
+        if (!sessionRes.ok) {
+          const errorMessage = await readApiErrorMessage(sessionRes, 'Erro ao criar sessão');
+          throw new Error(errorMessage);
+        }
         const newSession: TccSession = await sessionRes.json();
         setSession(newSession);
         activeSessionId = newSession.id;
@@ -181,7 +185,10 @@ export function useTccSession(): UseTccSession {
         }),
         signal: ctrl.signal,
       });
-      if (!outlineRes.ok) throw new Error('Erro ao gerar esboço');
+      if (!outlineRes.ok) {
+        const errorMessage = await readApiErrorMessage(outlineRes, 'Erro ao gerar esboço');
+        throw new Error(errorMessage);
+      }
 
       const reader = outlineRes.body!.getReader();
       const decoder = new TextDecoder();
@@ -225,7 +232,10 @@ export function useTccSession(): UseTccSession {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: session.id, outline: outlineToApprove }),
       });
-      if (!res.ok) throw new Error('Erro ao aprovar esboço');
+      if (!res.ok) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro ao aprovar esboço');
+        throw new Error(errorMessage);
+      }
       const updated: TccSession = await res.json();
       setSession(updated);
       setStep('outline_approved');
@@ -262,7 +272,10 @@ export function useTccSession(): UseTccSession {
         signal: ctrl.signal,
       });
 
-      if (!res.ok) throw new Error('Erro ao desenvolver secção');
+      if (!res.ok) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro ao desenvolver secção');
+        throw new Error(errorMessage);
+      }
 
       const wasCompressed = res.headers.get('X-Context-Compressed') === 'true';
       const coveredUpTo   = parseInt(res.headers.get('X-Summary-Covers-Up-To') ?? '-1', 10);

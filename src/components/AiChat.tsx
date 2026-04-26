@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { ChatMessageContent } from '@/components/ChatMessageContent';
 import { AudioInputButton } from '@/components/AudioInputButton';
+import { readApiErrorMessage } from '@/lib/api-error';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -210,7 +211,10 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
         signal: ctrl.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error('Erro na resposta');
+      if (!res.ok || !res.body) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro na resposta');
+        throw new Error(errorMessage);
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -255,7 +259,7 @@ export function AiChat({ onInsert, onReplace, onClose, isMobile = false }: Props
           ...newMessages,
           {
             role: 'assistant',
-            content: '_Erro ao gerar resposta. Verifica a ligação e tenta novamente._',
+            content: `_${err instanceof Error ? err.message : 'Erro ao gerar resposta. Verifica a ligação e tenta novamente.'}_`,
             timestamp: Date.now(),
           },
         ];

@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import type { CoverData } from '@/lib/docx/cover-types';
+import { readApiErrorMessage } from '@/lib/api-error';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,8 @@ async function generateAbstract(
   });
 
   if (!res.ok || !res.body) {
-    throw new Error('Erro ao gerar resumo da capa');
+    const errorMessage = await readApiErrorMessage(res, 'Erro ao gerar resumo da capa');
+    throw new Error(errorMessage);
   }
 
   const reader = res.body.getReader();
@@ -168,7 +170,10 @@ export function useCoverAgent() {
         }),
       });
 
-      if (!res.ok) throw new Error('Erro no agente');
+      if (!res.ok) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro no agente');
+        throw new Error(errorMessage);
+      }
       const data = await res.json();
 
       const choice = data.choices?.[0];
