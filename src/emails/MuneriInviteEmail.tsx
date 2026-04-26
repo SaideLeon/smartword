@@ -59,7 +59,7 @@ export function renderMuneriInviteEmail({ body }: Props): string {
                           font-size:22px;font-weight:normal;
                           letter-spacing:3px;color:#FBF0C8;
                           line-height:1.4;margin-bottom:10px;">
-                O teu TCC, entregue.<br/>
+                O teu Trabalho de Campo, entregue.<br/>
                 <span style="color:#D4A535;">Sem o caos habitual.</span>
               </div>
 
