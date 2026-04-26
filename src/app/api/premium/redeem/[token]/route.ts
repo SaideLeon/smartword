@@ -26,6 +26,16 @@ function extractClientIp(req: Request): string | null {
   return req.headers.get('x-real-ip');
 }
 
+function redirectTo(req: Request, pathname: string) {
+  return NextResponse.redirect(new URL(pathname, req.url));
+}
+
+function redirectToError(req: Request, reason: string) {
+  const errorUrl = new URL('/premium/erro', req.url);
+  errorUrl.searchParams.set('reason', reason);
+  return NextResponse.redirect(errorUrl);
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ token: string }> }) {
   const limited = await enforceRateLimit(req, {
     scope: 'premium:redeem:get',
@@ -37,7 +47,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const params = await ctx.params;
   const token = decodeURIComponent(params.token || '').trim();
   if (token.length < 20 || token.length > 300) {
-    return NextResponse.json({ error: 'Token inválido.' }, { status: 400 });
+    return redirectToError(req, 'invalid_token');
   }
 
   const tokenHash = hashPremiumAccessToken(token);
@@ -50,12 +60,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .single();
 
   if (linkError || !link) {
-    return NextResponse.json({ error: 'Link não encontrado ou inválido.' }, { status: 404 });
+    return redirectToError(req, 'not_found');
   }
 
   const linkValidation = validatePremiumLinkState(link);
   if (!linkValidation.ok) {
-    return NextResponse.json({ error: `Link indisponível (${linkValidation.reason}).` }, { status: 410 });
+    return redirectToError(req, 'unavailable');
   }
 
   const { data: targetProfile, error: targetError } = await service
@@ -65,7 +75,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .single();
 
   if (targetError || !targetProfile) {
-    return NextResponse.json({ error: 'Utilizador alvo não encontrado.' }, { status: 404 });
+    return redirectToError(req, 'user_not_found');
   }
 
   const nowIso = new Date().toISOString();
@@ -84,7 +94,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .eq('uses_count', link.uses_count);
 
   if (updateLinkError) {
-    return NextResponse.json({ error: 'Este link já foi utilizado.' }, { status: 409 });
+    return redirectToError(req, 'already_used');
   }
 
   const { error: premiumError } = await service
@@ -97,7 +107,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .eq('id', targetProfile.id);
 
   if (premiumError) {
-    return NextResponse.json({ error: 'Falha ao ativar premium.' }, { status: 500 });
+    return redirectToError(req, 'activation_failed');
   }
 
   await service.from('audit_log').insert({
@@ -115,10 +125,5 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     },
   });
 
-  return NextResponse.json({
-    ok: true,
-    message: 'Acesso premium ativado com sucesso.',
-    target_user_id: targetProfile.id,
-    grants_admin: false,
-  });
+  return redirectTo(req, '/premium/ativado');
 }
