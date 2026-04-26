@@ -26,16 +26,6 @@ function extractClientIp(req: Request): string | null {
   return req.headers.get('x-real-ip');
 }
 
-function redirectTo(req: Request, pathname: string) {
-  return NextResponse.redirect(new URL(pathname, req.url));
-}
-
-function redirectToError(req: Request, reason: string) {
-  const errorUrl = new URL('/premium/erro', req.url);
-  errorUrl.searchParams.set('reason', reason);
-  return NextResponse.redirect(errorUrl);
-}
-
 export async function GET(req: Request, ctx: { params: Promise<{ token: string }> }) {
   const limited = await enforceRateLimit(req, {
     scope: 'premium:redeem:get',
@@ -44,10 +34,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   });
   if (limited) return limited;
 
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+
   const params = await ctx.params;
   const token = decodeURIComponent(params.token || '').trim();
   if (token.length < 20 || token.length > 300) {
-    return redirectToError(req, 'invalid_token');
+    return NextResponse.redirect(`${appBaseUrl}/premium/erro?reason=token_invalido`);
   }
 
   const tokenHash = hashPremiumAccessToken(token);
@@ -60,12 +52,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .single();
 
   if (linkError || !link) {
-    return redirectToError(req, 'not_found');
+    return NextResponse.redirect(`${appBaseUrl}/premium/erro?reason=link_invalido`);
   }
 
   const linkValidation = validatePremiumLinkState(link);
   if (!linkValidation.ok) {
-    return redirectToError(req, 'unavailable');
+    return NextResponse.redirect(
+      `${appBaseUrl}/premium/erro?reason=${encodeURIComponent(linkValidation.reason ?? 'indisponivel')}`,
+    );
   }
 
   const { data: targetProfile, error: targetError } = await service
@@ -75,7 +69,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .single();
 
   if (targetError || !targetProfile) {
-    return redirectToError(req, 'user_not_found');
+    return NextResponse.redirect(`${appBaseUrl}/premium/erro?reason=utilizador_nao_encontrado`);
   }
 
   const nowIso = new Date().toISOString();
@@ -94,7 +88,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .eq('uses_count', link.uses_count);
 
   if (updateLinkError) {
-    return redirectToError(req, 'already_used');
+    return NextResponse.redirect(`${appBaseUrl}/premium/erro?reason=link_ja_utilizado`);
   }
 
   const { error: premiumError } = await service
@@ -107,7 +101,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     .eq('id', targetProfile.id);
 
   if (premiumError) {
-    return redirectToError(req, 'activation_failed');
+    return NextResponse.redirect(`${appBaseUrl}/premium/erro?reason=falha_ativacao`);
   }
 
   await service.from('audit_log').insert({
@@ -125,5 +119,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     },
   });
 
-  return redirectTo(req, '/premium/ativado');
+  // Redireciona para a página de sucesso no frontend
+  return NextResponse.redirect(`${appBaseUrl}/premium/ativado`);
 }
