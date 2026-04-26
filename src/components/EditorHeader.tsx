@@ -135,60 +135,60 @@ export function EditorHeader({
             {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
           </IconBtn>
         )}
+      </div>
 
-        {/* User settings */}
-        <div ref={userMenuRef} className="relative shrink-0">
-          <IconBtn title="Configurações" onClick={() => setShowUserMenu(v => !v)}>
-            <Settings size={13} />
-          </IconBtn>
+      {/* User settings */}
+      <div ref={userMenuRef} className="relative ml-1 shrink-0">
+        <IconBtn title="Configurações" onClick={() => setShowUserMenu(v => !v)}>
+          <Settings size={13} />
+        </IconBtn>
 
-          {showUserMenu && (
-            <div className="absolute right-0 top-[38px] z-50 w-72 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-2xl">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="font-mono text-[10px] uppercase tracking-[.1em] text-[var(--faint)]">Conta</p>
-                <button type="button" onClick={() => setShowUserMenu(false)} className="text-[var(--faint)] hover:text-[var(--muted)]">
-                  <X size={12} />
-                </button>
-              </div>
-              <p className="font-serif text-sm text-[var(--ink)]">{userName}</p>
-              <p className="text-xs text-[var(--muted)]">{profile?.email || user?.email || ''}</p>
-
-              <div className="mt-3 space-y-1 rounded border border-[var(--border)] bg-[var(--border)]/20 p-2 text-xs">
-                <p className="text-[var(--muted)]">
-                  Plano: <span className="font-semibold text-[var(--ink)]">{plan?.label || profile?.plan_key || 'Grátis'}</span>
-                </p>
-                <p className="text-[var(--muted)]">
-                  Trabalhos usados: <span className="font-semibold text-[var(--ink)]">{profile?.works_used ?? 0}</span>
-                </p>
-              </div>
-
-              <Link href="/planos" onClick={() => setShowUserMenu(false)} className="mt-2 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
-                Ver todos os planos
-              </Link>
-
-              <Link href="/app/afiliados" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
-                Dashboard de afiliado
-              </Link>
-
-              {profile?.role === 'admin' && (
-                <Link href="/admin" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
-                  Área administrativa
-                </Link>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowUserMenu(false);
-                  signOut();
-                }}
-                className="mt-2 w-full rounded border border-red-500/40 bg-red-500/10 px-2.5 py-2 font-mono text-[11px] text-red-400 transition hover:bg-red-500/20"
-              >
-                Terminar sessão
+        {showUserMenu && (
+          <div className="absolute right-0 top-[38px] z-50 w-72 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-2xl">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="font-mono text-[10px] uppercase tracking-[.1em] text-[var(--faint)]">Conta</p>
+              <button type="button" onClick={() => setShowUserMenu(false)} className="text-[var(--faint)] hover:text-[var(--muted)]">
+                <X size={12} />
               </button>
             </div>
-          )}
-        </div>
+            <p className="font-serif text-sm text-[var(--ink)]">{userName}</p>
+            <p className="text-xs text-[var(--muted)]">{profile?.email || user?.email || ''}</p>
+
+            <div className="mt-3 space-y-1 rounded border border-[var(--border)] bg-[var(--border)]/20 p-2 text-xs">
+              <p className="text-[var(--muted)]">
+                Plano: <span className="font-semibold text-[var(--ink)]">{plan?.label || profile?.plan_key || 'Grátis'}</span>
+              </p>
+              <p className="text-[var(--muted)]">
+                Trabalhos usados: <span className="font-semibold text-[var(--ink)]">{profile?.works_used ?? 0}</span>
+              </p>
+            </div>
+
+            <Link href="/planos" onClick={() => setShowUserMenu(false)} className="mt-2 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+              Ver todos os planos
+            </Link>
+
+            <Link href="/app/afiliados" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+              Dashboard de afiliado
+            </Link>
+
+            {profile?.role === 'admin' && (
+              <Link href="/admin" onClick={() => setShowUserMenu(false)} className="mt-1.5 block rounded border border-[var(--border)] px-2.5 py-2 text-center font-mono text-[11px] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+                Área administrativa
+              </Link>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowUserMenu(false);
+                signOut();
+              }}
+              className="mt-2 w-full rounded border border-red-500/40 bg-red-500/10 px-2.5 py-2 font-mono text-[11px] text-red-400 transition hover:bg-red-500/20"
+            >
+              Terminar sessão
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
