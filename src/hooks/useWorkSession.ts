@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
+import { readApiErrorMessage } from '@/lib/api-error';
 
 export type WorkStep =
   | 'idle'
@@ -220,7 +221,10 @@ export function useWorkSession() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ topic }),
         });
-        if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
+        if (!sessionRes.ok) {
+          const errorMessage = await readApiErrorMessage(sessionRes, 'Erro ao criar sessão');
+          throw new Error(errorMessage);
+        }
         const newSession: WorkSessionRecord = await sessionRes.json();
         setSession(newSession);
         activeSessionId = newSession.id;
@@ -235,7 +239,10 @@ export function useWorkSession() {
         body: JSON.stringify({ topic, sessionId: activeSessionId, suggestions: options?.suggestions?.trim() || undefined }),
         signal: ctrl.signal,
       });
-      if (!res.ok) throw new Error('Erro ao gerar esboço');
+      if (!res.ok) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro ao gerar esboço');
+        throw new Error(errorMessage);
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -268,7 +275,10 @@ export function useWorkSession() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic }),
       });
-      if (!sessionRes.ok) throw new Error('Erro ao criar sessão');
+      if (!sessionRes.ok) {
+        const errorMessage = await readApiErrorMessage(sessionRes, 'Erro ao criar sessão');
+        throw new Error(errorMessage);
+      }
       const newSession: WorkSessionRecord = await sessionRes.json();
       setSession(newSession);
       setStep('resource_upload');
@@ -317,7 +327,10 @@ export function useWorkSession() {
     if (!session) return;
     try {
       const res = await fetch('/api/work/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: session.id, outline }) });
-      if (!res.ok) throw new Error('Erro ao aprovar esboço');
+      if (!res.ok) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro ao aprovar esboço');
+        throw new Error(errorMessage);
+      }
       const updated: WorkSessionRecord = await res.json();
       setSession(updated);
       setStep('outline_approved');
@@ -353,7 +366,10 @@ export function useWorkSession() {
         body: JSON.stringify({ sessionId: session.id, sectionIndex: index }),
         signal: ctrl.signal,
       });
-      if (!res.ok) throw new Error('Erro ao desenvolver secção');
+      if (!res.ok) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro ao desenvolver secção');
+        throw new Error(errorMessage);
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -453,7 +469,10 @@ export function useWorkSession() {
 
       if (options?.shouldResetEditor && options.onReplace) {
         const refreshRes = await fetch(`/api/work/session?id=${session.id}`);
-        if (!refreshRes.ok) throw new Error('Erro ao sincronizar sessão regenerada');
+        if (!refreshRes.ok) {
+          const errorMessage = await readApiErrorMessage(refreshRes, 'Erro ao sincronizar sessão regenerada');
+          throw new Error(errorMessage);
+        }
         const refreshedSession: WorkSessionRecord = await refreshRes.json();
         fetchedSession = refreshedSession;
         const outline = refreshedSession.outline_approved ?? refreshedSession.outline_draft;

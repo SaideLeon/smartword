@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { ProcessingBars } from '@/components/ProcessingBars';
 import { AudioInputButton } from '@/components/AudioInputButton';
+import { readApiErrorMessage } from '@/lib/api-error';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -49,7 +50,10 @@ export function IaMiniPanel({ onInsert, onReplace, onOpenFullChat }: Props) {
         signal: ctrl.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error('Erro');
+      if (!res.ok || !res.body) {
+        const errorMessage = await readApiErrorMessage(res, 'Erro ao gerar resposta.');
+        throw new Error(errorMessage);
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -71,7 +75,7 @@ export function IaMiniPanel({ onInsert, onReplace, onOpenFullChat }: Props) {
         }
       }
     } catch (e: any) {
-      if (e?.name !== 'AbortError') setResponse('_Erro ao gerar resposta._');
+      if (e?.name !== 'AbortError') setResponse(`_${e?.message || 'Erro ao gerar resposta.'}_`);
     } finally {
       setLoading(false);
       abortRef.current = null;

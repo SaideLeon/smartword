@@ -66,7 +66,7 @@ export async function requireFeatureAccess(
   if (error || !hasAccess) {
     if (welcomeReason === 'VPN_DETECTED') {
       return NextResponse.json(
-        { error: 'VPN detectada. Desliga a VPN para receber os 5 dias grátis de acesso ilimitado.' },
+        { error: 'VPN detectada. Desliga a VPN para usar os 5 dias grátis (incluindo premium de boas-vindas). Contas com plano pago podem usar VPN normalmente.' },
         { status: 403 },
       );
     }
