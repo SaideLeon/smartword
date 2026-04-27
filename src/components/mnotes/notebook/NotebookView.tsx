@@ -11,7 +11,7 @@ import {
   Check
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useAppStore } from '@/store/mnotes/app-store';
+import { useAppStore } from '@/store/app-store';
 import { useChat } from '@/hooks/mnotes/useChat';
 import { useSources } from '@/hooks/mnotes/useSources';
 import { useSuggestions } from '@/hooks/mnotes/useSuggestions';
@@ -214,7 +214,7 @@ export const NotebookView = () => {
                         const content = String(props.children);
                         const match = content.match(/\[Doc (\d+)\]/);
                         if (match) {
-                          const citeId = parseInt(match[1]);
+                          const citeId = parseInt(match[1], 10);
                           return (
                             <button 
                               onClick={() => handleCitationClick(citeId)}

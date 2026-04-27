@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useThemeMode } from '@/hooks/mnotes/useThemeMode';
-import { useAppStore } from '@/store/mnotes/app-store';
+import { useAppStore } from '@/store/app-store';
 import { INITIAL_NOTEBOOKS } from '@/lib/mnotes/data/initial-notebooks';
 
 // Components

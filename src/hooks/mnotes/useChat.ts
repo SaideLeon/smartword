@@ -1,7 +1,7 @@
-import { useAppStore } from '@/store/mnotes/app-store';
-import { Message } from '@/types/mnotes';
+import { useAppStore } from '@/store/app-store';
+import { Message } from '@/types';
 import { useActivity } from './useActivity';
-import { NotebookService } from '@/services/mnotes/notebook.service';
+import { NotebookService } from '@/services/notebook.service';
 
 export function useChat() {
   const { 

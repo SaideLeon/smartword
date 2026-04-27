@@ -1,5 +1,5 @@
-import { useAppStore } from '@/store/mnotes/app-store';
-import { Source } from '@/types/mnotes';
+import { useAppStore } from '@/store/app-store';
+import { Source } from '@/types';
 import { useActivity } from './useActivity';
 
 export function useSources() {

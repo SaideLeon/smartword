@@ -3,8 +3,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus, ChevronRight } from 'lucide-react';
-import { useAppStore } from '@/store/mnotes/app-store';
-import { Notebook } from '@/types/mnotes';
+import { useAppStore } from '@/store/app-store';
+import { Notebook } from '@/types';
 
 export const NotebookCard = ({ notebook }: { notebook: Notebook }) => {
   const { setSelectedNotebook, setSources, setMessages, setView } = useAppStore();
