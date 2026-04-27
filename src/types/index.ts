@@ -1,4 +1,4 @@
-export type ActivityType = 'message_sent' | 'document_summarized' | 'source_added' | 'source_removed' | 'notebook_created' | 'create' | 'add_source' | 'chat' | 'history' | 'search';
+export type ActivityType = 'message_sent' | 'document_summarized' | 'source_added' | 'source_removed' | 'notebook_created' | 'create' | 'add_source' | 'chat' | 'history' | 'search' | 'semantic_search' | 'index_updated';
 
 export interface ActivityItem {
   id: string;
