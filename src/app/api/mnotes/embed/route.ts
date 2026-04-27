@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase';
-
-const EMBED_MODEL = 'gemini-embedding-2-preview';
-const EMBED_DIMS = 768;
+import { geminiEmbedDocument, geminiEmbedMultimodal, geminiEmbedQuery } from '@/lib/gemini-resilient';
 
 type EmbedAction = 'embed' | 'index' | 'search';
 
@@ -24,50 +21,26 @@ interface SemanticSearchResult {
   similarity: number;
 }
 
-function normalizeVector(values: number[]): number[] {
-  const norm = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
-  return norm === 0 ? values : values.map(value => value / norm);
-}
-
-function getApiKey(): string {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
-  return apiKey;
-}
-
 function vectorLiteral(values: number[]): string {
   return `[${values.join(',')}]`;
 }
 
-function toGeminiContent(item: EmbedRequestItem): string | { inlineData: { mimeType: string; data: string } } {
-  if (item.mode === 'query') return `task: search result | query: ${item.text ?? ''}`;
+async function buildEmbedding(item: EmbedRequestItem): Promise<number[]> {
+  if (item.mode === 'query') {
+    return geminiEmbedQuery(item.text ?? '');
+  }
 
   if (item.mode === 'pdf') {
     if (!item.data) throw new Error(`Fonte ${item.id} sem dados PDF.`);
-    return {
+    return geminiEmbedMultimodal({
       inlineData: {
         mimeType: item.mimeType || 'application/pdf',
         data: item.data,
       },
-    };
+    });
   }
 
-  return `title: ${item.title ?? 'none'} | text: ${item.text ?? ''}`;
-}
-
-async function buildEmbedding(ai: GoogleGenAI, item: EmbedRequestItem): Promise<number[]> {
-  const result = await ai.models.embedContent({
-    model: EMBED_MODEL,
-    contents: toGeminiContent(item),
-    config: { outputDimensionality: EMBED_DIMS },
-  });
-
-  const values = result.embeddings?.[0]?.values;
-  if (!values || values.length === 0) {
-    throw new Error(`Embedding vazio para item ${item.id}.`);
-  }
-
-  return normalizeVector(values);
+  return geminiEmbedDocument(item.text ?? '', item.title ?? 'none');
 }
 
 export async function POST(req: NextRequest) {
@@ -83,14 +56,12 @@ export async function POST(req: NextRequest) {
 
     const action = body.action ?? 'embed';
     const notebookId = body.notebookId?.trim();
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
-
     if (action === 'search') {
       if (!notebookId || !body.query?.trim()) {
         return NextResponse.json({ error: 'notebookId e query são obrigatórios.' }, { status: 400 });
       }
 
-      const queryEmbedding = await buildEmbedding(ai, {
+      const queryEmbedding = await buildEmbedding({
         id: 'query',
         mode: 'query',
         text: body.query,
@@ -128,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     const embeddedItems = await Promise.all(items.map(async (item) => ({
       id: item.id,
-      embedding: await buildEmbedding(ai, item),
+      embedding: await buildEmbedding(item),
       title: item.title ?? item.id,
       preview: item.preview ?? null,
     })));
