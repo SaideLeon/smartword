@@ -50,6 +50,11 @@ export function useChat() {
       logActivity('message_sent', content.slice(0, 40));
     } catch (error) {
       console.error("Error generating response:", error);
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Não consegui responder com base no documento agora. Verifique a configuração da API e tente novamente."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +82,11 @@ export function useChat() {
       logActivity('document_summarized', source.name);
     } catch (error) {
       console.error("Error summarizing document:", error);
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Não consegui resumir este documento agora. Tente novamente em instantes."
+      });
     } finally {
       setIsLoading(false);
     }
