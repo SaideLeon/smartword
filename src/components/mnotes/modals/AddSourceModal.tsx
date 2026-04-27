@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus } from 'lucide-react';
-import { useAppStore } from '@/store/mnotes/app-store';
+import { useAppStore } from '@/store/app-store';
 import { useSources } from '@/hooks/mnotes/useSources';
 
 export const AddSourceModal = () => {

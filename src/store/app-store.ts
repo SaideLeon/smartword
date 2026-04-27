@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Notebook, Source, Message, ActivityItem } from '@/types/mnotes';
+import { Notebook, Source, Message, ActivityItem } from '@/types';
 
 interface AppState {
   // Navigation & View

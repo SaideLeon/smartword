@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Plus } from 'lucide-react';
-import { useAppStore } from '@/store/mnotes/app-store';
+import { useAppStore } from '@/store/app-store';
 import { NotebookGrid } from './NotebookGrid';
 
 export const HomeView = () => {

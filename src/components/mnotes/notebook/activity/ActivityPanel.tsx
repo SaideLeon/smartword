@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useAppStore } from '@/store/mnotes/app-store';
-import { ActivityType } from '@/types/mnotes';
+import { useAppStore } from '@/store/app-store';
+import { ActivityType } from '@/types';
 import { FileText, Plus, Search, MessageSquare, History, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
