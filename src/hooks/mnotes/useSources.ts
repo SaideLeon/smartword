@@ -1,10 +1,35 @@
 import { useAppStore } from '@/store/app-store';
-import { Source } from '@/types';
+import { Message, Source } from '@/types';
 import { useActivity } from './useActivity';
+import { NotebookService } from '@/services/notebook.service';
 
 export function useSources() {
-  const { sources, setSources, addSource } = useAppStore();
+  const { sources, setSources, addSource, addMessage, setIsLoading, isLoading } = useAppStore();
   const { logActivity } = useActivity();
+
+  const appendSummaryMessage = (summary: string) => {
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: summary,
+    };
+    addMessage(assistantMessage);
+  };
+
+  const autoSummarizeSource = async (source: Source) => {
+    if (!source.data || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const summary = await NotebookService.summarize(source);
+      appendSummaryMessage(summary);
+      logActivity('document_summarized', `${source.name} (auto)`);
+    } catch (error) {
+      console.error('Erro no resumo automático da fonte:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -18,10 +43,11 @@ export function useSources() {
         name: file.name,
         type: 'pdf',
         data: base64,
-        selected: true
+        selected: true,
       };
       addSource(newSource);
       logActivity('source_added', file.name);
+      void autoSummarizeSource(newSource);
     };
     reader.readAsDataURL(file);
   };
@@ -31,11 +57,12 @@ export function useSources() {
       id: crypto.randomUUID(),
       name: title.endsWith('.txt') ? title : `${title}.txt`,
       type: 'text',
-      data: btoa(unescape(encodeURIComponent(text))), // Base64 encode the text
-      selected: true
+      data: btoa(unescape(encodeURIComponent(text))),
+      selected: true,
     };
     addSource(newSource);
     logActivity('source_added', newSource.name);
+    void autoSummarizeSource(newSource);
   };
 
   const toggleSourceSelection = (id: string) => {
@@ -43,9 +70,9 @@ export function useSources() {
     setSources(updated);
   };
 
-  return { 
-    handleFileUpload, 
-    addTextSource, 
-    toggleSourceSelection 
+  return {
+    handleFileUpload,
+    addTextSource,
+    toggleSourceSelection,
   };
 }

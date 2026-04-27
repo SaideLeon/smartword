@@ -65,11 +65,6 @@ export function useChat() {
     if (!source || !source.data || isLoading) return;
 
     setIsLoading(true);
-    addMessage({
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: `Resuma o documento: ${source.name}`
-    });
 
     try {
       const text = await NotebookService.summarize(source);
