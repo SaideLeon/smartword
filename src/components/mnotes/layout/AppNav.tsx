@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Menu, Settings, History, Share2 } from 'lucide-react';
 import { useThemeMode } from '@/hooks/mnotes/useThemeMode';
-import { useAppStore } from '@/store/mnotes/app-store';
+import { useAppStore } from '@/store/app-store';
 
 export const AppNav = () => {
   const { themeMode, toggleThemeMode } = useThemeMode();

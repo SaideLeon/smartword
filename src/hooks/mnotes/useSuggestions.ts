@@ -1,7 +1,7 @@
-import { useAppStore } from '@/store/mnotes/app-store';
-import { Source } from '@/types/mnotes';
+import { useAppStore } from '@/store/app-store';
+import { Source } from '@/types';
 import { useState } from 'react';
-import { NotebookService } from '@/services/mnotes/notebook.service';
+import { NotebookService } from '@/services/notebook.service';
 
 export function useSuggestions() {
   const { setIsLoading } = useAppStore();

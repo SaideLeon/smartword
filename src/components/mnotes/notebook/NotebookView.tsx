@@ -11,7 +11,7 @@ import {
   Check
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { useAppStore } from '@/store/mnotes/app-store';
+import { useAppStore } from '@/store/app-store';
 import { useChat } from '@/hooks/mnotes/useChat';
 import { useSources } from '@/hooks/mnotes/useSources';
 import { useSuggestions } from '@/hooks/mnotes/useSuggestions';

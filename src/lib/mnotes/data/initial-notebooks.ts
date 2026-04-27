@@ -1,4 +1,4 @@
-import { Notebook } from '@/types/mnotes';
+import { Notebook } from '@/types';
 
 export const INITIAL_NOTEBOOKS: Notebook[] = [
   {

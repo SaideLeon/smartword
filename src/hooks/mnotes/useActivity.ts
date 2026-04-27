@@ -1,5 +1,5 @@
-import { useAppStore } from '@/store/mnotes/app-store';
-import { ActivityItem } from '@/types/mnotes';
+import { useAppStore } from '@/store/app-store';
+import { ActivityItem } from '@/types';
 
 export function useActivity() {
   const { addActivity } = useAppStore();
