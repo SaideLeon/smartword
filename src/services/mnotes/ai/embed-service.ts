@@ -11,11 +11,19 @@ export interface EmbedRequestItem {
   text?: string;
   mimeType?: string;
   data?: string;
+  preview?: string;
 }
 
 export interface EmbedResponseItem {
   id: string;
   embedding: number[];
+}
+
+export interface SemanticSearchResponseItem {
+  source_id: string;
+  source_name: string;
+  preview: string | null;
+  similarity: number;
 }
 
 function decodeBase64Utf8(base64: string): string {
@@ -26,40 +34,42 @@ function decodeBase64Utf8(base64: string): string {
   }
 }
 
-async function postEmbeddings(items: EmbedRequestItem[]): Promise<EmbedResponseItem[]> {
-  const response = await fetch('/api/mnotes/embed', {
+async function postEmbeddings(body: Record<string, unknown>): Promise<Response> {
+  return fetch('/api/mnotes/embed', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items }),
+    body: JSON.stringify(body),
   });
+}
 
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'Falha ao gerar embeddings.');
+function sourcePreview(source: Source): string {
+  if (source.type === 'text' && source.data) {
+    return decodeBase64Utf8(source.data).slice(0, 220);
   }
-
-  return response.json();
+  return `Documento PDF: ${source.name}`;
 }
 
 export const EmbedService = {
   async embedQuery(query: string): Promise<number[]> {
-    const items = await postEmbeddings([
-      {
-        id: 'query',
-        mode: 'query',
-        text: query,
-      },
-    ]);
+    const response = await postEmbeddings({
+      action: 'embed',
+      items: [{ id: 'query', mode: 'query', text: query }],
+    });
 
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || 'Falha ao gerar embedding da query.');
+    }
+
+    const items = await response.json() as EmbedResponseItem[];
     return items[0]?.embedding ?? [];
   },
 
-  async embedSources(sources: Source[]): Promise<Array<EmbedResponseItem & { sourceId: string; preview: string }>> {
+  async indexSources(notebookId: string, sources: Source[]): Promise<void> {
     const activeSources = sources.filter(source => source.selected && source.data);
+    if (activeSources.length === 0) return;
 
-    if (activeSources.length === 0) return [];
-
-    const payload: EmbedRequestItem[] = activeSources.map(source => {
+    const items: EmbedRequestItem[] = activeSources.map(source => {
       if (source.type === 'pdf') {
         return {
           id: source.id,
@@ -67,32 +77,45 @@ export const EmbedService = {
           title: source.name,
           mimeType: 'application/pdf',
           data: source.data,
+          preview: sourcePreview(source),
         };
       }
 
-      const text = decodeBase64Utf8(source.data!);
       return {
         id: source.id,
         mode: 'text',
         title: source.name,
-        text,
+        text: decodeBase64Utf8(source.data!),
+        preview: sourcePreview(source),
       };
     });
 
-    const response = await postEmbeddings(payload);
-    const sourceById = new Map(activeSources.map(source => [source.id, source]));
-
-    return response.map(item => {
-      const source = sourceById.get(item.id);
-      const preview = source?.type === 'text' && source.data
-        ? decodeBase64Utf8(source.data).slice(0, 220)
-        : `Documento PDF: ${source?.name ?? 'sem nome'}`;
-
-      return {
-        ...item,
-        sourceId: item.id,
-        preview,
-      };
+    const response = await postEmbeddings({
+      action: 'index',
+      notebookId,
+      items,
     });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || 'Falha ao indexar fontes no Supabase.');
+    }
+  },
+
+  async semanticSearch(notebookId: string, query: string, topK = 5, minScore = 0.1): Promise<SemanticSearchResponseItem[]> {
+    const response = await postEmbeddings({
+      action: 'search',
+      notebookId,
+      query,
+      topK,
+      minScore,
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || 'Falha na busca semântica.');
+    }
+
+    return response.json();
   },
 };

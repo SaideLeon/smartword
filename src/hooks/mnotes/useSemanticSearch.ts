@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Source } from '@/types';
 import { EmbedService } from '@/services/mnotes/ai/embed-service';
 
@@ -9,72 +9,34 @@ export interface SemanticSearchResult {
   preview: string;
 }
 
-interface IndexedSource {
-  sourceId: string;
-  sourceName: string;
-  embedding: number[];
-  preview: string;
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
-
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < a.length; i += 1) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-export function useSemanticSearch(sources: Source[]) {
+export function useSemanticSearch(sources: Source[], notebookId?: string) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
   const [isIndexing, setIsIndexing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const indexRef = useRef<Map<string, IndexedSource>>(new Map());
-
-  const indexedCount = useMemo(() => indexRef.current.size, [sources.length, isIndexing]);
+  const [indexedCount, setIndexedCount] = useState(0);
 
   const rebuildIndex = useCallback(async () => {
+    if (!notebookId) {
+      setError('Notebook não selecionado para indexação.');
+      return;
+    }
+
     setIsIndexing(true);
     setError(null);
 
     try {
-      const embeddings = await EmbedService.embedSources(sources);
-      const sourceById = new Map(sources.map(source => [source.id, source]));
-      const nextIndex = new Map<string, IndexedSource>();
-
-      for (const embedded of embeddings) {
-        const source = sourceById.get(embedded.sourceId);
-        if (!source) continue;
-
-        nextIndex.set(embedded.sourceId, {
-          sourceId: embedded.sourceId,
-          sourceName: source.name,
-          embedding: embedded.embedding,
-          preview: embedded.preview,
-        });
-      }
-
-      indexRef.current = nextIndex;
-      return nextIndex;
+      await EmbedService.indexSources(notebookId, sources);
+      const activeCount = sources.filter(source => source.selected && source.data).length;
+      setIndexedCount(activeCount);
     } catch (indexError) {
       console.error('Erro ao indexar fontes para busca semântica:', indexError);
       setError(indexError instanceof Error ? indexError.message : 'Falha ao indexar fontes.');
-      return indexRef.current;
     } finally {
       setIsIndexing(false);
     }
-  }, [sources]);
+  }, [notebookId, sources]);
 
   const search = useCallback(async (nextQuery: string, topK = 5, minScore = 0.1) => {
     setQuery(nextQuery);
@@ -85,35 +47,25 @@ export function useSemanticSearch(sources: Source[]) {
       return [];
     }
 
+    if (!notebookId) {
+      setError('Notebook não selecionado para busca.');
+      return [];
+    }
+
     setIsSearching(true);
     setError(null);
 
     try {
-      let index = indexRef.current;
-      if (index.size === 0) {
-        index = await rebuildIndex();
-      }
+      const ranked = await EmbedService.semanticSearch(notebookId, nextQuery.trim(), topK, minScore);
+      const normalized = ranked.map(item => ({
+        sourceId: item.source_id,
+        sourceName: item.source_name,
+        preview: item.preview ?? '',
+        score: item.similarity,
+      }));
 
-      if (index.size === 0) {
-        setResults([]);
-        return [];
-      }
-
-      const queryEmbedding = await EmbedService.embedQuery(nextQuery.trim());
-
-      const ranked = [...index.values()]
-        .map((item) => ({
-          sourceId: item.sourceId,
-          sourceName: item.sourceName,
-          preview: item.preview,
-          score: cosineSimilarity(queryEmbedding, item.embedding),
-        }))
-        .filter(item => item.score >= minScore)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, topK);
-
-      setResults(ranked);
-      return ranked;
+      setResults(normalized);
+      return normalized;
     } catch (searchError) {
       console.error('Erro na busca semântica:', searchError);
       setError(searchError instanceof Error ? searchError.message : 'Falha na busca semântica.');
@@ -122,7 +74,7 @@ export function useSemanticSearch(sources: Source[]) {
     } finally {
       setIsSearching(false);
     }
-  }, [rebuildIndex]);
+  }, [notebookId]);
 
   const clearSearch = useCallback(() => {
     setQuery('');
