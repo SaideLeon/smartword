@@ -214,7 +214,7 @@ export const NotebookView = () => {
                         const content = String(props.children);
                         const match = content.match(/\[Doc (\d+)\]/);
                         if (match) {
-                          const citeId = parseInt(match[1]);
+                          const citeId = parseInt(match[1], 10);
                           return (
                             <button 
                               onClick={() => handleCitationClick(citeId)}
