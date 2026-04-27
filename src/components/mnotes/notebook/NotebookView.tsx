@@ -256,9 +256,9 @@ export const NotebookView = () => {
               <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl shadow-sm ${
                 msg.role === 'user'
                   ? 'bg-[var(--gold)]/10 border border-[var(--gold)]/20 text-[var(--ink)]'
-                  : 'bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]'
+                  : 'bg-[color:rgba(201,169,110,0.10)] border border-[color:rgba(201,169,110,0.35)] text-[var(--ink)] shadow-[0_0_0_1px_rgba(201,169,110,0.12)]'
               }`}>
-                <div className={`prose prose-sm prose-invert max-w-none ${msg.role === 'user' ? 'text-[var(--ink)]' : 'text-[var(--muted)]'} text-xs sm:text-sm`}>
+                <div className={`prose prose-sm prose-invert max-w-none ${msg.role === 'user' ? 'text-[var(--ink)] text-sm sm:text-base' : 'text-[var(--ink)] text-[15px] sm:text-[17px] leading-relaxed'} `}>
                   <ReactMarkdown
                     components={{
                       a: ({ ...props }) => {
