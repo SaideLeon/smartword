@@ -3,27 +3,32 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import {
-  ArrowDown,
+  ArrowRight,
   BookOpen,
   Briefcase,
+  CheckCircle2,
   ChevronRight,
-  CircleCheck,
-  Clock3,
+  Clock,
   Download,
+  FileText,
   Gift,
   GraduationCap,
   Handshake,
+  LayoutTemplate,
   Maximize,
   Minimize,
   Moon,
-  ShieldCheck,
   Sparkles,
+  Star,
   Sun,
+  TrendingUp,
   Users,
+  Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
+/* ─── Nav ─── */
 interface LandingNavProps {
   themeMode: 'dark' | 'light';
   onToggleTheme: () => void;
@@ -32,77 +37,44 @@ interface LandingNavProps {
   fullscreenSupported: boolean;
 }
 
-function LandingNav({
-  themeMode,
-  onToggleTheme,
-  onToggleFullscreen,
-  isFullscreen,
-  fullscreenSupported,
-}: LandingNavProps) {
+function LandingNav({ themeMode, onToggleTheme, onToggleFullscreen, isFullscreen, fullscreenSupported }: LandingNavProps) {
   return (
-    <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-4 py-3 backdrop-blur md:px-12 md:py-4">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
-        <div className="flex items-center justify-between md:justify-start md:gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-mono text-sm font-bold text-black">
-              <Image src="/icon.svg" alt="Muneri logo" width={20} height={20} className="h-5 w-5" />
-            </div>
-            <span className="font-serif text-xl italic text-[var(--gold2)]">Muneri</span>
+    <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/95 px-4 py-3 backdrop-blur md:px-12 md:py-4">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <div className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)]">
+            <Image src="/icon.svg" alt="Muneri logo" width={20} height={20} className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-2 md:hidden">
-            {fullscreenSupported && (
-              <button
-                type="button"
-                onClick={onToggleFullscreen}
-                className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-                aria-label={isFullscreen ? 'Sair de ecrã inteiro' : 'Entrar em ecrã inteiro'}
-              >
-                {isFullscreen ? <Minimize size={11} /> : <Maximize size={11} />}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-              aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-            >
-              {themeMode === 'dark' ? <><Sun size={11} /> Claro</> : <><Moon size={11} /> Escuro</>}
-            </button>
-            <a href="/app" className="flex items-center gap-1 rounded bg-[var(--ink)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
-              <ArrowDown size={11} /> Abrir
-            </a>
-          </div>
+          <span className="font-serif text-xl italic text-[var(--gold2)]">Muneri</span>
         </div>
 
-        <ul className="hidden items-center gap-8 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:flex">
-          <li><a href="#como-funciona" className="hover:text-[var(--gold2)]">Como funciona</a></li>
-          <li><a href="#beneficios" className="hover:text-[var(--gold2)]">Benefícios</a></li>
-          <li><a href="#afiliados" className="hover:text-[var(--gold2)]">Afiliados</a></li>
-          <li><a href="/planos" className="hover:text-[var(--gold2)]">Planos</a></li>
+        {/* Links — desktop */}
+        <ul className="hidden items-center gap-6 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:flex">
+          <li><a href="#como-funciona" className="hover:text-[var(--gold2)] transition">Como funciona</a></li>
+          <li><a href="#afiliados" className="hover:text-[var(--gold2)] transition">Afiliados</a></li>
+          <li><a href="/planos" className="hover:text-[var(--gold2)] transition">Planos</a></li>
         </ul>
 
-        <div className="hidden items-center gap-2 md:flex">
+        {/* Acções */}
+        <div className="flex items-center gap-2">
           {fullscreenSupported && (
-            <button
-              type="button"
-              onClick={onToggleFullscreen}
-              className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-              aria-label={isFullscreen ? 'Sair de ecrã inteiro' : 'Entrar em ecrã inteiro'}
-            >
-              {isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
-              {isFullscreen ? 'Sair ecrã inteiro' : 'Ecrã inteiro'}
+            <button type="button" onClick={onToggleFullscreen}
+              className="hidden items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)] md:flex">
+              {isFullscreen ? <Minimize size={11} /> : <Maximize size={11} />}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-            aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-          >
-            {themeMode === 'dark' ? <><Sun size={12} /> Claro</> : <><Moon size={12} /> Escuro</>}
+          <button type="button" onClick={onToggleTheme}
+            className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+            {themeMode === 'dark' ? <><Sun size={11} /><span className="hidden sm:inline">Claro</span></> : <><Moon size={11} /><span className="hidden sm:inline">Escuro</span></>}
           </button>
-          <a href="/app" className="flex items-center gap-1.5 rounded bg-[var(--ink)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]">
-            <ArrowDown size={12} /> Abrir app
+          <a href="/planos"
+            className="hidden items-center gap-1.5 rounded border border-[var(--gold2)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--gold2)] transition hover:bg-[var(--gold2)] hover:text-black md:flex">
+            Planos
+          </a>
+          <a href="/app"
+            className="flex items-center gap-1.5 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-black font-semibold shadow">
+            <Zap size={12} /> Criar trabalho
           </a>
         </div>
       </div>
@@ -110,61 +82,60 @@ function LandingNav({
   );
 }
 
-const valueCards: { title: string; text: string; icon: ReactNode }[] = [
+/* ─── Dados ─── */
+const howItWorks = [
+  { icon: <FileText size={22} strokeWidth={1.5} />, step: '01', title: 'Informe o tema', desc: 'Digite o título ou tema do seu trabalho. Só isso.' },
+  { icon: <Sparkles size={22} strokeWidth={1.5} />, step: '02', title: 'Clique em Gerar', desc: 'A IA cria a estrutura, desenvolve o conteúdo e formata tudo automaticamente.' },
+  { icon: <LayoutTemplate size={22} strokeWidth={1.5} />, step: '03', title: 'Trabalho completo', desc: 'Capa, índice, desenvolvimento, referências — tudo pronto e formatado.' },
+  { icon: <Download size={22} strokeWidth={1.5} />, step: '04', title: 'Baixe e imprima', desc: 'Exporte em Word, revise se quiser, e entregue com confiança.' },
+];
+
+const proofPoints = [
+  'Capa com nome, instituição, curso e data',
+  'Índice numerado e organizado',
+  'Desenvolvimento completo por capítulos',
+  'Formatação acadêmica automática',
+  'Referências bibliográficas incluídas',
+  'Exportação em Word (.docx)',
+];
+
+const affiliateSteps = [
+  { icon: <Users size={20} strokeWidth={1.5} />, title: 'Crie sua conta grátis', desc: 'Registe-se e active o perfil de afiliado em segundos, dentro da sua conta.' },
+  { icon: <Gift size={20} strokeWidth={1.5} />, title: 'Receba seu link pessoal', desc: 'Um link único para compartilhar com colegas, grupos e redes sociais.' },
+  { icon: <TrendingUp size={20} strokeWidth={1.5} />, title: 'Acompanhe seus ganhos', desc: 'Dashboard em tempo real com cliques, conversões e comissões acumuladas.' },
+];
+
+const plans = [
   {
-    title: 'Clareza para quem está começando',
-    text: 'Você não precisa dominar regras de formatação. O Muneri guia cada etapa com linguagem simples e objetiva.',
-    icon: <Sparkles size={20} strokeWidth={1.6} />,
+    name: 'Básico',
+    label: 'Grátis para começar',
+    price: '0',
+    features: ['3 trabalhos por mês', 'Exportação em Word', 'Formatação automática'],
+    cta: 'Começar grátis',
+    href: '/app',
+    highlight: false,
   },
   {
-    title: 'Foco no que realmente importa',
-    text: 'Em vez de perder horas ajustando margens e estrutura, você investe energia no conteúdo do seu trabalho.',
-    icon: <Clock3 size={20} strokeWidth={1.6} />,
+    name: 'Pro',
+    label: 'Mais popular',
+    price: '299',
+    features: ['Trabalhos ilimitados', 'IA avançada para TCC', 'Pesquisa automática', 'Suporte prioritário'],
+    cta: 'Assinar Pro',
+    href: '/planos',
+    highlight: true,
   },
   {
-    title: 'Resultado com padrão profissional',
-    text: 'Capa, organização do conteúdo e exportação final em Word para você revisar e entregar com confiança.',
-    icon: <ShieldCheck size={20} strokeWidth={1.6} />,
+    name: 'Afiliado',
+    label: 'Ganhe indicando',
+    price: '0',
+    features: ['Comissão por indicação', 'Dashboard de ganhos', 'Link pessoal', 'Sem custo de entrada'],
+    cta: 'Tornar-se afiliado',
+    href: '/app/afiliados',
+    highlight: false,
   },
 ];
 
-const workflowSteps = [
-  ['1', 'Informe o essencial', 'Tema, curso, instituição e os dados principais do documento.'],
-  ['2', 'Escolha como quer trabalhar', 'Modo trabalho rápido, apoio para TCC e recursos inteligentes para acelerar sua escrita.'],
-  ['3', 'Deixe o sistema organizar', 'A plataforma estrutura seu material com uma base pronta para apresentação académica.'],
-  ['4', 'Revise e exporte', 'Baixe em Word, faça ajustes finais e entregue com tranquilidade.'],
-];
-
-const benefitCards: { title: string; text: string; icon: ReactNode }[] = [
-  {
-    title: 'Para estudantes universitários',
-    text: 'Crie trabalhos e TCC com mais segurança, sem começar do zero e sem travar na formatação.',
-    icon: <GraduationCap size={18} strokeWidth={1.6} />,
-  },
-  {
-    title: 'Para ensino médio e técnico',
-    text: 'Estruture tarefas escolares e relatórios com um visual organizado e mais credibilidade na entrega.',
-    icon: <BookOpen size={18} strokeWidth={1.6} />,
-  },
-  {
-    title: 'Para profissionais e equipas',
-    text: 'Monte relatórios e documentos com padrão visual consistente, economizando tempo em cada versão.',
-    icon: <Briefcase size={18} strokeWidth={1.6} />,
-  },
-  {
-    title: 'Para quem quer rapidez',
-    text: 'Em poucos minutos você sai da ideia para um documento utilizável, pronto para revisão e envio.',
-    icon: <Download size={18} strokeWidth={1.6} />,
-  },
-];
-
-const affiliateReasons = [
-  'Qualquer usuário pode ativar seu perfil de afiliado dentro da própria conta.',
-  'Você recebe um link pessoal para compartilhar com colegas, amigos e comunidades.',
-  'Acompanha suas indicações e comissões em um dashboard simples, sem planilhas manuais.',
-  'É uma forma prática de gerar renda indicando uma ferramenta útil para quem estuda e trabalha.',
-];
-
+/* ─── Página ─── */
 export default function LandingPage() {
   const { themeMode, toggleThemeMode } = useThemeMode();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -172,19 +143,15 @@ export default function LandingPage() {
 
   useEffect(() => {
     setFullscreenSupported(typeof document !== 'undefined' && !!document.documentElement.requestFullscreen);
-    const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', syncFullscreenState);
-    syncFullscreenState();
-    return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+    const sync = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', sync);
+    sync();
+    return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
 
   const handleToggleFullscreen = useCallback(async () => {
     if (!fullscreenSupported) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-      return;
-    }
-    await document.documentElement.requestFullscreen();
+    document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen();
   }, [fullscreenSupported]);
 
   const themeVars = themeMode === 'dark'
@@ -201,184 +168,357 @@ export default function LandingPage() {
         fullscreenSupported={fullscreenSupported}
       />
 
-      <section className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-10 sm:px-6 md:grid-cols-2 md:px-12 md:py-20">
-        <div className="space-y-5">
-          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--green)]">Uma plataforma para transformar esforço em resultado</p>
-          <h1 className="font-serif text-[1.9rem] leading-[1.2] sm:text-4xl md:text-5xl md:leading-tight lg:text-6xl">
-            Termine trabalhos académicos com mais calma, mais clareza e{' '}
-            <em className="text-[var(--gold2)]">muito menos stress.</em>
-          </h1>
-          <p className="max-w-xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-            O Muneri nasceu para ajudar quem precisa entregar documentos de qualidade sem perder tempo em detalhes técnicos.
-            Você foca no conteúdo e a plataforma ajuda com estrutura, organização e exportação final em Word.
+      {/* ══════════════════════════════════════════
+          HERO — proposta principal
+      ══════════════════════════════════════════ */}
+      <section className="relative overflow-hidden bg-[var(--heroRight)] px-5 py-16 text-center sm:px-6 md:py-24 md:px-12">
+        {/* fundo decorativo */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: 'radial-gradient(circle at 60% 40%, #d4b37b 0%, transparent 60%), radial-gradient(circle at 20% 80%, #6ea886 0%, transparent 50%)' }} />
+
+        <div className="relative mx-auto max-w-4xl">
+          <p className="inline-block rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-4 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--gold)]">
+            ✦ Plataforma Académica com IA · Moçambique
           </p>
-          <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--heroRight)] p-4 text-sm text-[#c8bfb4]">
-            <p className="flex items-center gap-2"><CircleCheck size={15} className="text-[var(--gold)]" /> Capa, organização e fluxo de escrita em um só lugar.</p>
-            <p className="flex items-center gap-2"><CircleCheck size={15} className="text-[var(--gold)]" /> Recursos para trabalhos rápidos, TCC e apoio com IA.</p>
-            <p className="flex items-center gap-2"><CircleCheck size={15} className="text-[var(--gold)]" /> Dashboard de afiliados para quem quiser indicar e ganhar comissões.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <a href="/app" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-6 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow-lg sm:px-7">
-              <ArrowDown size={13} /> Começar grátis
-            </a>
-            <a href="#afiliados" className="flex items-center gap-1 border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]">
-              Ver programa de afiliados <ChevronRight size={12} />
-            </a>
-          </div>
-        </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--heroRight)] p-6">
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-5 text-sm text-[#c8bfb4]">
-              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--gold)]">Missão</p>
-              <h2 className="mt-2 font-serif text-2xl text-[#f1e8da]">Democratizar a criação de documentos académicos.</h2>
-              <p className="mt-3 leading-relaxed">
-                Queremos que qualquer pessoa — mesmo sem experiência em edição — consiga produzir um trabalho bem apresentado,
-                com linguagem simples, processo guiado e apoio real para cada etapa.
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 01</p>
-                  <p className="mt-1 text-[#f1e8da]">Simplicidade para o usuário final.</p>
-                </div>
-                <div className="rounded border border-[#2a2520] bg-[#0f0e0d] p-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">Valor 02</p>
-                  <p className="mt-1 text-[#f1e8da]">Resultados consistentes e confiáveis.</p>
-                </div>
-              </div>
-            </div>
+          <h1 className="mt-6 font-serif text-[2.2rem] leading-[1.15] text-[#f1e8da] sm:text-5xl md:text-6xl lg:text-7xl">
+            Trabalho académico<br />
+            <em className="text-[var(--gold)]">pronto em minutos.</em>
+          </h1>
 
-            <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-5 text-[#c8bfb4]">
-              <h3 className="font-serif text-2xl leading-snug text-[#f1e8da]">
-                Seja para estudar melhor ou para indicar e ganhar, o próximo passo é seu.
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed">
-                Entre gratuitamente, experimente os recursos e escolha o caminho que faz mais sentido para você:
-                usuário final, afiliado, ou ambos.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2.5">
-                <a href="/app" className="rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-black">
-                  Começar grátis
-                </a>
-                <a href="/planos" className="rounded border border-[#3a3530] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-[#c8bfb4] transition hover:border-[var(--gold2)] hover:text-[var(--gold)]">
-                  Ver planos
-                </a>
-              </div>
-            </div>
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#c8bfb4] sm:text-xl">
+            Digite o tema, clique em gerar — e receba um trabalho completo com capa, índice, desenvolvimento e referências, formatado e pronto para imprimir.
+          </p>
+
+          {/* CTAs principais */}
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a href="/app"
+              className="group flex items-center gap-2.5 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-8 py-4 font-mono text-sm font-bold uppercase tracking-[0.08em] text-black shadow-xl transition hover:scale-[1.02] hover:shadow-2xl">
+              <Zap size={16} />
+              Criar meu trabalho agora
+              <ArrowRight size={15} className="transition group-hover:translate-x-1" />
+            </a>
+            <a href="#afiliados"
+              className="flex items-center gap-2 rounded-lg border border-[#3a3530] bg-[#141210] px-8 py-4 font-mono text-sm uppercase tracking-[0.08em] text-[#c8bfb4] transition hover:border-[var(--gold2)] hover:text-[var(--gold)]">
+              <TrendingUp size={15} />
+              Quero ganhar como afiliado
+            </a>
+          </div>
+
+          {/* Social proof rápido */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 font-mono text-[11px] uppercase tracking-[0.1em] text-[#8a7d6e]">
+            <span className="flex items-center gap-1.5"><CheckCircle2 size={12} className="text-[var(--green)]" /> Grátis para começar</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 size={12} className="text-[var(--green)]" /> Sem instalar nada</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 size={12} className="text-[var(--green)]" /> Exporta em Word</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 size={12} className="text-[var(--green)]" /> Pronto para impressão</span>
           </div>
         </div>
       </section>
 
-      <section id="beneficios" className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Benefícios principais</p>
-        <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
-          Feito para pessoas reais, com rotina corrida e prazos apertados.
-        </h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {valueCards.map((card) => (
-            <article key={card.title} className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-6">
-              <div className="mb-3 text-[var(--gold2)]">{card.icon}</div>
-              <h3 className="font-serif text-xl">{card.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{card.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="como-funciona" className="bg-[var(--heroRight)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <div className="mx-auto w-full max-w-7xl">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Como funciona</p>
-          <h2 className="font-serif text-2xl text-[#f1e8da] sm:text-3xl md:text-4xl lg:text-5xl">
-            Da ideia ao documento final em <em className="text-[var(--gold)]">4 passos simples.</em>
+      {/* ══════════════════════════════════════════
+          DUAS AUDIÊNCIAS — escolha o seu caminho
+      ══════════════════════════════════════════ */}
+      <section className="mx-auto w-full max-w-7xl px-5 py-14 sm:px-6 md:px-12 md:py-20">
+        <div className="mb-10 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Para quem é o Muneri</p>
+          <h2 className="mt-3 font-serif text-2xl leading-snug sm:text-3xl md:text-4xl">
+            Dois caminhos. <em className="text-[var(--gold2)]">Uma plataforma.</em>
           </h2>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
-            {workflowSteps.map(([number, title, description]) => (
-              <article key={number} className="space-y-3">
-                <div className="grid h-12 w-12 place-items-center rounded-full border border-[#3a3530] bg-[#1a1714] font-mono text-xs text-[var(--gold)]">{number}</div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Card — Estudantes */}
+          <div className="group relative overflow-hidden rounded-2xl border-2 border-[var(--border)] bg-[var(--parchment)] p-8 transition hover:border-[var(--gold)]/60">
+            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-[var(--gold)]/10 blur-2xl transition group-hover:bg-[var(--gold)]/20" />
+            <div className="relative">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--gold)]">
+                <GraduationCap size={12} /> Para estudantes
+              </div>
+              <h3 className="font-serif text-2xl sm:text-3xl">
+                Gere trabalhos académicos <em className="text-[var(--gold2)]">completos automaticamente</em>
+              </h3>
+              <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
+                Sem horas de formatação. Sem stress com regras académicas. Você digita o tema, clica um botão e recebe o trabalho pronto com tudo incluído.
+              </p>
+              <ul className="mt-5 space-y-2.5">
+                {proofPoints.map(p => (
+                  <li key={p} className="flex items-center gap-2.5 text-sm text-[var(--muted)]">
+                    <CheckCircle2 size={14} className="shrink-0 text-[var(--green)]" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <a href="/app"
+                className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] text-black shadow-lg transition hover:scale-[1.01]">
+                <Zap size={15} /> Criar meu trabalho agora
+              </a>
+            </div>
+          </div>
+
+          {/* Card — Afiliados */}
+          <div className="group relative overflow-hidden rounded-2xl border-2 border-[var(--border)] bg-[var(--parchment)] p-8 transition hover:border-[var(--green)]/60">
+            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-[var(--green)]/10 blur-2xl transition group-hover:bg-[var(--green)]/20" />
+            <div className="relative">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--green)]">
+                <TrendingUp size={12} /> Para afiliados
+              </div>
+              <h3 className="font-serif text-2xl sm:text-3xl">
+                Divulgue o Muneri e <em className="text-[var(--green)]">ganhe comissão</em> por cada venda
+              </h3>
+              <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
+                Qualquer pessoa pode ser afiliada. Compartilhe seu link com colegas, grupos e redes sociais — e receba uma percentagem a cada assinatura que vier por você.
+              </p>
+              <ul className="mt-5 space-y-2.5">
+                {[
+                  'Activação em 1 minuto, dentro da conta',
+                  'Link pessoal exclusivo para partilhar',
+                  'Dashboard com comissões em tempo real',
+                  'Sem custo de entrada ou mensalidade',
+                  'Receba por todas as indicações activas',
+                  'Ideal para estudantes, influenciadores e comunidades',
+                ].map(p => (
+                  <li key={p} className="flex items-center gap-2.5 text-sm text-[var(--muted)]">
+                    <CheckCircle2 size={14} className="shrink-0 text-[var(--green)]" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <a href="/app/afiliados"
+                className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-[var(--green)] py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] text-[var(--green)] transition hover:bg-[var(--green)] hover:text-black">
+                <Handshake size={15} /> Tornar-me afiliado agora
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          COMO FUNCIONA — para estudantes
+      ══════════════════════════════════════════ */}
+      <section id="como-funciona" className="bg-[var(--heroRight)] px-5 py-14 sm:px-6 md:px-12 md:py-20">
+        <div className="mx-auto w-full max-w-7xl">
+          <div className="mb-12 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">É mesmo simples</p>
+            <h2 className="mt-3 font-serif text-2xl text-[#f1e8da] sm:text-3xl md:text-4xl">
+              De tema a trabalho pronto <em className="text-[var(--gold)]">em 4 passos.</em>
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-[#c8bfb4]">Sem conhecimento técnico. Sem horas de pesquisa. Só digitar e baixar.</p>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+            {howItWorks.map(({ icon, step, title, desc }) => (
+              <article key={step} className="rounded-xl border border-[#2a2520] bg-[#141210] p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="text-[var(--gold)]">{icon}</div>
+                  <span className="font-mono text-3xl font-bold text-[#2a2520]">{step}</span>
+                </div>
                 <h3 className="font-serif text-lg text-[#f1e8da]">{title}</h3>
-                <p className="text-sm leading-relaxed text-[#c8bfb4]">{description}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#c8bfb4]">{desc}</p>
               </article>
             ))}
           </div>
+
+          <div className="mt-10 text-center">
+            <a href="/app"
+              className="inline-flex items-center gap-2.5 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-8 py-4 font-mono text-sm font-bold uppercase tracking-[0.08em] text-black shadow-xl transition hover:scale-[1.02]">
+              <Zap size={16} /> Experimentar agora — é grátis
+            </a>
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Para quem é o Muneri</p>
-        <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
-          Se você precisa entregar melhor, mais rápido, este sistema é para você.
-        </h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {benefitCards.map((card) => (
-            <article key={card.title} className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-5 sm:p-6">
-              <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-[var(--gold2)]">
-                {card.icon} {card.title}
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{card.text}</p>
+      {/* ══════════════════════════════════════════
+          PROVA SOCIAL — tipos de trabalho
+      ══════════════════════════════════════════ */}
+      <section className="mx-auto w-full max-w-7xl px-5 py-14 sm:px-6 md:px-12 md:py-20">
+        <div className="mb-10 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Funciona para qualquer área</p>
+          <h2 className="mt-3 font-serif text-2xl leading-snug sm:text-3xl md:text-4xl">
+            Seja qual for o seu curso, <em className="text-[var(--gold2)]">o Muneri cobre.</em>
+          </h2>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          {[
+            { icon: <GraduationCap size={20} strokeWidth={1.5} />, label: 'Universidade', desc: 'TCC, monografias e relatórios de estágio completos' },
+            { icon: <BookOpen size={20} strokeWidth={1.5} />, label: 'Politécnico', desc: 'Trabalhos de grupo, projectos e relatórios técnicos' },
+            { icon: <Briefcase size={20} strokeWidth={1.5} />, label: 'Profissional', desc: 'Relatórios corporativos e documentos de apresentação' },
+            { icon: <Clock size={20} strokeWidth={1.5} />, label: 'Urgente', desc: 'Prazo apertado? Gere em minutos, entregue hoje' },
+          ].map(({ icon, label, desc }) => (
+            <article key={label} className="rounded-xl border border-[var(--border)] bg-[var(--parchment)] p-6 text-center">
+              <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full border border-[var(--border)] text-[var(--gold2)]">{icon}</div>
+              <h3 className="font-serif text-lg">{label}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{desc}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section id="afiliados" className="border-y border-[var(--border)] bg-[var(--parchment)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <div className="mx-auto grid w-full max-w-7xl gap-8 md:grid-cols-[1.15fr_1fr] md:items-start">
-          <div>
+      {/* ══════════════════════════════════════════
+          AFILIADOS — secção dedicada
+      ══════════════════════════════════════════ */}
+      <section id="afiliados" className="bg-[var(--heroRight)] px-5 py-14 sm:px-6 md:px-12 md:py-20">
+        <div className="mx-auto w-full max-w-7xl">
+          <div className="mb-12 text-center">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Programa de afiliados</p>
-            <h2 className="mt-2 font-serif text-2xl sm:text-3xl md:text-4xl">
-              Indique o Muneri e transforme recomendações em <em className="text-[var(--gold2)]">renda extra.</em>
+            <h2 className="mt-3 font-serif text-2xl text-[#f1e8da] sm:text-3xl md:text-4xl">
+              Indique o Muneri e <em className="text-[var(--green)]">ganhe dinheiro</em> enquanto ajuda outros.
             </h2>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)]">
-              Nosso objetivo é criar uma rede de pessoas que ajudam outras a estudar e produzir melhor.
-              Se você já usa a plataforma, pode compartilhar seu link e acompanhar tudo de forma transparente no dashboard.
+            <p className="mx-auto mt-4 max-w-2xl text-[#c8bfb4]">
+              Não precisa de experiência em vendas. Se tem amigos que estudam, já tem o suficiente para começar a ganhar.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/app/afiliados" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-6 py-3 font-mono text-xs uppercase tracking-[0.08em] text-[var(--ink)]">
-                <Handshake size={14} /> Quero ser afiliado
+          </div>
+
+          {/* 3 passos afiliado */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {affiliateSteps.map(({ icon, title, desc }, i) => (
+              <article key={title} className="relative rounded-xl border border-[#2a2520] bg-[#141210] p-7 text-center">
+                <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 text-[var(--green)]">{icon}</div>
+                <p className="font-mono text-xs text-[var(--faint)]">Passo {i + 1}</p>
+                <h3 className="mt-2 font-serif text-xl text-[#f1e8da]">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#c8bfb4]">{desc}</p>
+              </article>
+            ))}
+          </div>
+
+          {/* Banner de destaque */}
+          <div className="mt-10 rounded-2xl border border-[var(--green)]/20 bg-[var(--green)]/5 p-8 text-center md:p-12">
+            <Star size={28} className="mx-auto mb-4 text-[var(--gold)]" />
+            <h3 className="font-serif text-2xl text-[#f1e8da] md:text-3xl">
+              Cada pessoa que indicar e assinar = <em className="text-[var(--green)]">comissão para você.</em>
+            </h3>
+            <p className="mx-auto mt-4 max-w-xl text-[#c8bfb4]">
+              Partilhe em grupos de WhatsApp, Telegram, Instagram ou com colegas da faculdade. Quanto mais indicar, mais ganha.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <a href="/app/afiliados"
+                className="flex items-center gap-2.5 rounded-lg border-2 border-[var(--green)] bg-[var(--green)]/10 px-8 py-4 font-mono text-sm font-bold uppercase tracking-[0.08em] text-[var(--green)] transition hover:bg-[var(--green)] hover:text-black">
+                <Handshake size={16} /> Tornar-me afiliado agora
               </a>
-              <a href="/auth/signup" className="flex items-center gap-2 rounded border border-[var(--border)] px-6 py-3 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
-                <Users size={14} /> Criar conta
+              <a href="/auth/signup"
+                className="flex items-center gap-2 rounded-lg border border-[#3a3530] px-8 py-4 font-mono text-sm uppercase tracking-[0.08em] text-[#c8bfb4] transition hover:border-[var(--gold2)] hover:text-[var(--gold)]">
+                <Users size={15} /> Criar conta grátis
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          PLANOS
+      ══════════════════════════════════════════ */}
+      <section id="planos" className="mx-auto w-full max-w-7xl px-5 py-14 sm:px-6 md:px-12 md:py-20">
+        <div className="mb-12 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">Planos e preços</p>
+          <h2 className="mt-3 font-serif text-2xl leading-snug sm:text-3xl md:text-4xl">
+            Comece grátis. <em className="text-[var(--gold2)]">Escale quando quiser.</em>
+          </h2>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {plans.map((plan) => (
+            <article key={plan.name}
+              className={`relative flex flex-col rounded-2xl border-2 p-8 transition ${plan.highlight
+                ? 'border-[var(--gold)] bg-[var(--heroRight)] shadow-xl shadow-[var(--gold)]/10'
+                : 'border-[var(--border)] bg-[var(--parchment)]'}`}>
+              {plan.highlight && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--gold2)] px-4 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-black">
+                    ★ Mais popular
+                  </span>
+                </div>
+              )}
+              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">{plan.label}</p>
+              <h3 className={`mt-2 font-serif text-2xl ${plan.highlight ? 'text-[#f1e8da]' : ''}`}>{plan.name}</h3>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className={`font-mono text-4xl font-bold ${plan.highlight ? 'text-[var(--gold)]' : 'text-[var(--ink)]'}`}>
+                  {plan.price === '0' ? 'Grátis' : `${plan.price} MT`}
+                </span>
+                {plan.price !== '0' && <span className="font-mono text-xs text-[var(--faint)]">/mês</span>}
+              </div>
+              <ul className="mt-6 flex-1 space-y-3">
+                {plan.features.map(f => (
+                  <li key={f} className={`flex items-center gap-2.5 text-sm ${plan.highlight ? 'text-[#c8bfb4]' : 'text-[var(--muted)]'}`}>
+                    <CheckCircle2 size={14} className={`shrink-0 ${plan.highlight ? 'text-[var(--gold)]' : 'text-[var(--green)]'}`} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href={plan.href}
+                className={`mt-8 flex items-center justify-center gap-2 rounded-lg py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] transition ${plan.highlight
+                  ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-black shadow-lg hover:scale-[1.02]'
+                  : 'border-2 border-[var(--border)] text-[var(--ink)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]'}`}>
+                {plan.name === 'Afiliado' ? <Handshake size={14} /> : <Zap size={14} />}
+                {plan.cta}
+              </a>
+            </article>
+          ))}
+        </div>
+
+        <p className="mt-8 text-center font-mono text-[11px] text-[var(--faint)]">
+          Todos os planos incluem exportação em Word · Sem cobranças ocultas
+        </p>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          CTA FINAL — duplo
+      ══════════════════════════════════════════ */}
+      <section className="bg-[var(--heroRight)] px-5 py-16 text-center sm:px-6 md:px-12 md:py-24">
+        <div className="mx-auto max-w-3xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--faint)]">O próximo passo é seu</p>
+          <h2 className="mt-4 font-serif text-3xl text-[#f1e8da] sm:text-4xl md:text-5xl">
+            Qual é o seu caminho <em className="text-[var(--gold)]">hoje?</em>
+          </h2>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            {/* Caminho 1 */}
+            <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-8">
+              <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 text-[var(--gold)]">
+                <FileText size={24} strokeWidth={1.5} />
+              </div>
+              <h3 className="font-serif text-xl text-[#f1e8da]">Preciso de um trabalho</h3>
+              <p className="mt-2 text-sm text-[#c8bfb4]">Crie agora. É grátis para começar e leva menos de 5 minutos.</p>
+              <a href="/app"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] text-black">
+                <Zap size={14} /> Criar trabalho grátis
+              </a>
+            </div>
+
+            {/* Caminho 2 */}
+            <div className="rounded-2xl border border-[#2a2520] bg-[#141210] p-8">
+              <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 text-[var(--green)]">
+                <TrendingUp size={24} strokeWidth={1.5} />
+              </div>
+              <h3 className="font-serif text-xl text-[#f1e8da]">Quero ganhar comissão</h3>
+              <p className="mt-2 text-sm text-[#c8bfb4]">Active o perfil de afiliado e comece a ganhar a partir da primeira indicação.</p>
+              <a href="/app/afiliados"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-[var(--green)] py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] text-[var(--green)] transition hover:bg-[var(--green)] hover:text-black">
+                <Handshake size={14} /> Tornar-me afiliado
               </a>
             </div>
           </div>
 
-          <aside className="rounded-xl border border-[var(--border)] bg-[var(--heroRight)] p-5 text-[#c8bfb4] sm:p-6">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--gold)]">Por que participar</p>
-            <ul className="mt-3 space-y-3 text-sm leading-relaxed">
-              {affiliateReasons.map((reason) => (
-                <li key={reason} className="flex gap-2">
-                  <Gift size={14} className="mt-0.5 shrink-0 text-[var(--gold)]" />
-                  <span>{reason}</span>
-                </li>
-              ))}
-            </ul>
-          </aside>
+          <p className="mt-8 font-mono text-[11px] text-[var(--faint)]">
+            Ou faça os dois — ser afiliado e usar a plataforma ao mesmo tempo.
+          </p>
         </div>
       </section>
 
-      <section className="px-5 py-12 text-center sm:px-6 md:px-12 md:py-16">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--faint)]">Comece agora</p>
-        <h2 className="mt-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl">
-          Seja para estudar melhor ou para indicar e ganhar, <em className="text-[var(--gold2)]">o próximo passo é seu.</em>
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-          Entre gratuitamente, experimente os recursos e escolha o caminho que faz mais sentido para você: usuário final, afiliado, ou ambos.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <a href="/app" className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--ink)] sm:px-8 sm:py-[14px]">
-            <ArrowDown size={14} /> Começar grátis
-          </a>
-          <a href="/planos" className="rounded border border-[var(--border)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
-            Ver planos
-          </a>
-        </div>
-      </section>
-
-      <footer className="flex flex-col gap-2 border-t border-[var(--border)] px-5 py-6 text-center sm:px-6 md:flex-row md:items-center md:justify-between md:px-12 md:text-left">
-        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · Plataforma para criação de documentos académicos · 2026</div>
-        <div className="flex items-center justify-center gap-1 text-sm italic text-[var(--faint)] md:justify-start">
-          <span>feito com</span>
-          <Image src="/icon.svg" alt="Muneri logo" width={14} height={14} className="h-3.5 w-3.5" />
-          <span>em Quelimane, Moçambique</span>
+      {/* ══════════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════════ */}
+      <footer className="border-t border-[var(--border)] px-5 py-8 md:px-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
+          <div className="flex items-center gap-2">
+            <Image src="/icon.svg" alt="Muneri logo" width={16} height={16} className="h-4 w-4 opacity-60" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · 2026 · Quelimane, Moçambique</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-6 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">
+            <a href="/planos" className="hover:text-[var(--gold2)] transition">Planos</a>
+            <a href="/app/afiliados" className="hover:text-[var(--gold2)] transition">Afiliados</a>
+            <a href="/auth/signup" className="hover:text-[var(--gold2)] transition">Criar conta</a>
+            <a href="/app" className="hover:text-[var(--gold2)] transition">Abrir app</a>
+          </div>
         </div>
       </footer>
     </main>
