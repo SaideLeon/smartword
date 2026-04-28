@@ -32,7 +32,7 @@ export const NotebookView = () => {
 
   const { handleSendMessage, handleSummarizeDocument } = useChat();
   const { toggleSourceSelection } = useSources();
-  const { suggestedQuestions, isGeneratingSuggestions, generateSuggestions } = useSuggestions();
+  const { suggestedQuestions, isGeneratingSuggestions, generateSuggestions, generateDynamicSuggestions } = useSuggestions();
   const {
     results: semanticResults,
     isSearching: isSemanticSearching,
@@ -53,9 +53,14 @@ export const NotebookView = () => {
 
   useEffect(() => {
     if (sources.length > 0) {
-      generateSuggestions(sources);
+      void generateSuggestions(sources);
     }
-  }, [sources.length]);
+  }, [generateSuggestions, sources]);
+
+  useEffect(() => {
+    if (messages.length === 0 || sources.length === 0) return;
+    void generateDynamicSuggestions(messages, sources);
+  }, [generateDynamicSuggestions, messages, sources]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {

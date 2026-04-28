@@ -100,6 +100,30 @@ export const NotebookService = {
     return postMnotesChat(parts);
   },
 
+  async summarizeSources(sources: Source[]): Promise<string> {
+    const activeSources = sources.filter(source => source.data);
+    if (activeSources.length === 0) throw new Error('Dados das fontes ausentes');
+
+    const parts: GeminiPart[] = [
+      ...activeSources.map((source) => {
+        if (source.type === 'pdf') {
+          return {
+            inlineData: { mimeType: 'application/pdf', data: source.data! },
+          };
+        }
+
+        return {
+          text: `Conteúdo da fonte "${source.name}":\n${decodeBase64Utf8(source.data!)}`,
+        };
+      }),
+      {
+        text: 'Analise todas as fontes em conjunto e gere um único resumo executivo consolidado, com os principais pontos em tópicos.',
+      },
+    ];
+
+    return postMnotesChat(parts);
+  },
+
   async getSuggestions(sources: Source[]): Promise<string[]> {
     const activeSources = sources.filter(s => s.selected && s.data);
     if (activeSources.length === 0) return [];
@@ -120,6 +144,54 @@ export const NotebookService = {
         text: `
           Com base nos documentos fornecidos, gere 3 perguntas curtas e instigantes que um estudante poderia fazer para explorar o conteúdo.
           Retorne APENAS as perguntas, uma por linha, sem números, sem aspas.
+        `,
+      },
+    ];
+
+    const text = await postMnotesChat(parts);
+    return text
+      .split('\n')
+      .map(q => q.trim())
+      .filter(q => q.length > 5 && q.includes('?'))
+      .slice(0, 3);
+  },
+
+  async getDynamicSuggestions(messages: Message[], sources: Source[], notebookTitle: string): Promise<string[]> {
+    const activeSources = sources.filter(source => source.selected && source.data);
+    if (activeSources.length === 0) return [];
+
+    const recentDialogue = messages
+      .slice(-8)
+      .map(message => `${message.role === 'user' ? 'Usuário' : 'Assistente'}: ${message.content}`)
+      .join('\n\n');
+
+    const parts: GeminiPart[] = [
+      ...activeSources.slice(0, 4).map(source => {
+        if (source.type === 'pdf') {
+          return {
+            inlineData: { mimeType: 'application/pdf', data: source.data! },
+          };
+        }
+
+        return {
+          text: `Fonte: ${source.name}\n${decodeBase64Utf8(source.data!)}`,
+        };
+      }),
+      {
+        text: `
+          Você é um agente de sugestões do Muneri Notebooks.
+          Analise o fluxo da conversa abaixo e gere as próximas melhores perguntas para o utilizador aprofundar o estudo.
+
+          Notebook: ${notebookTitle}
+
+          Conversa recente:
+          ${recentDialogue || 'Sem conversa anterior.'}
+
+          Regras:
+          - Gere exatamente 3 perguntas curtas, específicas e úteis para o próximo passo.
+          - Evite repetir perguntas já feitas pelo utilizador.
+          - Priorize lacunas de entendimento, comparação crítica, aplicação prática e síntese.
+          - Retorne APENAS as perguntas, uma por linha, sem números, sem aspas.
         `,
       },
     ];
