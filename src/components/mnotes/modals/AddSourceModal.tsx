@@ -22,8 +22,8 @@ export const AddSourceModal = () => {
     setIsAddSourceModalOpen(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFileUpload(e);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await handleFileUpload(e);
     setIsAddSourceModalOpen(false);
   };
 
@@ -78,11 +78,12 @@ export const AddSourceModal = () => {
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--border)] flex items-center justify-center text-[var(--faint)] group-hover:text-[var(--gold2)] group-hover:bg-[var(--gold2)]/10 transition-colors mb-3 sm:mb-4">
                     <Plus size={24} />
                   </div>
-                  <p className="font-serif text-base sm:text-lg text-[var(--ink)]">Clique para selecionar PDF</p>
-                  <p className="label-mono mt-1 opacity-60 text-[9px] sm:text-[10px]">Suporta apenas arquivos .pdf</p>
+                  <p className="font-serif text-base sm:text-lg text-[var(--ink)]">Clique para selecionar PDFs</p>
+                  <p className="label-mono mt-1 opacity-60 text-[9px] sm:text-[10px]">Suporta múltiplos arquivos .pdf</p>
                   <input 
                     type="file" 
                     accept=".pdf" 
+                    multiple
                     ref={fileInputRef} 
                     className="hidden" 
                     onChange={handleFileChange}
