@@ -32,14 +32,23 @@ export function useSources() {
     addMessage(assistantMessage);
   };
 
-  const autoSummarizeSource = async (source: Source) => {
-    if (!source.data || isLoading) return;
+  const autoSummarizeSources = async (sourcesToSummarize: Source[]) => {
+    const validSources = sourcesToSummarize.filter(source => source.data);
+    if (validSources.length === 0 || isLoading) return;
 
     setIsLoading(true);
     try {
-      const summary = await NotebookService.summarize(source);
+      const summary = validSources.length === 1
+        ? await NotebookService.summarize(validSources[0])
+        : await NotebookService.summarizeSources(validSources);
+
       appendSummaryMessage(summary);
-      logActivity('document_summarized', `${source.name} (auto)`);
+      logActivity(
+        'document_summarized',
+        validSources.length === 1
+          ? `${validSources[0].name} (auto)`
+          : `${validSources.length} fontes (auto)`
+      );
     } catch (error) {
       console.error('Erro no resumo automático da fonte:', error);
     } finally {
@@ -69,11 +78,13 @@ export function useSources() {
         })
       );
 
-      newSources.forEach(({ source, fileName }) => {
+      const uploadedSources = newSources.map(({ source, fileName }) => {
         addSource(source);
         logActivity('source_added', fileName);
-        void autoSummarizeSource(source);
+        return source;
       });
+
+      void autoSummarizeSources(uploadedSources);
     } catch (error) {
       console.error('Erro ao importar arquivos PDF:', error);
     }
@@ -91,7 +102,7 @@ export function useSources() {
     };
     addSource(newSource);
     logActivity('source_added', newSource.name);
-    void autoSummarizeSource(newSource);
+    void autoSummarizeSources([newSource]);
   };
 
   const toggleSourceSelection = (id: string) => {
