@@ -107,30 +107,91 @@ const affiliateSteps = [
 
 const plans = [
   {
-    name: 'Básico',
-    label: 'Grátis para começar',
-    price: '0',
-    features: ['3 trabalhos por mês', 'Exportação em Word', 'Formatação automática'],
+    id: 'free',
+    name: 'Gratuito',
+    label: 'Trial · 5 dias',
+    price: 0,
+    duration: '5 dias',
+    features: ['Trabalhos ilimitados', 'Edições ilimitadas', 'Exportação completa (até 5x)', 'Modo TCC', 'IA Chat', 'Capa automática'],
     cta: 'Começar grátis',
     href: '/app',
-    highlight: false,
-  },
-  {
-    name: 'Pro',
-    label: 'Mais popular',
-    price: '299',
-    features: ['Trabalhos ilimitados', 'IA avançada para TCC', 'Pesquisa automática', 'Suporte prioritário'],
-    cta: 'Assinar Pro',
-    href: '/planos',
     highlight: true,
   },
   {
-    name: 'Afiliado',
-    label: 'Ganhe indicando',
-    price: '0',
-    features: ['Comissão por indicação', 'Dashboard de ganhos', 'Link pessoal', 'Sem custo de entrada'],
-    cta: 'Tornar-se afiliado',
-    href: '/app/afiliados',
+    id: 'avulso_1',
+    name: '1 Trabalho',
+    label: 'Plano avulso',
+    price: 152,
+    duration: null,
+    features: ['1 trabalho', '2 edições', 'Exportação completa', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
+    highlight: false,
+  },
+  {
+    id: 'basico_2',
+    name: '2 Trabalhos',
+    label: 'Mensal · 1 mês',
+    price: 302,
+    duration: '1 mês',
+    features: ['2 trabalhos', '2 edições', 'Exportação completa', 'IA Chat', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
+    highlight: false,
+  },
+  {
+    id: 'standard_3',
+    name: '3 Trabalhos',
+    label: 'Mensal · 1 mês',
+    price: 500,
+    duration: '1 mês',
+    features: ['3 trabalhos', 'Edições ilimitadas', 'Exportação completa', 'IA Chat', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
+    highlight: false,
+  },
+  {
+    id: 'pro_4',
+    name: '4 Trabalhos',
+    label: 'Mensal · 1 mês',
+    price: 605,
+    duration: '1 mês',
+    features: ['4 trabalhos', 'Edições ilimitadas', 'Exportação completa', 'Modo TCC', 'IA Chat', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
+    highlight: false,
+  },
+  {
+    id: 'premium_5',
+    name: '5 Trabalhos',
+    label: 'Mensal · 1 mês',
+    price: 755,
+    duration: '1 mês',
+    features: ['5 trabalhos', 'Edições ilimitadas', 'Exportação completa', 'Modo TCC', 'IA Chat', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
+    highlight: false,
+  },
+  {
+    id: 'pack_10',
+    name: '10 Trabalhos',
+    label: 'Mensal · 1 mês',
+    price: 1510,
+    duration: '1 mês',
+    features: ['10 trabalhos', 'Edições ilimitadas', 'Exportação completa', 'Modo TCC', 'IA Chat', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
+    highlight: false,
+  },
+  {
+    id: 'pack_20',
+    name: '20 Trabalhos',
+    label: 'Mensal · 1 mês',
+    price: 3018,
+    duration: '1 mês',
+    features: ['20 trabalhos', 'Edições ilimitadas', 'Exportação completa', 'Modo TCC', 'IA Chat', 'Capa automática', 'Pagamento: M-Pesa / e-Mola'],
+    cta: 'Escolher plano',
+    href: '/planos',
     highlight: false,
   },
 ];
@@ -415,9 +476,9 @@ export default function LandingPage() {
           </h2>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
-            <article key={plan.name}
+            <article key={plan.id}
               className={`relative flex flex-col rounded-2xl border-2 p-8 transition ${plan.highlight
                 ? 'border-[var(--gold)] bg-[var(--heroRight)] shadow-xl shadow-[var(--gold)]/10'
                 : 'border-[var(--border)] bg-[var(--parchment)]'}`}>
@@ -432,9 +493,9 @@ export default function LandingPage() {
               <h3 className={`mt-2 font-serif text-2xl ${plan.highlight ? 'text-[#f1e8da]' : ''}`}>{plan.name}</h3>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className={`font-mono text-4xl font-bold ${plan.highlight ? 'text-[var(--gold)]' : 'text-[var(--ink)]'}`}>
-                  {plan.price === '0' ? 'Grátis' : `${plan.price} MT`}
+                  {plan.price === 0 ? 'Grátis' : `${plan.price} MT`}
                 </span>
-                {plan.price !== '0' && <span className="font-mono text-xs text-[var(--faint)]">/mês</span>}
+                {plan.price !== 0 && <span className="font-mono text-xs text-[var(--faint)]">{plan.duration ? `/${plan.duration}` : ''}</span>}
               </div>
               <ul className="mt-6 flex-1 space-y-3">
                 {plan.features.map(f => (
@@ -448,7 +509,7 @@ export default function LandingPage() {
                 className={`mt-8 flex items-center justify-center gap-2 rounded-lg py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] transition ${plan.highlight
                   ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-black shadow-lg hover:scale-[1.02]'
                   : 'border-2 border-[var(--border)] text-[var(--ink)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]'}`}>
-                {plan.name === 'Afiliado' ? <Handshake size={14} /> : <Zap size={14} />}
+                <Zap size={14} />
                 {plan.cta}
               </a>
             </article>
