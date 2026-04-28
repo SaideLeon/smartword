@@ -2,38 +2,49 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Plus, 
-  X, 
-  Send, 
-  Search, 
+import {
+  Plus,
+  X,
+  Send,
+  Search,
   SquareChevronRight,
-  Check
+  Check,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAppStore } from '@/store/app-store';
 import { useChat } from '@/hooks/mnotes/useChat';
 import { useSources } from '@/hooks/mnotes/useSources';
 import { useSuggestions } from '@/hooks/mnotes/useSuggestions';
+import { useSemanticSearch } from '@/hooks/mnotes/useSemanticSearch';
 
 export const NotebookView = () => {
-  const { 
-    selectedNotebook, 
-    sources, 
-    isSidebarOpen, 
-    setIsSidebarOpen, 
-    messages, 
+  const {
+    selectedNotebook,
+    sources,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    messages,
     isLoading,
     highlightedSourceId,
     setHighlightedSourceId,
-    setIsAddSourceModalOpen
+    setIsAddSourceModalOpen,
   } = useAppStore();
 
   const { handleSendMessage, handleSummarizeDocument } = useChat();
   const { toggleSourceSelection } = useSources();
   const { suggestedQuestions, isGeneratingSuggestions, generateSuggestions } = useSuggestions();
-  
+  const {
+    results: semanticResults,
+    isSearching: isSemanticSearching,
+    isIndexing: isSemanticIndexing,
+    error: semanticError,
+    indexedCount,
+    search: semanticSearch,
+    rebuildIndex,
+  } = useSemanticSearch(sources, selectedNotebook?.id);
+
   const [inputValue, setInputValue] = useState('');
+  const [semanticQuery, setSemanticQuery] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +57,14 @@ export const NotebookView = () => {
     }
   }, [sources.length]);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      void semanticSearch(semanticQuery);
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [semanticQuery, semanticSearch]);
+
   const handleCitationClick = (citeId: number) => {
     const activeSources = sources.filter(s => s.selected || s.data);
     const source = activeSources[citeId - 1];
@@ -57,17 +76,16 @@ export const NotebookView = () => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       key="notebook"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="flex h-full overflow-hidden"
     >
-      {/* Left Panel: Sources */}
       <AnimatePresence>
         {(isSidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 768)) && (
-          <motion.aside 
+          <motion.aside
             initial={{ x: -300 }}
             animate={{ x: 0 }}
             exit={{ x: -300 }}
@@ -83,26 +101,60 @@ export const NotebookView = () => {
                 <SquareChevronRight size={16} />
               </button>
             </div>
-        
+
             <div className="p-4 space-y-4">
               <div className="bg-[var(--parchment)] border border-[var(--border)] rounded-xl p-4">
                 <h3 className="label-mono mb-2 text-[var(--faint)]">Processar Documentos</h3>
-                <button 
-                   onClick={() => setIsAddSourceModalOpen(true)}
-                   className="btn-gold w-full flex items-center justify-center gap-2 bg-[var(--gold)] text-black rounded-lg py-2 font-medium"
+                <button
+                  onClick={() => setIsAddSourceModalOpen(true)}
+                  className="btn-gold w-full flex items-center justify-center gap-2 bg-[var(--gold)] text-black rounded-lg py-2 font-medium"
                 >
                   <Plus size={14} /> Adicionar Fonte
                 </button>
+                <button
+                  onClick={() => void rebuildIndex()}
+                  disabled={isSemanticIndexing}
+                  className="mt-2 w-full border border-[var(--border)] rounded-lg py-2 text-[10px] font-semibold text-[var(--gold2)] hover:bg-[var(--gold2)]/10 transition-all disabled:opacity-50"
+                >
+                  {isSemanticIndexing ? 'Indexando no Supabase...' : `Atualizar índice (${indexedCount})`}
+                </button>
               </div>
-              
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--faint)]" size={14} />
-                <input 
-                  type="text" 
-                  placeholder="Busca semântica..." 
+                <input
+                  value={semanticQuery}
+                  onChange={(e) => setSemanticQuery(e.target.value)}
+                  type="text"
+                  placeholder="Busca semântica (Supabase)..."
                   className="w-full bg-transparent border border-[var(--border)] rounded-xl pl-10 pr-4 py-2.5 text-xs text-[var(--ink)] placeholder:text-[var(--faint)] focus:border-[var(--gold2)] outline-none transition-all shadow-sm"
                 />
               </div>
+
+              {(isSemanticSearching || semanticQuery.trim() || semanticError) && (
+                <div className="border border-[var(--border)] rounded-xl p-3 max-h-44 overflow-y-auto space-y-2">
+                  {isSemanticSearching && <p className="text-[10px] text-[var(--faint)]">A consultar embeddings...</p>}
+                  {semanticError && <p className="text-[10px] text-red-400">{semanticError}</p>}
+                  {!isSemanticSearching && semanticQuery.trim() && semanticResults.length === 0 && !semanticError && (
+                    <p className="text-[10px] text-[var(--faint)]">Sem resultados semânticos.</p>
+                  )}
+                  {semanticResults.map((result) => (
+                    <button
+                      key={result.sourceId}
+                      onClick={() => {
+                        setHighlightedSourceId(result.sourceId);
+                        document.getElementById(`source-${result.sourceId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        setTimeout(() => setHighlightedSourceId(null), 3000);
+                      }}
+                      className="w-full text-left p-2 rounded-lg hover:bg-[var(--gold2)]/10 transition-colors"
+                    >
+                      <p className="text-[10px] font-semibold text-[var(--gold2)] truncate">{result.sourceName}</p>
+                      <p className="text-[9px] text-[var(--faint)] truncate">{result.preview}</p>
+                      <p className="text-[8px] text-[var(--muted)] mt-1">Score: {result.score.toFixed(3)}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-6">
@@ -111,16 +163,16 @@ export const NotebookView = () => {
                   <span>Inventário Activo</span>
                   <span className="text-[var(--gold2)]">{sources.filter(s => s.selected).length} Sel.</span>
                 </div>
-                
+
                 <div className="space-y-2">
                   {sources.map((source) => (
-                    <div 
+                    <div
                       key={source.id}
                       id={`source-${source.id}`}
                       onClick={() => toggleSourceSelection(source.id)}
                       className={`p-3 bg-[var(--parchment)] border transition-all relative overflow-hidden rounded-xl cursor-pointer hover:border-[var(--gold2)] group ${
-                        source.id === highlightedSourceId 
-                          ? 'border-[var(--gold2)] ring-2 ring-[var(--gold2)]/20 scale-[1.02]' 
+                        source.id === highlightedSourceId
+                          ? 'border-[var(--gold2)] ring-2 ring-[var(--gold2)]/20 scale-[1.02]'
                           : source.selected ? 'border-[var(--gold2)]/40' : 'border-[var(--border)]'
                       }`}
                     >
@@ -142,7 +194,7 @@ export const NotebookView = () => {
                         </div>
                       </div>
                       {source.selected && source.data && (
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSummarizeDocument(source.id);
@@ -161,16 +213,15 @@ export const NotebookView = () => {
         )}
       </AnimatePresence>
 
-      {/* Middle Panel: Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-[var(--parchment)] relative">
         <header className="p-3 sm:p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--navBg)]/90 backdrop-blur-md sticky top-0 z-[5]">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <span className="label-mono shrink-0 hidden sm:inline">Diálogo Analítico</span>
             <div className="h-4 w-px bg-[var(--border)] hidden sm:block"></div>
             <div className="flex items-center gap-2 min-w-0">
-               <span className="text-[11px] font-serif italic text-[var(--gold2)] truncate">
-                 {selectedNotebook?.title}
-               </span>
+              <span className="text-[11px] font-serif italic text-[var(--gold2)] truncate">
+                {selectedNotebook?.title}
+              </span>
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -196,27 +247,27 @@ export const NotebookView = () => {
           )}
 
           {messages.map((msg) => (
-            <motion.div 
+            <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl shadow-sm ${
-                msg.role === 'user' 
-                  ? 'bg-[var(--gold)]/10 border border-[var(--gold)]/20 text-[var(--ink)]' 
-                  : 'bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]'
+                msg.role === 'user'
+                  ? 'bg-[var(--gold)]/10 border border-[var(--gold)]/20 text-[var(--ink)]'
+                  : 'bg-[color:rgba(201,169,110,0.10)] border border-[color:rgba(201,169,110,0.35)] text-[var(--ink)] shadow-[0_0_0_1px_rgba(201,169,110,0.12)]'
               }`}>
-                <div className={`prose prose-sm prose-invert max-w-none ${msg.role === 'user' ? 'text-[var(--ink)]' : 'text-[var(--muted)]'} text-xs sm:text-sm`}>
+                <div className={`prose prose-sm prose-invert max-w-none ${msg.role === 'user' ? 'text-[var(--ink)] text-sm sm:text-base' : 'text-[var(--ink)] text-[15px] sm:text-[17px] leading-relaxed'} `}>
                   <ReactMarkdown
                     components={{
-                       a: ({...props }) => {
+                      a: ({ ...props }) => {
                         const content = String(props.children);
-                        const match = content.match(/\[Doc (\d+)\]/);
+                        const match = content.match(/\[(?:Fonte|Doc) (\d+)\]/i);
                         if (match) {
                           const citeId = parseInt(match[1], 10);
                           return (
-                            <button 
+                            <button
                               onClick={() => handleCitationClick(citeId)}
                               className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[var(--gold2)]/10 text-[var(--gold2)] rounded border border-[var(--gold2)]/20 hover:bg-[var(--gold2)]/20 transition-colors mx-0.5 font-bold"
                             >
@@ -225,7 +276,7 @@ export const NotebookView = () => {
                           );
                         }
                         return <a {...props} className="text-[var(--gold2)] underline" />;
-                      }
+                      },
                     }}
                   >
                     {msg.content}
@@ -234,7 +285,7 @@ export const NotebookView = () => {
                 {msg.citations && msg.citations.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-[var(--border)] flex flex-wrap gap-2">
                     {msg.citations.map(citeId => (
-                      <button 
+                      <button
                         key={citeId}
                         onClick={() => handleCitationClick(citeId)}
                         className="text-[9px] font-mono px-2 py-1 bg-[var(--border)]/30 rounded-lg hover:bg-[var(--gold2)]/20 hover:text-[var(--gold2)] transition-all"
@@ -260,10 +311,9 @@ export const NotebookView = () => {
         </div>
 
         <div className="p-4 sm:p-6 bg-[var(--navBg)]/90 backdrop-blur-md border-t border-[var(--border)]">
-          {/* Suggested Questions */}
           {(isGeneratingSuggestions || suggestedQuestions.length > 0) && (
             <div className="mx-auto max-w-4xl mb-4 sm:mb-6 overflow-x-auto no-scrollbar pb-2">
-               <div className="flex gap-2 min-w-max">
+              <div className="flex gap-2 min-w-max">
                 {isGeneratingSuggestions ? (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--border)] bg-[var(--parchment)] animate-pulse">
                     <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold2)] animate-ping"></div>
@@ -271,7 +321,7 @@ export const NotebookView = () => {
                   </div>
                 ) : (
                   suggestedQuestions.map((q, idx) => (
-                    <button 
+                    <button
                       key={idx}
                       onClick={() => handleSendMessage(q)}
                       className="px-3 sm:px-4 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--parchment)] text-[9px] sm:text-[10px] text-[var(--muted)] hover:border-[var(--gold2)] hover:text-[var(--gold2)] hover:bg-[var(--gold2)]/10 transition-all text-left max-w-[200px] sm:max-w-xs truncate shadow-sm animate-in fade-in slide-in-from-left-2 duration-500"
@@ -286,7 +336,7 @@ export const NotebookView = () => {
           )}
 
           <div className="mx-auto max-w-4xl relative">
-            <textarea 
+            <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
@@ -300,7 +350,7 @@ export const NotebookView = () => {
               rows={1}
               className="w-full bg-transparent border border-[var(--border)] rounded-2xl px-5 py-4 text-sm text-[var(--ink)] placeholder:text-[var(--faint)] outline-none focus:border-[var(--gold2)] transition-all resize-none shadow-lg pl-6 pr-14"
             />
-            <button 
+            <button
               onClick={() => {
                 handleSendMessage(inputValue);
                 setInputValue('');
