@@ -100,6 +100,30 @@ export const NotebookService = {
     return postMnotesChat(parts);
   },
 
+  async summarizeSources(sources: Source[]): Promise<string> {
+    const activeSources = sources.filter(source => source.data);
+    if (activeSources.length === 0) throw new Error('Dados das fontes ausentes');
+
+    const parts: GeminiPart[] = [
+      ...activeSources.map((source) => {
+        if (source.type === 'pdf') {
+          return {
+            inlineData: { mimeType: 'application/pdf', data: source.data! },
+          };
+        }
+
+        return {
+          text: `Conteúdo da fonte "${source.name}":\n${decodeBase64Utf8(source.data!)}`,
+        };
+      }),
+      {
+        text: 'Analise todas as fontes em conjunto e gere um único resumo executivo consolidado, com os principais pontos em tópicos.',
+      },
+    ];
+
+    return postMnotesChat(parts);
+  },
+
   async getSuggestions(sources: Source[]): Promise<string[]> {
     const activeSources = sources.filter(s => s.selected && s.data);
     if (activeSources.length === 0) return [];
