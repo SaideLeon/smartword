@@ -34,9 +34,13 @@ export function useChat() {
       );
 
       // Extract citation IDs using regex
-      const citationMatches = text.match(/\[Doc (\d+)(?:, pg (\d+))?\]/g);
-      const uniqueCitations = citationMatches 
-        ? Array.from(new Set(citationMatches.map(m => parseInt(m.match(/\[Doc (\d+)/)![1]))))
+      const citationMatches = text.match(/\[(?:Fonte|Doc) (\d+)(?:,?\s*pg\s*(\d+))?\]/gi);
+      const uniqueCitations = citationMatches
+        ? Array.from(new Set(
+            citationMatches
+              .map(m => parseInt((m.match(/\[(?:Fonte|Doc) (\d+)/i) || [])[1] || '0', 10))
+              .filter(n => n > 0),
+          ))
         : [];
 
       const assistantMessage: Message = {

@@ -263,7 +263,7 @@ export const NotebookView = () => {
                     components={{
                       a: ({ ...props }) => {
                         const content = String(props.children);
-                        const match = content.match(/\[Doc (\d+)\]/);
+                        const match = content.match(/\[(?:Fonte|Doc) (\d+)\]/i);
                         if (match) {
                           const citeId = parseInt(match[1], 10);
                           return (
