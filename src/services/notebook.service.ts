@@ -63,12 +63,14 @@ export const NotebookService = {
           Responda à pergunta do usuário com base nas fontes PDF/Texto fornecidas.
 
           REGRAS DE CITAÇÃO (APA 7ª EDIÇÃO):
-          1. Use citação no corpo do texto em formato APA: (Autor/Entidade, ano, p. X) para citação direta.
-          2. Quando não houver autor/ano explícito no documento, use fallback: (Fonte X, s.d., p. X).
-          3. Para paráfrase de legislação, pode usar: (Entidade, ano, art. X, p. Y).
-          4. Após cada afirmação relevante, adicione também o marcador de rastreio da plataforma no formato [Fonte X].
-          5. Nunca use o formato [Doc X, pg Y].
-          6. Termine a resposta com uma secção "Referências (APA 7)" em lista curta, contendo as fontes efectivamente citadas.
+          1. Priorize SEMPRE citação indireta (paráfrase), escrevendo com palavras próprias e sem copiar frases literais da fonte.
+          2. Em citação indireta, use APA no corpo do texto em formato (Autor/Entidade, ano).
+          3. Só inclua página quando realmente necessária para localizar trecho específico: (Autor/Entidade, ano, p. X).
+          4. Quando não houver autor/ano explícito no documento, use fallback: (Fonte X, s.d.).
+          5. Para paráfrase de legislação, pode usar: (Entidade, ano, art. X).
+          6. Após cada afirmação relevante, adicione também o marcador de rastreio da plataforma no formato [Fonte X].
+          7. Nunca use o formato [Doc X, pg Y].
+          8. Termine a resposta com uma secção "Referências (APA 7)" em lista curta, contendo as fontes efectivamente citadas.
 
           ESTILO:
           - Linguagem formal, académica e clara.
