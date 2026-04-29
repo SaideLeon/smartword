@@ -1,0 +1,56 @@
+# robots.txt — SEO avançado
+# Ambiente de produção: ajuste o domínio no Sitemap/Host quando necessário.
+
+# Regras globais
+User-agent: *
+Allow: /
+
+# Evitar indexação de áreas privadas e rotas utilitárias
+Disallow: /admin/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /premium/
+Disallow: /offline/
+
+# Evitar rastreio de parâmetros e arquivos técnicos sem valor de SEO
+Disallow: /*?*
+Disallow: /sw.js
+Disallow: /*.json$
+
+# Permitir assets essenciais
+Allow: /icon.svg
+Allow: /apple-icon.svg
+Allow: /icon-*.png
+
+# Bots de busca principais: prioridade para rastreio eficiente
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /premium/
+Disallow: /offline/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /premium/
+Disallow: /offline/
+Crawl-delay: 2
+
+# Bots agressivos: reduzir carga
+User-agent: AhrefsBot
+Crawl-delay: 10
+Disallow: /
+
+User-agent: SemrushBot
+Crawl-delay: 10
+Disallow: /
+
+# Descoberta de sitemap
+Sitemap: /sitemap.xml
