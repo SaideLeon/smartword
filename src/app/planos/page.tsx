@@ -3,12 +3,23 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { Sun, Moon, ArrowDown, ChevronRight } from 'lucide-react';
+import {
+  ArrowLeft,
+  BarChart3,
+  CheckCircle2,
+  MessageSquare,
+  Moon,
+  Sun,
+  Sparkles,
+  FileDown,
+  BookOpen,
+  XCircle,
+  Zap,
+} from 'lucide-react';
 import { supabaseClient, useAuth } from '@/hooks/useAuth';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
-const EXCHANGE_RATE = 64.05;
-
+/* ─── Tipos ─── */
 interface PlanRow {
   key: string;
   label: string;
@@ -23,535 +34,369 @@ interface PlanRow {
   export_full: boolean;
 }
 
-type PaymentApiErrorPayload = {
-  error?: string;
-  message?: string;
-  retry_after?: number;
+type PaymentApiErrorPayload = { error?: string; message?: string; retry_after?: number };
+
+/* ─── Helpers ─── */
+function formatRetryAfter(s: number) {
+  const t = Math.max(0, Math.floor(s));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
+
+function mapPaymentError(p: PaymentApiErrorPayload | null | undefined): string {
+  if (!p) return 'Erro inesperado ao iniciar pagamento.';
+  if (p.error === 'PAYMENT_ATTEMPT_LIMIT') {
+    const retry = typeof p.retry_after === 'number' ? ` Tente em ${formatRetryAfter(p.retry_after)}.` : '';
+    return `Já iniciou um pagamento recentemente. Finalize-o ou aguarde antes de tentar novamente.${retry}`;
+  }
+  if (p.error === 'PAYMENT_ALREADY_REGISTERED')
+    return 'Já existe um pagamento iniciado para este plano. Atualize a página e continue no checkout anterior.';
+  return p.message || p.error || 'Falha ao iniciar pagamento.';
+}
+
+const FEATURE_ICONS: Record<string, React.ReactNode> = {
+  works:    <BarChart3 size={13} />,
+  edits:    <Sparkles size={13} />,
+  export:   <FileDown size={13} />,
+  tcc:      <BookOpen size={13} />,
+  chat:     <MessageSquare size={13} />,
+  cover:    <Zap size={13} />,
 };
 
-function formatUsd(value: number) {
-  return value === 0 ? '—' : `$${Number(value).toFixed(2)}`;
+function featureList(plan: PlanRow) {
+  return [
+    { key: 'works',  label: 'Trabalhos',          value: plan.works_limit == null ? 'Ilimitados' : String(plan.works_limit), ok: true },
+    { key: 'edits',  label: 'Edições',             value: plan.edits_limit == null ? 'Ilimitadas' : String(plan.edits_limit), ok: true },
+    { key: 'export', label: 'Exportação completa', value: plan.export_full ? 'Sim' : 'Não', ok: plan.export_full },
+    { key: 'tcc',    label: 'Modo TCC',            value: plan.tcc_enabled ? 'Sim' : 'Não', ok: plan.tcc_enabled },
+    { key: 'chat',   label: 'IA Chat',             value: plan.ai_chat_enabled ? 'Sim' : 'Não', ok: plan.ai_chat_enabled },
+    { key: 'cover',  label: 'Capa automática',     value: plan.cover_enabled ? 'Sim' : 'Não', ok: plan.cover_enabled },
+  ];
 }
 
-function formatRetryAfter(seconds: number) {
-  const total = Math.max(0, Math.floor(seconds));
-  const mins = Math.floor(total / 60);
-  const secs = total % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
-}
-
-function mapPaymentError(payload: PaymentApiErrorPayload | null | undefined): string {
-  if (!payload) return 'Erro inesperado ao iniciar pagamento.';
-
-  if (payload.error === 'PAYMENT_ATTEMPT_LIMIT') {
-    const retryText =
-      typeof payload.retry_after === 'number'
-        ? ` Tente novamente em ${formatRetryAfter(payload.retry_after)}.`
-        : '';
-    return `Você já iniciou um pagamento recentemente. Finalize esse pagamento ou aguarde alguns minutos antes de tentar novamente.${retryText}`;
-  }
-
-  if (payload.error === 'PAYMENT_ALREADY_REGISTERED') {
-    return 'Já existe um pagamento iniciado para este plano. Atualize a página e continue no checkout anterior.';
-  }
-
-  return payload.message || payload.error || 'Falha ao iniciar pagamento.';
-}
-
-function PlanosNav({
-  themeMode,
-  onToggleTheme,
-}: {
-  themeMode: 'dark' | 'light';
-  onToggleTheme: () => void;
-}) {
+/* ─── Nav ─── */
+function Nav({ themeMode, onToggleTheme }: { themeMode: 'dark' | 'light'; onToggleTheme: () => void }) {
   return (
-    <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/90 px-4 py-3 backdrop-blur md:px-12 md:py-4">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
-        <div className="flex items-center justify-between md:justify-start md:gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] font-mono text-sm font-bold text-black">
-              <Image src="/icon.svg" alt="Muneri logo" width={20} height={20} className="h-5 w-5" />
+    <nav className="sticky top-0 z-50 border-b border-[var(--border)]/80 bg-[var(--navBg)]/95 backdrop-blur">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-5 md:px-8">
+        <div className="flex items-center gap-3">
+          <Link href="/landing" className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:text-[var(--gold2)]">
+            <ArrowLeft size={12} /> Voltar
+          </Link>
+          <span className="text-[var(--border)]">·</span>
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)]">
+              <Image src="/icon.svg" alt="Muneri" width={16} height={16} />
             </div>
-            <span className="font-serif text-xl italic text-[var(--gold2)]">Muneri</span>
-          </div>
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-              aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-            >
-              {themeMode === 'dark' ? (
-                <>
-                  <Sun size={11} /> Claro
-                </>
-              ) : (
-                <>
-                  <Moon size={11} /> Escuro
-                </>
-              )}
-            </button>
-            <Link
-              href="/app"
-              className="flex items-center gap-1 rounded bg-[var(--ink)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]"
-            >
-              <ArrowDown size={11} /> Abrir
-            </Link>
+            <span className="font-serif text-base italic text-[var(--gold2)]">Muneri</span>
           </div>
         </div>
 
-        <ul className="hidden items-center gap-8 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted)] md:flex">
-          <li>
-            <Link href="/#features" className="hover:text-[var(--gold2)]">
-              Vantagens
-            </Link>
-          </li>
-          <li>
-            <Link href="/#modos" className="hover:text-[var(--gold2)]">
-              Para quem é
-            </Link>
-          </li>
-          <li>
-            <Link href="/#resultado" className="hover:text-[var(--gold2)]">
-              Resultado final
-            </Link>
-          </li>
-          <li>
-            <Link href="/planos" className="text-[var(--gold2)]">
-              Planos
-            </Link>
-          </li>
-        </ul>
-
-        <div className="hidden items-center gap-2 md:flex">
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="flex items-center gap-1.5 rounded border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
-            aria-label={themeMode === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-          >
-            {themeMode === 'dark' ? (
-              <>
-                <Sun size={12} /> Claro
-              </>
-            ) : (
-              <>
-                <Moon size={12} /> Escuro
-              </>
-            )}
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={onToggleTheme}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+            {themeMode === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
           </button>
-          <Link
-            href="/app"
-            className="flex items-center gap-1.5 rounded bg-[var(--ink)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--parchment)] transition hover:bg-[var(--gold2)]"
-          >
-            <ArrowDown size={12} /> Abrir app
+          <Link href="/app"
+            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-black">
+            <Zap size={12} /> Abrir app
           </Link>
         </div>
-
-        {/* Mobile nav links */}
-        <ul className="flex w-full items-center gap-5 overflow-x-auto pb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--muted)] md:hidden">
-          <li>
-            <Link href="/#features" className="whitespace-nowrap hover:text-[var(--gold2)]">
-              Vantagens
-            </Link>
-          </li>
-          <li>
-            <Link href="/#modos" className="whitespace-nowrap hover:text-[var(--gold2)]">
-              Para quem é
-            </Link>
-          </li>
-          <li>
-            <Link href="/#resultado" className="whitespace-nowrap hover:text-[var(--gold2)]">
-              Resultado final
-            </Link>
-          </li>
-          <li>
-            <Link href="/planos" className="whitespace-nowrap text-[var(--gold2)]">
-              Planos
-            </Link>
-          </li>
-        </ul>
       </div>
     </nav>
   );
 }
 
+/* ─── Card de plano ─── */
+function PlanCard({
+  plan,
+  isCurrent,
+  isHighlight,
+  paymentMethod,
+  onChangeMethod,
+  onPay,
+  submitting,
+  feedback,
+}: {
+  plan: PlanRow;
+  isCurrent: boolean;
+  isHighlight: boolean;
+  paymentMethod: 'mpesa' | 'emola' | 'card';
+  onChangeMethod: (m: 'mpesa' | 'emola' | 'card') => void;
+  onPay: () => void;
+  submitting: boolean;
+  feedback: { type: 'success' | 'error'; text: string } | null;
+}) {
+  const isFree = Number(plan.price_mzn) < 1;
+  const features = featureList(plan);
+
+  return (
+    <article className={`relative flex flex-col rounded-2xl border-2 p-7 transition ${
+      isHighlight
+        ? 'border-[var(--gold)] bg-[var(--heroRight)] shadow-xl shadow-[var(--gold)]/10'
+        : 'border-[var(--border)] bg-[var(--surface)]'
+    }`}>
+      {isHighlight && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+          <span className="rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--gold2)] px-4 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-black">
+            ★ Recomendado
+          </span>
+        </div>
+      )}
+
+      {isCurrent && (
+        <div className="mb-4 flex items-center gap-1.5 rounded-lg border border-[var(--green)]/30 bg-[var(--green)]/10 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--green)]">
+          <CheckCircle2 size={11} /> Plano actual
+        </div>
+      )}
+
+      {/* Nome + duração */}
+      <div className="mb-5">
+        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--faint)]">{plan.key}</p>
+        <h3 className={`mt-1 font-serif text-2xl ${isHighlight ? 'text-[#f1e8da]' : 'text-[var(--ink)]'}`}>{plan.label}</h3>
+        <p className="font-mono text-[10px] text-[var(--faint)]">
+          {plan.duration_months > 0 ? `Renovação mensal · ${plan.duration_months} mês(es)` : 'Cobrança por obra'}
+        </p>
+      </div>
+
+      {/* Preço */}
+      <div className={`mb-6 rounded-xl border px-5 py-4 ${isHighlight ? 'border-[var(--gold)]/20 bg-[#0f0e0d]' : 'border-[var(--border)] bg-[var(--parchment)]'}`}>
+        {isFree ? (
+          <p className={`font-serif text-4xl ${isHighlight ? 'text-[var(--gold)]' : 'text-[var(--ink)]'}`}>Grátis</p>
+        ) : (
+          <>
+            <p className={`font-serif text-4xl font-medium ${isHighlight ? 'text-[var(--gold)]' : 'text-[var(--ink)]'}`}>
+              {Number(plan.price_mzn).toLocaleString('pt-BR')}
+              <span className="font-mono text-lg font-normal text-[var(--faint)]"> MT</span>
+            </p>
+            {plan.price_usd > 0 && (
+              <p className="mt-0.5 font-mono text-[11px] text-[var(--faint)]">≈ ${plan.price_usd.toFixed(2)} USD</p>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Features */}
+      <ul className="mb-6 flex-1 space-y-2.5">
+        {features.map(f => (
+          <li key={f.key} className="flex items-center justify-between gap-3">
+            <span className={`flex items-center gap-2 text-sm ${isHighlight ? 'text-[#c8bfb4]' : 'text-[var(--muted)]'}`}>
+              <span className={f.ok ? 'text-[var(--gold2)]' : 'text-[var(--faint)]'}>{FEATURE_ICONS[f.key]}</span>
+              {f.label}
+            </span>
+            <span className={`font-mono text-[11px] font-semibold ${f.ok ? isHighlight ? 'text-[var(--gold)]' : 'text-[var(--green)]' : 'text-[var(--faint)]'}`}>
+              {f.value}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Método de pagamento */}
+      {!isFree && (
+        <div className="mb-4">
+          <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--faint)]">
+            Método de pagamento
+          </label>
+          <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-1">
+            {(['mpesa', 'emola', 'card'] as const).map(m => (
+              <button key={m} type="button" onClick={() => onChangeMethod(m)}
+                className={`rounded-md py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] transition ${
+                  paymentMethod === m
+                    ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-black font-semibold'
+                    : 'text-[var(--muted)] hover:text-[var(--ink)]'
+                }`}>
+                {m === 'mpesa' ? 'M-Pesa' : m === 'emola' ? 'e-Mola' : 'Cartão'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Feedback */}
+      {feedback && (
+        <div className={`mb-3 flex items-start gap-2 rounded-lg border px-3 py-2.5 font-mono text-[11px] leading-relaxed ${
+          feedback.type === 'success'
+            ? 'border-[var(--green)]/30 bg-[var(--green)]/10 text-[var(--green)]'
+            : 'border-red-500/30 bg-red-500/10 text-red-400'
+        }`}>
+          {feedback.type === 'success' ? <CheckCircle2 size={12} className="mt-0.5 shrink-0" /> : <XCircle size={12} className="mt-0.5 shrink-0" />}
+          {feedback.text}
+        </div>
+      )}
+
+      {/* CTA */}
+      <button type="button" onClick={onPay} disabled={submitting || isFree}
+        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-mono text-[12px] font-bold uppercase tracking-[0.08em] transition disabled:opacity-50 ${
+          isHighlight
+            ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-black shadow-lg hover:scale-[1.01]'
+            : 'border-2 border-[var(--border)] text-[var(--ink)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]'
+        }`}>
+        {submitting
+          ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> A iniciar…</>
+          : isFree
+            ? <><CheckCircle2 size={14} /> Plano actual</>
+            : <><Zap size={14} /> Comprar {plan.label}</>}
+      </button>
+    </article>
+  );
+}
+
+/* ════════════════════════════════════════════
+   PÁGINA
+════════════════════════════════════════════ */
 export default function PlanosPage() {
   const { themeMode, toggleThemeMode } = useThemeMode();
   const { profile } = useAuth();
+
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
-  const [paymentMethods, setPaymentMethods] = useState<
-    Record<string, 'mpesa' | 'emola' | 'card'>
-  >({});
+  const [paymentMethods, setPaymentMethods] = useState<Record<string, 'mpesa' | 'emola' | 'card'>>({});
   const [submittingPlan, setSubmittingPlan] = useState<string | null>(null);
-  const [feedbackByPlan, setFeedbackByPlan] = useState<
-    Record<string, { type: 'success' | 'error'; text: string }>
-  >({});
+  const [feedbackByPlan, setFeedbackByPlan] = useState<Record<string, { type: 'success' | 'error'; text: string }>>({});
 
-  const themeVars =
-    themeMode === 'dark'
-      ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--gold:#d4b37b] [--gold2:#c9a96e] [--muted:#c8bfb4] [--faint:#8a7d6e] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--navBg:#0f0e0d] [--heroRight:#090908]'
-      : '[--ink:#0f0e0d] [--parchment:#f5f0e8] [--gold:#c9a96e] [--gold2:#8b6914] [--muted:#6b6254] [--faint:#c4b8a4] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--navBg:#f5f0e8] [--heroRight:#1e1a14]';
+  const themeVars = themeMode === 'dark'
+    ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--gold:#d4b37b] [--gold2:#c9a96e] [--muted:#c8bfb4] [--faint:#8a7d6e] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--navBg:#0f0e0d] [--heroRight:#090908] [--surface:#141210]'
+    : '[--ink:#0f0e0d] [--parchment:#f5f0e8] [--gold:#c9a96e] [--gold2:#8b6914] [--muted:#6b6254] [--faint:#c4b8a4] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--navBg:#f5f0e8] [--heroRight:#1e1a14] [--surface:#ece8df]';
 
   useEffect(() => {
-    async function loadPlans() {
+    (async () => {
       const { data } = await supabaseClient
-        .from('plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price_mzn', { ascending: true });
+        .from('plans').select('*').eq('is_active', true).order('price_mzn', { ascending: true });
       setPlans((data as PlanRow[]) ?? []);
       setLoadingPlans(false);
-    }
-    void loadPlans();
+    })();
   }, []);
 
   async function startPayment(plan: PlanRow) {
-    if (Number(plan.price_mzn) < 1) {
-      setFeedbackByPlan((prev) => ({
-        ...prev,
-        [plan.key]: {
-          type: 'error',
-          text: 'O plano gratuito não requer checkout. Pode continuar a usar sem pagar.',
-        },
-      }));
-      return;
-    }
-
-    const paymentMethod = paymentMethods[plan.key] ?? 'mpesa';
-
+    if (Number(plan.price_mzn) < 1) return;
+    const method = paymentMethods[plan.key] ?? 'mpesa';
     setSubmittingPlan(plan.key);
-    setFeedbackByPlan((prev) => {
-      const updated = { ...prev };
-      delete updated[plan.key];
-      return updated;
-    });
-
+    setFeedbackByPlan(p => { const n = { ...p }; delete n[plan.key]; return n; });
     try {
       const res = await fetch('/api/payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plan_key: plan.key,
-          payment_method: paymentMethod,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_key: plan.key, payment_method: method }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(mapPaymentError(data as PaymentApiErrorPayload));
-      if (typeof data?.checkout_url !== 'string' || !data.checkout_url) {
-        throw new Error('Link de checkout não recebido da PaySuite.');
-      }
-
-      setFeedbackByPlan((prev) => ({
-        ...prev,
-        [plan.key]: {
-          type: 'success',
-          text: 'Pedido criado. A redireccionar para o checkout seguro...',
-        },
-      }));
+      if (typeof data?.checkout_url !== 'string') throw new Error('Link de checkout não recebido.');
+      setFeedbackByPlan(p => ({ ...p, [plan.key]: { type: 'success', text: 'A redireccionar para o checkout…' } }));
       window.location.assign(data.checkout_url);
-    } catch (error: any) {
-      setFeedbackByPlan((prev) => ({
-        ...prev,
-        [plan.key]: { type: 'error', text: error?.message || 'Erro inesperado ao iniciar pagamento.' },
-      }));
-    } finally {
-      setSubmittingPlan(null);
-    }
+    } catch (e: any) {
+      setFeedbackByPlan(p => ({ ...p, [plan.key]: { type: 'error', text: e?.message || 'Erro inesperado.' } }));
+    } finally { setSubmittingPlan(null); }
   }
 
+  /* Plano do meio como destaque (ou o segundo se só houver 2) */
+  const highlightIdx = plans.length > 1 ? Math.floor(plans.length / 2) : 0;
+
   return (
-    <main className={`${themeVars} min-h-screen bg-[var(--parchment)] text-[var(--ink)]`}>
-      <PlanosNav themeMode={themeMode} onToggleTheme={toggleThemeMode} />
+    <div className={`${themeVars} flex min-h-screen flex-col bg-[var(--parchment)] text-[var(--ink)]`}>
+      <Nav themeMode={themeMode} onToggleTheme={toggleThemeMode} />
 
-      {/* ── HERO ── */}
-      <section className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-6 md:px-12 md:py-16">
-        <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--green)]">
-          Muneri · Planos e preçário
-        </p>
-        <h1 className="mt-3 font-serif text-[1.9rem] leading-[1.2] sm:text-4xl md:text-5xl md:leading-tight lg:text-6xl">
-          Escolha o plano certo para{' '}
-          <em className="text-[var(--gold2)]">o seu trabalho académico.</em>
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-          Plano actual:{' '}
-          <span className="font-mono text-[var(--gold2)]">{profile?.plan_key || 'free'}</span>
-          . Escolha o plano e finalize automaticamente via checkout PaySuite.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Link
-            href="/app"
-            className="flex items-center gap-1 border-b border-[var(--border)] pb-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[var(--muted)] hover:text-[var(--ink)]"
-          >
-            Voltar ao editor <ChevronRight size={12} />
-          </Link>
-        </div>
-      </section>
+      <div className="flex flex-1 flex-col">
 
-      {/* ── TABELA DE PREÇOS ── */}
-      <section className="border-y border-[var(--border)] bg-[var(--parchment)] px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <div className="mx-auto w-full max-w-7xl">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">
-            Preçário
-          </p>
-          <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
-            Todos os planos,{' '}
-            <em className="text-[var(--gold2)]">preços e condições.</em>
-          </h2>
-
-          <div className="mt-8 overflow-x-auto rounded-xl border border-[var(--border)]">
-            <table className="w-full min-w-[680px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--heroRight)]">
-                  {['Plano', 'Preço (MZN)', 'USD referência', 'Cobrança', 'Chave'].map((h) => (
-                    <th
-                      key={h}
-                      className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[#c8bfb4]"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loadingPlans ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-5 py-6 font-mono text-[11px] text-[var(--faint)]"
-                    >
-                      A carregar planos…
-                    </td>
-                  </tr>
-                ) : (
-                  plans.map((plan) => (
-                    <tr
-                      key={plan.key}
-                      className="border-b border-[var(--border)]/70 transition hover:bg-[var(--border)]/20"
-                    >
-                      <td className="px-5 py-3 font-serif text-base">{plan.label}</td>
-                      <td className="px-5 py-3 font-mono text-sm text-[var(--gold2)]">
-                        {Number(plan.price_mzn).toLocaleString('pt-BR')} MZN
-                      </td>
-                      <td className="px-5 py-3 font-mono text-sm text-[var(--muted)]">
-                        {formatUsd(plan.price_usd)}
-                      </td>
-                      <td className="px-5 py-3 text-sm text-[var(--muted)]">
-                        {plan.duration_months > 0
-                          ? `Mensal (${plan.duration_months} mês(es))`
-                          : 'Por obra'}
-                      </td>
-                      <td className="px-5 py-3 font-mono text-[11px] text-[var(--faint)]">
-                        {plan.key}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-6 rounded-xl border border-[var(--border)] p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)]">
-              Pressupostos
+        {/* ══ HERO ══ */}
+        <section className="border-b border-[var(--border)] bg-[var(--heroRight)] px-5 py-14 text-center md:py-20">
+          <div className="mx-auto max-w-3xl">
+            <p className="inline-block rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-4 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--gold)]">
+              Planos e preçário · Muneri 2026
             </p>
-            <ul className="mt-3 space-y-1.5 text-sm text-[var(--muted)]">
-              <li>
-                • Taxa de câmbio de referência:{' '}
-                <span className="font-mono text-[var(--gold2)]">1 USD = {EXCHANGE_RATE} MZN</span>.
-              </li>
-              <li>• Valores em meticais foram arredondados para facilitar cobrança local.</li>
-              <li>• O plano Avulso é cobrado por obra entregue.</li>
+            <h1 className="mt-5 font-serif text-4xl leading-tight text-[#f1e8da] sm:text-5xl md:text-6xl">
+              Escolha o plano certo <em className="text-[var(--gold)]">para você.</em>
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-[#c8bfb4] sm:text-lg">
+              Comece grátis, actualize quando precisar de mais. Todos os planos incluem exportação em Word e formatação automática.
+            </p>
+            {profile?.plan_key && (
+              <div className="mx-auto mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--green)]/30 bg-[var(--green)]/10 px-4 py-1.5 font-mono text-[11px] text-[var(--green)]">
+                <CheckCircle2 size={12} /> Plano actual: <strong>{profile.plan_key}</strong>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ══ CARDS DOS PLANOS ══ */}
+        <section className="mx-auto w-full max-w-6xl flex-1 px-5 py-12 md:px-8 md:py-16">
+          {loadingPlans ? (
+            <div className="flex items-center justify-center gap-3 py-24 font-mono text-[12px] text-[var(--faint)]">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--gold)] border-t-transparent" />
+              A carregar planos…
+            </div>
+          ) : plans.length === 0 ? (
+            <div className="py-24 text-center font-mono text-[12px] text-[var(--faint)]">Nenhum plano disponível de momento.</div>
+          ) : (
+            <div className={`grid gap-5 ${
+              plans.length === 1 ? 'max-w-sm mx-auto' :
+              plans.length === 2 ? 'sm:grid-cols-2 max-w-2xl mx-auto' :
+              plans.length === 3 ? 'sm:grid-cols-2 lg:grid-cols-3' :
+              'sm:grid-cols-2 xl:grid-cols-4'
+            }`}>
+              {plans.map((plan, i) => (
+                <PlanCard
+                  key={plan.key}
+                  plan={plan}
+                  isCurrent={profile?.plan_key === plan.key}
+                  isHighlight={i === highlightIdx}
+                  paymentMethod={paymentMethods[plan.key] ?? 'mpesa'}
+                  onChangeMethod={m => setPaymentMethods(p => ({ ...p, [plan.key]: m }))}
+                  onPay={() => startPayment(plan)}
+                  submitting={submittingPlan === plan.key}
+                  feedback={feedbackByPlan[plan.key] ?? null}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Notas */}
+          <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--faint)]">Notas sobre preços</p>
+            <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+              <li className="flex items-start gap-2"><span className="mt-1 text-[var(--gold2)]">·</span> Taxa de câmbio de referência: <span className="font-mono text-[var(--gold2)]">1 USD = 64,05 MZN</span></li>
+              <li className="flex items-start gap-2"><span className="mt-1 text-[var(--gold2)]">·</span> Valores em meticais foram arredondados para facilitar cobrança local.</li>
+              <li className="flex items-start gap-2"><span className="mt-1 text-[var(--gold2)]">·</span> O plano Avulso é cobrado por obra entregue, sem mensalidade.</li>
+              <li className="flex items-start gap-2"><span className="mt-1 text-[var(--gold2)]">·</span> Pagamento processado de forma segura via PaySuite.</li>
             </ul>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── CARDS DOS PLANOS ── */}
-      <section className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-6 md:px-12 md:py-16">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--faint)]">
-          Comprar
-        </p>
-        <h2 className="font-serif text-2xl leading-snug sm:text-3xl md:text-4xl lg:text-5xl">
-          Adquira o plano e{' '}
-          <em className="text-[var(--gold2)]">comece a criar agora.</em>
-        </h2>
-
-        <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-2 md:grid-cols-3">
-          {loadingPlans ? (
-            <p className="col-span-3 p-8 font-mono text-[11px] text-[var(--faint)]">
-              A carregar planos…
+        {/* ══ CTA FINAL ══ */}
+        <section className="border-t border-[var(--border)] bg-[var(--heroRight)] px-5 py-14 text-center md:py-20">
+          <div className="mx-auto max-w-2xl">
+            <h2 className="font-serif text-3xl text-[#f1e8da] sm:text-4xl">
+              O seu próximo trabalho <em className="text-[var(--gold)]">começa aqui.</em>
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-[#c8bfb4]">
+              Grátis para começar. Sem cartão de crédito. Feito para quem quer terminar o trabalho com tranquilidade.
             </p>
-          ) : (
-            plans.map((plan) => (
-              <article
-                key={plan.key}
-                className="space-y-4 bg-[var(--parchment)] p-6 sm:p-8"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-serif text-2xl">{plan.label}</h3>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">
-                      {plan.key}
-                    </p>
-                  </div>
-                  <span className="rounded border border-[var(--border)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted)]">
-                    {plan.duration_months > 0 ? `${plan.duration_months} mês` : 'Avulso'}
-                  </span>
-                </div>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href="/app"
+                className="flex items-center gap-2.5 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-8 py-4 font-mono text-sm font-bold uppercase tracking-[0.08em] text-black shadow-xl transition hover:scale-[1.02]">
+                <Zap size={15} /> Começar grátis
+              </Link>
+              <Link href="/landing"
+                className="flex items-center gap-2 rounded-xl border border-[#3a3530] px-8 py-4 font-mono text-sm uppercase tracking-[0.08em] text-[#c8bfb4] transition hover:border-[var(--gold2)] hover:text-[var(--gold)]">
+                Ver como funciona
+              </Link>
+            </div>
+          </div>
+        </section>
 
-                {/* Price */}
-                <div className="rounded-lg border border-[var(--border)] p-4">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]">
-                    Preço
-                  </p>
-                  <p className="mt-1 font-serif text-3xl text-[var(--gold2)]">
-                    {Number(plan.price_mzn).toLocaleString('pt-BR')}{' '}
-                    <span className="text-xl">MZN</span>
-                  </p>
-                  <p className="mt-1 font-mono text-[11px] text-[var(--faint)]">
-                    USD referência: {formatUsd(plan.price_usd)}
-                  </p>
-                </div>
+        {/* Footer */}
+        <footer className="border-t border-[var(--border)] px-5 py-6 md:px-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-3 text-center md:flex-row md:justify-between md:text-left">
+            <div className="flex items-center gap-2">
+              <Image src="/icon.svg" alt="Muneri" width={14} height={14} className="opacity-50" />
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">Muneri · 2026 · Quelimane, Moçambique</span>
+            </div>
+            <div className="flex gap-5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">
+              <Link href="/landing" className="hover:text-[var(--gold2)] transition">Landing</Link>
+              <Link href="/app" className="hover:text-[var(--gold2)] transition">App</Link>
+              <Link href="/app/afiliados" className="hover:text-[var(--gold2)] transition">Afiliados</Link>
+            </div>
+          </div>
+        </footer>
 
-                {/* Features */}
-                <ul className="space-y-1 text-sm text-[var(--muted)]">
-                  <li>
-                    • Trabalhos:{' '}
-                    <span className="text-[var(--ink)]">
-                      {plan.works_limit ?? 'ilimitados'}
-                    </span>
-                  </li>
-                  <li>
-                    • Edições:{' '}
-                    <span className="text-[var(--ink)]">
-                      {plan.edits_limit ?? 'ilimitadas'}
-                    </span>
-                  </li>
-                  <li>
-                    • Exportação completa:{' '}
-                    <span className={plan.export_full ? 'text-[var(--green)]' : 'text-[var(--faint)]'}>
-                      {plan.export_full ? 'Sim' : 'Não'}
-                    </span>
-                  </li>
-                  <li>
-                    • Modo TCC:{' '}
-                    <span className={plan.tcc_enabled ? 'text-[var(--green)]' : 'text-[var(--faint)]'}>
-                      {plan.tcc_enabled ? 'Sim' : 'Não'}
-                    </span>
-                  </li>
-                  <li>
-                    • IA Chat:{' '}
-                    <span className={plan.ai_chat_enabled ? 'text-[var(--green)]' : 'text-[var(--faint)]'}>
-                      {plan.ai_chat_enabled ? 'Sim' : 'Não'}
-                    </span>
-                  </li>
-                  <li>
-                    • Capa automática:{' '}
-                    <span className={plan.cover_enabled ? 'text-[var(--green)]' : 'text-[var(--faint)]'}>
-                      {plan.cover_enabled ? 'Sim' : 'Não'}
-                    </span>
-                  </li>
-                </ul>
-
-                {/* Payment form */}
-                <div className="space-y-3 border-t border-[var(--border)] pt-4">
-                  <div>
-                    <label
-                      htmlFor={`payment-method-${plan.key}`}
-                      className="block font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--faint)]"
-                    >
-                      Método de pagamento
-                    </label>
-                    <select
-                      id={`payment-method-${plan.key}`}
-                      value={paymentMethods[plan.key] ?? 'mpesa'}
-                      onChange={(e) =>
-                        setPaymentMethods((prev) => ({
-                          ...prev,
-                          [plan.key]: e.target.value as 'mpesa' | 'emola' | 'card',
-                        }))
-                      }
-                      className="mt-1.5 w-full rounded border border-[var(--border)] bg-[var(--parchment)] px-3 py-2 font-mono text-sm text-[var(--ink)] outline-none transition focus:border-[var(--gold2)]"
-                    >
-                      <option value="mpesa">M-Pesa</option>
-                      <option value="emola">e-Mola</option>
-                      <option value="card">Cartão</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Feedback */}
-                {feedbackByPlan[plan.key] && (
-                  <div
-                    className={`rounded border px-3 py-2 font-mono text-[11px] ${
-                      feedbackByPlan[plan.key].type === 'success'
-                        ? 'border-[var(--green)]/40 bg-[var(--green)]/10 text-[var(--green)]'
-                        : 'border-red-500/40 bg-red-500/10 text-red-400'
-                    }`}
-                  >
-                    {feedbackByPlan[plan.key].text}
-                  </div>
-                )}
-
-                {/* Submit button */}
-                <button
-                  type="button"
-                  onClick={() => startPayment(plan)}
-                  disabled={submittingPlan === plan.key || Number(plan.price_mzn) < 1}
-                  className="flex w-full items-center justify-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-5 py-3 font-mono text-xs font-medium uppercase tracking-[0.08em] text-[var(--ink)] shadow transition hover:opacity-90 disabled:opacity-50"
-                >
-                  <ArrowDown size={13} />
-                  {submittingPlan === plan.key
-                    ? 'A iniciar…'
-                    : Number(plan.price_mzn) < 1
-                      ? 'Plano gratuito'
-                      : `Pagar ${plan.label}`}
-                </button>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      {/* ── CTA FINAL ── */}
-      <section className="border-y border-[var(--border)] px-5 py-12 text-center sm:px-6 md:px-12 md:py-16">
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--faint)]">
-          Começa agora
-        </p>
-        <h2 className="mt-4 font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl">
-          O teu próximo documento{' '}
-          <em className="text-[var(--gold2)]">começa aqui.</em>
-        </h2>
-        <p className="mt-4 text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-          Grátis. Simples. Feito para quem quer terminar o trabalho com tranquilidade.
-        </p>
-        <div className="mt-8 flex justify-center">
-          <Link
-            href="/app"
-            className="flex items-center gap-2 rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] px-7 py-3 font-mono text-[13px] uppercase tracking-[0.08em] text-[var(--ink)] sm:px-8 sm:py-[14px]"
-          >
-            <ArrowDown size={14} /> Começar agora — é grátis
-          </Link>
-        </div>
-        <p className="mt-8 font-mono text-[10px] tracking-[0.08em] text-[var(--faint)]">
-          Muneri · Trabalhos acadêmicos automáticos · Quelimane, Moçambique
-        </p>
-      </section>
-
-      <footer className="flex flex-col gap-2 px-5 py-6 text-center sm:px-6 md:flex-row md:items-center md:justify-between md:px-12 md:text-left">
-        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">
-          Muneri · Gerador automático de trabalhos académicos · 2026
-        </div>
-        <div className="flex items-center justify-center gap-1 text-sm italic text-[var(--faint)] md:justify-start">
-          <span>feito com</span>
-          <Image src="/icon.svg" alt="Muneri logo" width={14} height={14} className="h-3.5 w-3.5" />
-          <span>em Quelimane, Moçambique</span>
-        </div>
-      </footer>
-    </main>
+      </div>
+    </div>
   );
 }
