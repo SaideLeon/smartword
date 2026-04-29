@@ -1,27 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  BarChart3,
+  ChevronRight,
+  CircleDollarSign,
+  Moon,
+  Server,
+  Sun,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { useThemeMode } from "@/hooks/useThemeMode";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════
+   CONSTANTES
+════════════════════════════════════════════ */
+const GEMINI = { inputPerMToken: 0.25, outputPerMToken: 1.5 } as const;
+const TOKENS_PER_PAGE = { input: 400, output: 550 } as const;
+const USD_MZN = 63.5;
+const GATEWAY = 0.0648;
 
-const GEMINI_PRICING = {
-  inputPerMToken: 0.25,
-  outputPerMToken: 1.5,
-} as const;
-
-const TOKENS_PER_PAGE = {
-  input: 400,
-  output: 550,
-} as const;
-
-const USD_TO_MZN = 63.5;
-
-/**
- * All fixed infrastructure costs.
- * annual: true  → value is per year, converted to /month automatically
- * annual: false → value is per month
- */
 const INFRA_COSTS = [
   { id: "vercel",    label: "Vercel Pro",   usd: 10.0,  annual: false },
   { id: "supabase",  label: "Supabase Pro", usd: 10.0,  annual: false },
@@ -29,414 +31,376 @@ const INFRA_COSTS = [
   { id: "namecheap", label: "Domínio",      usd: 15.0,  annual: true  },
 ] as const;
 
-/** Normalise every cost to USD/month */
-const INFRA_MONTHLY = INFRA_COSTS.map((s) => ({
+const INFRA_MONTHLY = INFRA_COSTS.map(s => ({
   ...s,
   usdPerMonth: s.annual ? s.usd / 12 : s.usd,
 }));
 
 const TOTAL_INFRA_USD = INFRA_MONTHLY.reduce((sum, s) => sum + s.usdPerMonth, 0);
-
-const GATEWAY_RATE = 0.0648;
-
 const MARGIN_OPTIONS = [20, 30, 40, 50, 60, 75, 100] as const;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function calcGeminiCostUSD(pages: number) {
-  const inputTokens   = pages * TOKENS_PER_PAGE.input;
-  const outputTokens  = pages * TOKENS_PER_PAGE.output;
-  const inputCostUSD  = (inputTokens  / 1_000_000) * GEMINI_PRICING.inputPerMToken;
-  const outputCostUSD = (outputTokens / 1_000_000) * GEMINI_PRICING.outputPerMToken;
-  return { inputTokens, outputTokens, inputCostUSD, outputCostUSD, totalCostUSD: inputCostUSD + outputCostUSD };
-}
-
-function grossForNet(netMZN: number) {
-  return netMZN / (1 - GATEWAY_RATE);
-}
-
-const fmtMZN  = (n: number) => n.toLocaleString("pt-MZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtUSD  = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-const fmtUSD2 = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)] mb-4">
-      {children}
-    </p>
-  );
-}
-
-function Row({
-  label, value, sub, highlight, dimmed,
-}: {
-  label: string; value: string; sub?: string;
-  highlight?: "danger" | "success" | "info"; dimmed?: boolean;
-}) {
-  const colorMap = {
-    danger:  "text-red-400",
-    success: "text-[var(--green)]",
-    info:    "text-[var(--gold2)]",
+/* ════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════ */
+function calcGemini(pages: number) {
+  const inp = pages * TOKENS_PER_PAGE.input;
+  const out = pages * TOKENS_PER_PAGE.output;
+  return {
+    inputTokens:  inp,
+    outputTokens: out,
+    inputUSD:     (inp  / 1_000_000) * GEMINI.inputPerMToken,
+    outputUSD:    (out  / 1_000_000) * GEMINI.outputPerMToken,
+    get totalUSD() { return this.inputUSD + this.outputUSD; },
   };
+}
+
+const f2  = (n: number) => n.toLocaleString("pt-MZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const f4  = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const pct = (n: number) => `${n.toFixed(1)}%`;
+
+/* ════════════════════════════════════════════
+   ATOMS
+════════════════════════════════════════════ */
+function SliderField({ id, label, min, max, step = 1, value, onChange, hint }: {
+  id: string; label: string; min: number; max: number;
+  step?: number; value: number; onChange: (v: number) => void; hint?: string;
+}) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-[var(--border)] last:border-0">
-      <div>
-        <span className={`text-[13px] ${dimmed ? "text-[var(--faint)]" : "text-[var(--muted)]"}`}>
-          {label}
-        </span>
-        {sub && (
-          <span className="ml-2 font-mono text-[10px] text-[var(--faint)]">{sub}</span>
-        )}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label htmlFor={id} className="text-[12px] text-[var(--muted)]">{label}</label>
+        <span className="font-mono text-[12px] font-semibold text-[var(--gold2)]">{value}</span>
       </div>
-      <span
-        className={`text-[14px] tabular-nums font-medium ${
-          highlight
-            ? colorMap[highlight]
-            : dimmed
-            ? "text-[var(--faint)]"
-            : "text-[var(--ink)]"
-        }`}
-      >
-        {value}
-      </span>
+      <input id={id} type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full cursor-pointer accent-[var(--gold2)]"
+        style={{ accentColor: "var(--gold2)" }} />
+      {hint && <p className="font-mono text-[10px] text-[var(--faint)]">{hint}</p>}
     </div>
   );
 }
 
-function Slider({ id, min, max, value, onChange, step = 1 }: {
-  id: string; min: number; max: number; value: number;
-  onChange: (v: number) => void; step?: number;
+function MetricRow({ label, value, accent, divider = true }: {
+  label: string; value: string; accent?: string; divider?: boolean;
 }) {
   return (
-    <input
-      id={id} type="range" min={min} max={max} step={step} value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full cursor-pointer accent-[var(--gold2)]"
-      style={{ accentColor: "var(--gold2)" }}
-    />
-  );
-}
-
-function StatCard({ label, value, color, sub }: {
-  label: string; value: string; color: string; sub?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--ink)]/[0.03] p-4 text-center">
-      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)] mb-1 leading-tight">
-        {label}
-      </p>
-      <p className={`text-[15px] font-medium tabular-nums ${color}`}>{value}</p>
-      {sub && (
-        <p className="font-mono text-[10px] text-[var(--faint)] mt-0.5">{sub}</p>
-      )}
+    <div className={`flex items-center justify-between py-2.5 ${divider ? "border-b border-[var(--border)]" : ""}`}>
+      <span className="text-[12px] text-[var(--muted)]">{label}</span>
+      <span className={`font-mono text-[12px] font-semibold tabular-nums ${accent ?? "text-[var(--ink)]"}`}>{value}</span>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function KpiTile({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/60 p-4">
+      <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--faint)]">{label}</p>
+      <p className={`mt-2 font-serif text-xl tabular-nums ${accent ?? "text-[var(--ink)]"}`}>{value}</p>
+      {sub && <p className="mt-0.5 font-mono text-[10px] text-[var(--faint)]">{sub}</p>}
+    </div>
+  );
+}
 
-export default function AcademicCostCalculator() {
-  const { themeMode } = useThemeMode();
+/* ════════════════════════════════════════════
+   PÁGINA
+════════════════════════════════════════════ */
+export default function CalcPage() {
+  const { themeMode, toggleThemeMode } = useThemeMode();
 
-  const themeVars =
-    themeMode === "dark"
-      ? "[--ink:#f1e8da] [--parchment:#0f0e0d] [--gold:#d4b37b] [--gold2:#c9a96e] [--muted:#c8bfb4] [--faint:#8a7d6e] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--navBg:#0f0e0d] [--heroRight:#090908]"
-      : "[--ink:#0f0e0d] [--parchment:#f5f0e8] [--gold:#c9a96e] [--gold2:#8b6914] [--muted:#6b6254] [--faint:#c4b8a4] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--navBg:#f5f0e8] [--heroRight:#1e1a14]";
+  const themeVars = themeMode === "dark"
+    ? "[--ink:#f1e8da] [--parchment:#0f0e0d] [--gold:#d4b37b] [--gold2:#c9a96e] [--muted:#c8bfb4] [--faint:#8a7d6e] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--navBg:#0f0e0d] [--heroRight:#090908] [--surface:#141210]"
+    : "[--ink:#0f0e0d] [--parchment:#f5f0e8] [--gold:#c9a96e] [--gold2:#8b6914] [--muted:#6b6254] [--faint:#c4b8a4] [--green:#4a7c59] [--teal:#3a8a7a] [--border:#d8ceb8] [--navBg:#f5f0e8] [--heroRight:#1e1a14] [--surface:#ece8df]";
 
-  const [pages,              setPages]         = useState(12);
-  const [marginPct,          setMarginPct]     = useState(50);
-  const [minUsers,           setMinUsers]      = useState(5);
-  const [worksPerUserPerMonth, setWorksPerUser] = useState(3);
-  const [extraCostMZN,       setExtraCostMZN]  = useState(0);
+  /* ── State ── */
+  const [pages,   setPages]   = useState(12);
+  const [margin,  setMargin]  = useState(50);
+  const [users,   setUsers]   = useState(5);
+  const [works,   setWorks]   = useState(3);
+  const [extra,   setExtra]   = useState(0);
 
+  /* ── Computed ── */
   const calc = useMemo(() => {
-    const gemini        = calcGeminiCostUSD(pages);
-    const geminiCostMZN = gemini.totalCostUSD * USD_TO_MZN;
-
-    const infraBreakdown = INFRA_MONTHLY.map((s) => ({
-      ...s,
-      perWorkUSD: s.usdPerMonth / minUsers / worksPerUserPerMonth,
-      perWorkMZN: (s.usdPerMonth / minUsers / worksPerUserPerMonth) * USD_TO_MZN,
-    }));
-
-    const infraPerWorkUSD    = TOTAL_INFRA_USD / minUsers / worksPerUserPerMonth;
-    const infraPerWorkMZN    = infraPerWorkUSD * USD_TO_MZN;
-    const totalBaseCostMZN   = geminiCostMZN + infraPerWorkMZN + extraCostMZN;
-    const desiredNetMZN      = totalBaseCostMZN * (1 + marginPct / 100);
-    const grossPriceMZN      = grossForNet(desiredNetMZN);
-    const gatewayFeeMZN      = grossPriceMZN * GATEWAY_RATE;
-    const netReceivedMZN     = grossPriceMZN - gatewayFeeMZN;
-    const profitMZN          = netReceivedMZN - totalBaseCostMZN;
-    const costPerPageMZN     = totalBaseCostMZN / pages;
+    const g           = calcGemini(pages);
+    const geminiMZN   = g.totalUSD * USD_MZN;
+    const infraPerWork = TOTAL_INFRA_USD / users / works;
+    const infraMZN    = infraPerWork * USD_MZN;
+    const baseMZN     = geminiMZN + infraMZN + extra;
+    const netMZN      = baseMZN * (1 + margin / 100);
+    const grossMZN    = netMZN / (1 - GATEWAY);
+    const gateMZN     = grossMZN * GATEWAY;
+    const profitMZN   = grossMZN - gateMZN - baseMZN;
+    const marginReal  = (profitMZN / grossMZN) * 100;
 
     return {
-      gemini, geminiCostMZN,
-      infraPerWorkUSD, infraPerWorkMZN, infraBreakdown,
-      totalBaseCostMZN, desiredNetMZN,
-      grossPriceMZN, gatewayFeeMZN,
-      netReceivedMZN, profitMZN, costPerPageMZN,
+      g, geminiMZN,
+      infraPerWork, infraMZN,
+      baseMZN, netMZN,
+      grossMZN, gateMZN,
+      profitMZN, marginReal,
+      costPerPage: baseMZN / pages,
     };
-  }, [pages, marginPct, minUsers, worksPerUserPerMonth, extraCostMZN]);
+  }, [pages, margin, users, works, extra]);
 
+  /* ── Render ── */
   return (
-    <main className={`${themeVars} min-h-screen bg-[var(--parchment)] text-[var(--ink)] px-4 py-12`}>
-      <div className="max-w-xl mx-auto space-y-8">
+    <div className={`${themeVars} flex h-screen flex-col overflow-hidden bg-[var(--parchment)] text-[var(--ink)]`}>
 
-        {/* ── Header ── */}
-        <div className="text-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)] mb-3">
-            Ferramenta interna · Muneri
-          </p>
-          <h1 className="font-serif text-[1.9rem] leading-[1.2] sm:text-4xl text-[var(--ink)]">
-            Calculadora de <em className="text-[var(--gold2)]">Custo</em>
-          </h1>
-          <p className="text-sm leading-relaxed text-[var(--muted)] mt-2">
-            Gemini 3.1 Flash-Lite · Emola 6,48% · 4 serviços
-          </p>
-        </div>
-
-        {/* ── Work parameters ── */}
-        <div className="rounded-2xl border border-[var(--border)] p-5 space-y-6">
-          <SectionLabel>Parâmetros do trabalho</SectionLabel>
-
-          {/* Pages slider */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label htmlFor="pages-slider" className="text-[13px] text-[var(--muted)]">
-                Número de páginas
-              </label>
-              <span className="font-mono text-[13px] font-medium text-[var(--ink)]">
-                {pages} pág.
-              </span>
+      {/* ── Topbar ── */}
+      <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--navBg)] px-5 py-3 md:px-8">
+        <div className="flex items-center gap-3">
+          <Link href="/admin"
+            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted)] transition hover:text-[var(--gold2)]">
+            <ArrowLeft size={12} /> Admin
+          </Link>
+          <span className="text-[var(--border)]">·</span>
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)]">
+              <Image src="/icon.svg" alt="Muneri" width={16} height={16} />
             </div>
-            <Slider id="pages-slider" min={1} max={20} value={pages} onChange={setPages} />
-            <div className="flex justify-between mt-1 font-mono text-[10px] text-[var(--faint)]">
-              <span>1</span><span>Recomendado: 12–15</span><span>20</span>
-            </div>
-          </div>
-
-          {/* Margin slider + pill buttons */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label htmlFor="margin-slider" className="text-[13px] text-[var(--muted)]">
-                Margem de lucro desejada
-              </label>
-              <span className="font-mono text-[13px] font-medium text-[var(--gold2)]">
-                {marginPct}%
-              </span>
-            </div>
-            <Slider id="margin-slider" min={10} max={200} step={5} value={marginPct} onChange={setMarginPct} />
-            <div className="flex gap-2 mt-3 flex-wrap">
-              {MARGIN_OPTIONS.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMarginPct(m)}
-                  className={[
-                    "font-mono text-[11px] uppercase tracking-[0.1em] px-3 py-1 rounded-full border transition-all",
-                    marginPct === m
-                      ? "bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] border-[var(--gold)] text-[var(--parchment)]"
-                      : "border-[var(--border)] text-[var(--faint)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]",
-                  ].join(" ")}
-                >
-                  {m}%
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Extra cost input */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label htmlFor="extra-cost" className="text-[13px] text-[var(--muted)]">
-                Custo fixo adicional (MZN)
-              </label>
-              <span className="font-mono text-[10px] text-[var(--faint)]">ex: mão-de-obra</span>
-            </div>
-            <input
-              id="extra-cost"
-              type="number"
-              min={0}
-              step={10}
-              value={extraCostMZN}
-              onChange={(e) => setExtraCostMZN(Math.max(0, Number(e.target.value)))}
-              className="w-full rounded border border-[var(--border)] bg-transparent px-3 py-2.5 font-mono text-sm text-[var(--ink)] placeholder-[var(--faint)] outline-none transition focus:border-[var(--gold2)]"
-              placeholder="0"
-            />
-          </div>
-        </div>
-
-        {/* ── Infrastructure ── */}
-        <div className="rounded-2xl border border-[var(--border)] p-5 space-y-6">
-          <SectionLabel>
-            Infraestrutura — US$ {fmtUSD2(TOTAL_INFRA_USD)}/mês total
-          </SectionLabel>
-
-          {/* Service cards */}
-          <div className="grid grid-cols-2 gap-3">
-            {calc.infraBreakdown.map((s) => (
-              <div
-                key={s.id}
-                className="rounded-xl border border-[var(--border)] bg-[var(--ink)]/[0.03] p-3"
-              >
-                <div className="flex items-start justify-between mb-1">
-                  <p className="text-[12px] font-medium text-[var(--ink)]">{s.label}</p>
-                  {s.annual && (
-                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] bg-[var(--gold)]/20 text-[var(--gold2)] px-1.5 py-0.5 rounded">
-                      anual
-                    </span>
-                  )}
-                </div>
-                <p className="text-[12px] text-[var(--faint)]">
-                  {s.annual
-                    ? `US$ ${s.usd}/ano → US$ ${fmtUSD2(s.usdPerMonth)}/mês`
-                    : `US$ ${s.usd}/mês`}
-                </p>
-                <p className="font-mono text-[12px] font-medium text-[var(--green)] mt-1.5">
-                  ≈ {fmtMZN(s.perWorkMZN)} MZN/trabalho
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Users slider */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label htmlFor="users-slider" className="text-[13px] text-[var(--muted)]">
-                Utilizadores a pagar
-              </label>
-              <span className="font-mono text-[13px] font-medium text-[var(--ink)]">
-                {minUsers} utilizadores
-              </span>
-            </div>
-            <Slider id="users-slider" min={1} max={50} value={minUsers} onChange={setMinUsers} />
-            <div className="flex justify-between mt-1 font-mono text-[10px] text-[var(--faint)]">
-              <span>1</span>
-              <span className="text-[var(--green)]">
-                US$ {fmtUSD2(TOTAL_INFRA_USD / minUsers)}/utilizador/mês
-              </span>
-              <span>50</span>
-            </div>
-          </div>
-
-          {/* Works per user */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label htmlFor="works-slider" className="text-[13px] text-[var(--muted)]">
-                Trabalhos por utilizador/mês
-              </label>
-              <span className="font-mono text-[13px] font-medium text-[var(--ink)]">
-                {worksPerUserPerMonth} trabalhos
-              </span>
-            </div>
-            <Slider id="works-slider" min={1} max={20} value={worksPerUserPerMonth} onChange={setWorksPerUser} />
-            <div className="flex justify-between mt-1 font-mono text-[10px] text-[var(--faint)]">
-              <span>1</span><span>20</span>
-            </div>
-          </div>
-
-          {/* Formula box */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--ink)]/[0.03] p-4 space-y-2 text-[13px]">
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--faint)] mb-2">
-              Fórmula
-            </p>
-            <div className="flex justify-between text-[var(--muted)]">
-              <span>US$ {fmtUSD2(TOTAL_INFRA_USD)} ÷ {minUsers} utilizadores</span>
-              <span>= US$ {fmtUSD2(TOTAL_INFRA_USD / minUsers)}/utilizador</span>
-            </div>
-            <div className="flex justify-between text-[var(--muted)]">
-              <span>÷ {worksPerUserPerMonth} trabalhos/mês</span>
-              <span>= US$ {fmtUSD(calc.infraPerWorkUSD)}/trabalho</span>
-            </div>
-            <div className="flex justify-between font-medium text-[var(--ink)] pt-2 border-t border-[var(--border)]">
-              <span>Infra por trabalho (MZN)</span>
-              <span className="text-[var(--green)]">{fmtMZN(calc.infraPerWorkMZN)} MZN</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Cost breakdown ── */}
-        <div className="rounded-2xl border border-[var(--border)] p-5">
-          <SectionLabel>Decomposição do custo por trabalho</SectionLabel>
-          <Row label="Tokens input"  value={calc.gemini.inputTokens.toLocaleString("pt-MZ")}
-            sub={`@ US$${GEMINI_PRICING.inputPerMToken}/1M`} dimmed />
-          <Row label="Tokens output" value={calc.gemini.outputTokens.toLocaleString("pt-MZ")}
-            sub={`@ US$${GEMINI_PRICING.outputPerMToken}/1M`} dimmed />
-          <Row label="Gemini (USD)"  value={`US$ ${fmtUSD(calc.gemini.totalCostUSD)}`} />
-          <Row label="Gemini (MZN)"  value={`${fmtMZN(calc.geminiCostMZN)} MZN`} />
-          {calc.infraBreakdown.map((s) => (
-            <Row key={s.id} label={`${s.label} (MZN)`} value={`${fmtMZN(s.perWorkMZN)} MZN`} />
-          ))}
-          {extraCostMZN > 0 && (
-            <Row label="Custo adicional" value={`${fmtMZN(extraCostMZN)} MZN`} />
-          )}
-          <Row label="Custo base total" value={`${fmtMZN(calc.totalBaseCostMZN)} MZN`} highlight="info" />
-        </div>
-
-        {/* ── Pricing ── */}
-        <div className="rounded-2xl border border-[var(--border)] p-5">
-          <SectionLabel>Estrutura de preço ao cliente</SectionLabel>
-          <Row label="Custo base total" value={`${fmtMZN(calc.totalBaseCostMZN)} MZN`} />
-          <Row
-            label={`Margem (${marginPct}%)`}
-            value={`+ ${fmtMZN(calc.desiredNetMZN - calc.totalBaseCostMZN)} MZN`}
-          />
-          <Row label="Receita líquida desejada" value={`${fmtMZN(calc.desiredNetMZN)} MZN`} />
-          <Row label="Taxa Emola (6,48%)" value={`− ${fmtMZN(calc.gatewayFeeMZN)} MZN`} highlight="danger" />
-
-          {/* Price highlight box — always-dark heroRight surface */}
-          <div className="mt-4 rounded-xl bg-[var(--heroRight)] border border-[var(--gold)]/20 p-4 flex items-center justify-between">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--gold)] mb-2">
-                Cobrar ao cliente
-              </p>
-              <p className="font-serif text-[2rem] leading-none text-[#f1e8da] tabular-nums">
-                {fmtMZN(calc.grossPriceMZN)} MZN
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-[#8a7d6e] mb-1">
-                Você recebe
-              </p>
-              <p className="font-mono text-[20px] font-medium text-[#6ea886] tabular-nums">
-                {fmtMZN(calc.netReceivedMZN)} MZN
-              </p>
-              <p className="font-mono text-[10px] text-[#8a7d6e] mt-0.5">após gateway</p>
+              <span className="font-serif text-base italic text-[var(--gold2)]">Muneri</span>
+              <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--faint)]">· Calculadora de custo</span>
             </div>
           </div>
         </div>
 
-        {/* ── Summary stat cards ── */}
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard
-            label="Custo / página"
-            value={`${fmtMZN(calc.costPerPageMZN)} MZN`}
-            color="text-[var(--ink)]"
-          />
-          <StatCard
-            label="Lucro líquido"
-            value={`${fmtMZN(calc.profitMZN)} MZN`}
-            color="text-[var(--green)]"
-          />
-          <StatCard
-            label="Taxa gateway"
-            value={`${fmtMZN(calc.gatewayFeeMZN)} MZN`}
-            color="text-red-400"
-          />
+        <div className="flex items-center gap-2">
+          <span className="hidden font-mono text-[10px] text-[var(--faint)] md:block">
+            Gemini 3.1 Flash-Lite · 1 USD = {USD_MZN} MZN · Emola {(GATEWAY * 100).toFixed(2)}%
+          </span>
+          <button type="button" onClick={toggleThemeMode}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+            {themeMode === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+          </button>
         </div>
+      </header>
 
-        {/* ── Footer note ── */}
-        <p className="font-mono text-[10px] text-[var(--faint)] text-center leading-relaxed">
-          {TOKENS_PER_PAGE.input} tokens input + {TOKENS_PER_PAGE.output} output por página estimados
-          <br />
-          Infra total: US$ {fmtUSD2(TOTAL_INFRA_USD)}/mês
-          (Vercel $10 + Supabase $10 + Upstash $0.60 + Domínio $15/ano)
-          <br />
-          Câmbio: 1 USD = {USD_TO_MZN} MZN · Emola 6,48% (PaySuite 3,48% + gateway 3%)
-        </p>
+      {/* ── Body: split layout ── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ════ PAINEL ESQUERDO — Inputs ════ */}
+        <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--navBg)]">
+          <div className="space-y-6 p-5">
+
+            {/* Parâmetros do trabalho */}
+            <section>
+              <div className="mb-4 flex items-center gap-2">
+                <Zap size={13} className="text-[var(--gold2)]" />
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--faint)]">Parâmetros do trabalho</p>
+              </div>
+
+              <div className="space-y-5">
+                <SliderField id="pages" label="Número de páginas" min={1} max={20} value={pages}
+                  onChange={setPages} hint="Recomendado: 12–15 páginas" />
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] text-[var(--muted)]">Margem de lucro</label>
+                    <span className="font-mono text-[12px] font-semibold text-[var(--gold2)]">{margin}%</span>
+                  </div>
+                  <input type="range" min={10} max={200} step={5} value={margin}
+                    onChange={e => setMargin(Number(e.target.value))}
+                    className="w-full cursor-pointer" style={{ accentColor: "var(--gold2)" }} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {MARGIN_OPTIONS.map(m => (
+                      <button key={m} type="button" onClick={() => setMargin(m)}
+                        className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] transition ${
+                          margin === m
+                            ? "border-[var(--gold)] bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-black"
+                            : "border-[var(--border)] text-[var(--faint)] hover:border-[var(--gold2)] hover:text-[var(--gold2)]"
+                        }`}>{m}%</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] text-[var(--muted)]">Custo adicional (MZN)</label>
+                    <span className="font-mono text-[10px] text-[var(--faint)]">mão-de-obra etc.</span>
+                  </div>
+                  <input type="number" min={0} step={10} value={extra}
+                    onChange={e => setExtra(Math.max(0, Number(e.target.value)))}
+                    className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-[12px] text-[var(--ink)] outline-none placeholder-[var(--faint)] transition focus:border-[var(--gold2)]"
+                    placeholder="0" />
+                </div>
+              </div>
+            </section>
+
+            <div className="border-t border-[var(--border)]" />
+
+            {/* Infraestrutura */}
+            <section>
+              <div className="mb-4 flex items-center gap-2">
+                <Server size={13} className="text-[var(--teal)]" />
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--faint)]">Infraestrutura</p>
+              </div>
+
+              <div className="mb-4 space-y-2">
+                {INFRA_MONTHLY.map(s => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)]/40 px-3 py-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-[var(--ink)]">{s.label}</p>
+                      <p className="font-mono text-[10px] text-[var(--faint)]">
+                        {s.annual ? `$${s.usd}/ano` : `$${s.usd}/mês`}
+                        {" · "}≈ ${s.usdPerMonth.toFixed(2)}/mês
+                      </p>
+                    </div>
+                    <span className="font-mono text-[10px] font-semibold text-[var(--teal)]">
+                      {f2((s.usdPerMonth / users / works) * USD_MZN)} MT
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-5">
+                <SliderField id="users" label="Utilizadores a pagar" min={1} max={50} value={users}
+                  onChange={setUsers}
+                  hint={`$${(TOTAL_INFRA_USD / users).toFixed(2)} USD/utilizador/mês`} />
+                <SliderField id="works" label="Trabalhos/utilizador/mês" min={1} max={20} value={works}
+                  onChange={setWorks} />
+              </div>
+            </section>
+
+          </div>
+        </aside>
+
+        {/* ════ ÁREA PRINCIPAL — Resultados ════ */}
+        <main className="flex flex-1 flex-col overflow-y-auto bg-[var(--heroRight)] px-6 py-6 md:px-8">
+
+          {/* KPIs no topo */}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiTile label="Cobrar ao cliente"
+              value={`${f2(calc.grossMZN)} MT`}
+              accent="text-[var(--gold)]" />
+            <KpiTile label="Lucro líquido"
+              value={`${f2(calc.profitMZN)} MT`}
+              sub={`${pct(calc.marginReal)} real`}
+              accent="text-[var(--green)]" />
+            <KpiTile label="Taxa gateway"
+              value={`${f2(calc.gateMZN)} MT`}
+              sub="Emola 6.48%"
+              accent="text-red-400" />
+            <KpiTile label="Custo / página"
+              value={`${f2(calc.costPerPage)} MT`}
+              accent="text-[var(--teal)]" />
+          </div>
+
+          {/* Grid de detalhes */}
+          <div className="grid flex-1 gap-4 lg:grid-cols-2">
+
+            {/* ── Custo IA ── */}
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap size={13} className="text-[var(--gold2)]" />
+                  <h2 className="font-serif text-base text-[var(--ink)]">Custo Gemini</h2>
+                </div>
+                <span className="font-mono text-[10px] text-[var(--faint)]">{pages} págs.</span>
+              </div>
+
+              <MetricRow label="Tokens input"  value={calc.g.inputTokens.toLocaleString("pt-MZ")} />
+              <MetricRow label="Tokens output" value={calc.g.outputTokens.toLocaleString("pt-MZ")} />
+              <MetricRow label="Custo input"   value={`$${f4(calc.g.inputUSD)}`} />
+              <MetricRow label="Custo output"  value={`$${f4(calc.g.outputUSD)}`} />
+              <MetricRow label="Total USD"      value={`$${f4(calc.g.totalUSD)}`} accent="text-[var(--gold2)]" />
+              <MetricRow label="Total MZN" value={`${f2(calc.geminiMZN)} MT`} accent="text-[var(--gold2)]" divider={false} />
+            </section>
+
+            {/* ── Infra por trabalho ── */}
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Server size={13} className="text-[var(--teal)]" />
+                  <h2 className="font-serif text-base text-[var(--ink)]">Infra por trabalho</h2>
+                </div>
+                <span className="font-mono text-[10px] text-[var(--faint)]">{users} utilizadores · {works} trab./mês</span>
+              </div>
+
+              <div className="mb-3 rounded-lg border border-[var(--border)] bg-[var(--parchment)]/30 px-4 py-2.5 font-mono text-[11px] text-[var(--faint)]">
+                ${TOTAL_INFRA_USD.toFixed(2)}/mês ÷ {users} utilizadores ÷ {works} trabalhos
+                <span className="ml-2 text-[var(--teal)] font-semibold">= ${f4(calc.infraPerWork)}</span>
+              </div>
+
+              {INFRA_MONTHLY.map(s => (
+                <MetricRow key={s.id}
+                  label={s.label}
+                  value={`${f2((s.usdPerMonth / users / works) * USD_MZN)} MT`} />
+              ))}
+              <MetricRow label="Total infra" value={`${f2(calc.infraMZN)} MT`} accent="text-[var(--teal)]" divider={false} />
+            </section>
+
+            {/* ── Decomposição do preço ── */}
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <BarChart3 size={13} className="text-[var(--green)]" />
+                <h2 className="font-serif text-base text-[var(--ink)]">Decomposição do preço</h2>
+              </div>
+
+              <MetricRow label="Custo IA (MZN)"         value={`${f2(calc.geminiMZN)} MT`} />
+              <MetricRow label="Custo infra (MZN)"      value={`${f2(calc.infraMZN)} MT`} />
+              {extra > 0 && <MetricRow label="Custo adicional" value={`${f2(extra)} MT`} />}
+              <MetricRow label="Custo base total"        value={`${f2(calc.baseMZN)} MT`} accent="text-[var(--gold2)]" />
+              <MetricRow label={`Margem (${margin}%)`}  value={`+ ${f2(calc.netMZN - calc.baseMZN)} MT`} />
+              <MetricRow label="Receita líquida"         value={`${f2(calc.netMZN)} MT`} />
+              <MetricRow label={`Gateway (${(GATEWAY * 100).toFixed(2)}%)`} value={`− ${f2(calc.gateMZN)} MT`} accent="text-red-400" divider={false} />
+            </section>
+
+            {/* ── Resumo final ── */}
+            <section className="flex flex-col rounded-2xl border border-[var(--gold)]/30 bg-[var(--surface)] p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <CircleDollarSign size={13} className="text-[var(--gold2)]" />
+                <h2 className="font-serif text-base text-[var(--ink)]">Resultado final</h2>
+              </div>
+
+              {/* Destaque do preço */}
+              <div className="mb-4 rounded-xl border border-[var(--gold)]/20 bg-[#0f0e0d] p-5">
+                <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--gold)]">Cobrar ao cliente</p>
+                <p className="mt-2 font-serif text-4xl text-[#f1e8da] tabular-nums">{f2(calc.grossMZN)}</p>
+                <p className="font-mono text-base text-[var(--gold)]">MT</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--parchment)]/20 p-3 text-center">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--faint)]">Você recebe</p>
+                  <p className="mt-1 font-serif text-xl text-[var(--green)] tabular-nums">{f2(calc.netMZN)} MT</p>
+                  <p className="font-mono text-[9px] text-[var(--faint)]">após gateway</p>
+                </div>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--parchment)]/20 p-3 text-center">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--faint)]">Lucro líquido</p>
+                  <p className="mt-1 font-serif text-xl text-[var(--green)] tabular-nums">{f2(calc.profitMZN)} MT</p>
+                  <p className="font-mono text-[9px] text-[var(--faint)]">{pct(calc.marginReal)} real</p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--parchment)]/10 px-4 py-3">
+                <div className="flex items-center justify-between text-[11px] text-[var(--muted)]">
+                  <span>Margem pretendida</span>
+                  <span className="font-mono font-semibold text-[var(--gold2)]">{margin}%</span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--gold2)] transition-all"
+                    style={{ width: `${Math.min(100, margin / 2)}%` }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
+                  <span>Margem real</span>
+                  <span className={`font-mono font-semibold ${calc.marginReal >= margin ? "text-[var(--green)]" : "text-red-400"}`}>
+                    {pct(calc.marginReal)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Nota de rodapé */}
+              <p className="mt-auto pt-5 font-mono text-[9px] leading-relaxed text-[var(--faint)]">
+                {TOKENS_PER_PAGE.input} tok. input + {TOKENS_PER_PAGE.output} tok. output por pág. ·
+                {" "}Infra: ${TOTAL_INFRA_USD.toFixed(2)}/mês ·
+                {" "}1 USD = {USD_MZN} MZN · Emola {(GATEWAY * 100).toFixed(2)}% (PaySuite 3.48% + gateway 3%)
+              </p>
+            </section>
+
+          </div>
+        </main>
 
       </div>
-    </main>
+    </div>
   );
 }
