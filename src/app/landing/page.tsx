@@ -344,7 +344,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a href="/app/afiliados"
+              <a href="/afiliados"
                 className="mt-7 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-[var(--green)] py-3.5 font-mono text-sm font-bold uppercase tracking-[0.08em] text-[var(--green)] transition hover:bg-[var(--green)] hover:text-black">
                 <Handshake size={15} /> Tornar-me afiliado agora
               </a>
