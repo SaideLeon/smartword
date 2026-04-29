@@ -1,19 +1,33 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import {
+  Check,
+  Globe,
+  GraduationCap,
+  Link2,
+  Megaphone,
+  Smartphone,
+  Timer,
+  UserCheck,
+  Wallet,
+  Landmark,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface AudienceCard {
-  icon: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
   title: string;
   description: string;
 }
 
 interface Step {
   num: string;
-  icon: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
   title: string;
   description: string;
 }
@@ -41,37 +55,37 @@ interface FaqItem {
 
 const audienceCards: AudienceCard[] = [
   {
-    icon: "🎓",
+    icon: GraduationCap,
     title: "Estudante sem renda própria",
     description:
       "Dependes dos pais ou de bolsa. Queres ter o teu dinheiro sem abandonar os estudos. Indica para os teus colegas — e começa a receber.",
   },
   {
-    icon: "📱",
+    icon: Smartphone,
     title: "Ativo nas redes sociais",
     description:
       "Tens seguidores no Instagram, Tiktok ou grupos de WhatsApp com estudantes. Um único post pode gerar comissões todos os meses.",
   },
   {
-    icon: "💼",
+    icon: Wallet,
     title: "Precisa de renda extra",
     description:
       "O salário não chega ao fim do mês. Queres algo que funcione em paralelo, sem horários fixos e sem sair de casa.",
   },
   {
-    icon: "🏘️",
+    icon: Landmark,
     title: "Conhece muitos estudantes",
     description:
       "Moras perto de universidade, politécnico ou escola. Tens acesso natural ao público certo. Isso já é capital.",
   },
   {
-    icon: "⏱️",
+    icon: Timer,
     title: "Sem tempo para segundo emprego",
     description:
       "Queres ganhar dinheiro mas não tens horas para mais uma ocupação. Com o Muneri, trabalhas quando queres — e recebes enquanto dormes.",
   },
   {
-    icon: "🌍",
+    icon: Globe,
     title: "Qualquer cidade de Moçambique",
     description:
       "Maputo, Beira, Nampula, Quelimane — não importa onde estás. O link funciona em todo o país, online.",
@@ -81,26 +95,26 @@ const audienceCards: AudienceCard[] = [
 const steps: Step[] = [
   {
     num: "01",
-    icon: "🔐",
+    icon: ShieldCheck,
     title: "Cria a tua conta",
     description: "Registas-te gratuitamente no Muneri. Sem cartão, sem taxas de entrada.",
   },
   {
     num: "02",
-    icon: "🔗",
+    icon: Link2,
     title: "Recebe o teu link",
     description: "O teu link pessoal é gerado automaticamente. Cada clique é rastreado ao teu nome.",
   },
   {
     num: "03",
-    icon: "📢",
+    icon: Megaphone,
     title: "Partilha onde quiseres",
     description:
       "WhatsApp, Telegram, Instagram, Facebook, grupos de faculdade — qualquer canal serve.",
   },
   {
     num: "04",
-    icon: "💰",
+    icon: UserCheck,
     title: "Recebe a comissão",
     description:
       "Cada estudante que assinar através do teu link gera comissão automaticamente para ti.",
@@ -109,26 +123,26 @@ const steps: Step[] = [
 
 const objections: Objection[] = [
   {
-    wrong: '✗ "Não sei vender"',
-    right: "✓ Não precisas vender",
+    wrong: "Não sei vender",
+    right: "Não precisas vender",
     description:
       "O Muneri já foi desenvolvido a pensar em estudantes. Tu só partilhas o link — o produto vende-se a si mesmo. Basta mandar uma mensagem para colegas.",
   },
   {
-    wrong: '✗ "Não tenho seguidores"',
-    right: "✓ Basta 1 grupo de WhatsApp",
+    wrong: "Não tenho seguidores",
+    right: "Basta 1 grupo de WhatsApp",
     description:
       "Com 30 pessoas num grupo de estudantes, uma boa mensagem pode gerar 3 a 5 assinaturas. São 300 MT a 500 MT com um único envio.",
   },
   {
-    wrong: '✗ "Parece complicado"',
-    right: "✓ 3 cliques para activar",
+    wrong: "Parece complicado",
+    right: "3 cliques para activar",
     description:
       "O dashboard é simples. Vês quantas pessoas clicaram, quantas assinaram e quanto tens a receber. Sem relatórios, sem papelada.",
   },
   {
-    wrong: '✗ "E se ninguém assinar?"',
-    right: "✓ Não perdes nada",
+    wrong: "E se ninguém assinar?",
+    right: "Não perdes nada",
     description:
       "A entrada é gratuita. Não há mensalidade de afiliado. Se não geras vendas, simplesmente não recebe nada — e não perdes um centavo.",
   },
@@ -781,8 +795,11 @@ export default function MunerAfiliados() {
             gap: "1.5rem",
           }}
         >
-          {audienceCards.map((card, i) => (
-            <div
+          {audienceCards.map((card, i) => {
+            const Icon = card.icon;
+
+            return (
+              <div
               key={i}
               className="audience-card"
               style={{
@@ -807,7 +824,9 @@ export default function MunerAfiliados() {
                   transition: "opacity .25s",
                 }}
               />
-              <div style={{ fontSize: "1.8rem", marginBottom: "1rem" }}>{card.icon}</div>
+              <div style={{ color: "var(--gold2)", marginBottom: "1rem", display: "inline-flex" }}>
+                <Icon size={28} strokeWidth={1.75} />
+              </div>
               <h3
                 style={{
                   fontFamily: "'Playfair Display', serif",
@@ -822,8 +841,9 @@ export default function MunerAfiliados() {
               <p style={{ fontSize: ".875rem", color: "var(--muted)", lineHeight: 1.7 }}>
                 {card.description}
               </p>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -873,8 +893,11 @@ export default function MunerAfiliados() {
               marginTop: "1rem",
             }}
           >
-            {steps.map((step, i) => (
-              <div
+            {steps.map((step, i) => {
+              const Icon = step.icon;
+
+              return (
+                <div
                 key={i}
                 style={{
                   background: "var(--card)",
@@ -903,7 +926,7 @@ export default function MunerAfiliados() {
                     marginBottom: "1rem",
                   }}
                 >
-                  {step.icon}
+                  <Icon size={24} strokeWidth={1.75} />
                 </div>
                 <h3
                   style={{
@@ -919,8 +942,9 @@ export default function MunerAfiliados() {
                 <p style={{ fontSize: ".875rem", color: "var(--muted)", lineHeight: 1.7 }}>
                   {step.description}
                 </p>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1021,7 +1045,10 @@ export default function MunerAfiliados() {
                     marginBottom: ".5rem",
                   }}
                 >
-                  {obj.wrong}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: ".45rem" }}>
+                    <X size={14} strokeWidth={2} />
+                    &quot;{obj.wrong}&quot;
+                  </span>
                 </div>
                 <div
                   style={{
@@ -1033,7 +1060,10 @@ export default function MunerAfiliados() {
                     marginBottom: ".75rem",
                   }}
                 >
-                  {obj.right}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: ".45rem" }}>
+                    <Check size={14} strokeWidth={2} />
+                    {obj.right}
+                  </span>
                 </div>
                 <p style={{ fontSize: ".875rem", color: "var(--muted)", lineHeight: 1.7 }}>
                   {obj.description}
