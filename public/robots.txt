@@ -1,0 +1,28 @@
+# Global directives
+User-agent: *
+Allow: /
+
+# Block private and non-indexable application areas
+Disallow: /admin/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /premium/
+Disallow: /offline/
+
+# Block low-value technical assets and internal query patterns
+Disallow: /*?*
+Disallow: /sw.js
+Disallow: /*.json$
+
+# Explicitly allow static assets and core public pages
+Allow: /$
+Allow: /landing/
+Allow: /planos/
+Allow: /afiliados/
+Allow: /calc/
+Allow: /icon.svg
+Allow: /apple-icon.svg
+
+# Sitemap discovery
+Sitemap: /sitemap.xml
