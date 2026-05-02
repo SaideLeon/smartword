@@ -25,23 +25,27 @@ export async function POST(req: Request) {
 
   try {
     const form = await req.formData();
-    const image = form.get('image');
-    if (!(image instanceof File)) return NextResponse.json({ error: 'Imagem ausente.' }, { status: 400 });
-    const mime = image.type.split(';')[0].trim().toLowerCase();
-    if (!ALLOWED.has(mime)) return NextResponse.json({ error: 'Use PNG ou JPG.' }, { status: 400 });
-    if (image.size > MAX_IMAGE_BYTES) return NextResponse.json({ error: 'Imagem demasiado grande (máx 6MB).' }, { status: 400 });
+    const front = form.get('frontImage');
+    const back = form.get('backImage');
+    if (!(front instanceof File) || !(back instanceof File)) return NextResponse.json({ error: 'Envie frente e verso.' }, { status: 400 });
+
+    const frontMime = front.type.split(';')[0].trim().toLowerCase();
+    const backMime = back.type.split(';')[0].trim().toLowerCase();
+    if (!ALLOWED.has(frontMime) || !ALLOWED.has(backMime)) return NextResponse.json({ error: 'Use PNG ou JPG em ambas imagens.' }, { status: 400 });
+    if (front.size > MAX_IMAGE_BYTES || back.size > MAX_IMAGE_BYTES) return NextResponse.json({ error: 'Imagem demasiado grande (máx 6MB por ficheiro).' }, { status: 400 });
 
     const apiKey = collectGeminiKey();
     if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY não configurada.' }, { status: 500 });
 
-    const bytes = new Uint8Array(await image.arrayBuffer());
-    const b64 = Buffer.from(bytes).toString('base64');
+    const frontB64 = Buffer.from(new Uint8Array(await front.arrayBuffer())).toString('base64');
+    const backB64 = Buffer.from(new Uint8Array(await back.arrayBuffer())).toString('base64');
     const ai = new GoogleGenAI({ apiKey });
     const result = await ai.models.generateContent({
       model: 'gemini-3.1-flash-lite-preview',
       contents: [{ role: 'user', parts: [
-        { text: 'Extrai os dados de um documento pessoal/requerimento e devolve APENAS JSON com chaves: fullName,fatherName,motherName,birthDate,birthPlace,docNumber,docIssueDate,docIssuePlace,institution,courseName,courseLevel,turma,submissionCity,submissionDate,recipientName,recipientModule,recipientCity. Se faltar, devolve string vazia.' },
-        { inlineData: { mimeType: mime, data: b64 } },
+        { text: 'As duas imagens são frente e verso do documento. Extrai os dados de identidade/académicos e devolve APENAS JSON com chaves: fullName,fatherName,motherName,birthDate,birthPlace,docNumber,docIssueDate,docIssuePlace,institution,courseName,courseLevel,turma,submissionCity,submissionDate,recipientName,recipientModule,recipientCity. Se faltar, devolve string vazia.' },
+        { inlineData: { mimeType: frontMime, data: frontB64 } },
+        { inlineData: { mimeType: backMime, data: backB64 } },
       ] }],
       config: { temperature: 0.1, maxOutputTokens: 900, thinkingConfig: { thinkingLevel: 'MINIMAL' as any } },
     });

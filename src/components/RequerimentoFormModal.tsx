@@ -54,7 +54,10 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
   const [aiBrief, setAiBrief] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const docImageInputRef = useRef<HTMLInputElement>(null);
+  const frontImageInputRef = useRef<HTMLInputElement>(null);
+  const backImageInputRef = useRef<HTMLInputElement>(null);
+  const [frontImage, setFrontImage] = useState<File | null>(null);
+  const [backImage, setBackImage] = useState<File | null>(null);
 
   const modalStyle: React.CSSProperties = {
     '--modal-bg':      '#0a0d0a',
@@ -170,18 +173,16 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
 
 
 
-  const handleExtractFromImage = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
-      showAppAlert({ title: 'Formato inválido', message: 'Use PNG ou JPG.' });
-      e.target.value = '';
+  const handleExtractFromImage = useCallback(async () => {
+    if (!frontImage || !backImage) {
+      showAppAlert({ title: 'Imagens em falta', message: 'Carrega a imagem frontal e o verso do documento.' });
       return;
     }
     setIsAiLoading(true);
     try {
       const form = new FormData();
-      form.append('image', file);
+      form.append('frontImage', frontImage);
+      form.append('backImage', backImage);
       const res = await fetch('/api/requerimento/extract', { method: 'POST', body: form });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Falha ao extrair');
@@ -190,14 +191,13 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
         const v = payload?.[k];
         if (typeof v === 'string' && v.trim()) setField(k, v);
       }
-      showAppAlert({ title: 'Dados extraídos', message: 'A IA preencheu os campos reconhecidos da imagem.' });
+      showAppAlert({ title: 'Dados extraídos', message: 'A IA preencheu os campos reconhecidos das imagens.' });
     } catch (err) {
       showAppAlert({ title: 'Erro ao extrair', message: err instanceof Error ? err.message : 'Falha inesperada' });
     } finally {
       setIsAiLoading(false);
-      e.target.value = '';
     }
-  }, [setField]);
+  }, [backImage, frontImage, setField]);
 
   const handleAssist = useCallback(async () => {
     if (!aiBrief.trim()) {
@@ -273,11 +273,14 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
 
           <Section label="Preenchimento Inteligente por Imagem">
-            <p className="font-mono text-[10px] text-[var(--modal-faint)]">Carrega foto do BI, ficha ou documento com dados; a IA tenta preencher os campos automaticamente.</p>
-            <button onClick={() => docImageInputRef.current?.click()} disabled={isAiLoading} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">
-              {isAiLoading ? 'A processar imagem…' : '🖼️ Extrair dados de imagem com IA'}
-            </button>
-            <input ref={docImageInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleExtractFromImage} />
+            <p className="font-mono text-[10px] text-[var(--modal-faint)]">Carrega frente e verso do documento; a IA cruza ambos para preencher os campos.</p>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => frontImageInputRef.current?.click()} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-muted)] hover:bg-[var(--modal-surface)]">📄 Frente {frontImage ? '✓' : ''}</button>
+              <button onClick={() => backImageInputRef.current?.click()} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-muted)] hover:bg-[var(--modal-surface)]">📄 Verso {backImage ? '✓' : ''}</button>
+              <button onClick={handleExtractFromImage} disabled={isAiLoading || !frontImage || !backImage} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">{isAiLoading ? 'A processar…' : '🖼️ Extrair com IA'}</button>
+            </div>
+            <input ref={frontImageInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => setFrontImage(e.target.files?.[0] ?? null)} />
+            <input ref={backImageInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => setBackImage(e.target.files?.[0] ?? null)} />
           </Section>
 
           {/* ── CABEÇALHO INSTITUCIONAL ── */}
