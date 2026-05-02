@@ -7,6 +7,13 @@ import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 const MAX_INPUT_CHARS = 1200;
 function safeString(v: unknown, max = 2400): string { return typeof v === 'string' ? v.trim().slice(0, max) : ''; }
 
+function normalizeSection3Content(value: string): string {
+  const v = value.trim();
+  const hasPlanningTone = /(fases|cronograma|primeiro mês|segundo mês|terceiro mês|plano de execução)/i.test(v);
+  if (hasPlanningTone) return 'Face ao exposto, venho respeitosamente solicitar a Vossa Excelência que se digne a apreciar e aprovar o projecto apresentado no âmbito do Módulo de Projecto Integrado.';
+  return v;
+}
+
 function normalizeRequestPurpose(value: string): string {
   const cleaned = value.trim().replace(/^[\-–—:\s]+/, '');
   return cleaned
@@ -40,6 +47,7 @@ REGRAS CRÍTICAS DE CONTEÚDO:
 4) A justificativa/viabilidade, quando existir, vai na secção 2.
 5) Se não fizer sentido incluir secção, devolve título e conteúdo vazios.
 6) Em requestPurpose, devolve APENAS o complemento directo após "venho solicitar ..." sem prefixos como "Solicitação de", "Pedido de" ou frase nominal autónoma.
+7) A secção 3 (Do Pedido) deve conter o pedido formal de apreciação/aprovação à autoridade, e NÃO cronograma, fases técnicas ou plano de execução.
 
 EXEMPLO CORRECTO para section1Content (estilo):
 "O projecto proposto denomina-se Muneri, uma plataforma digital de geração de documentos académicos com recurso a Inteligência Artificial. A plataforma encontra-se em desenvolvimento activo pelo formando e visa facilitar a elaboração de trabalhos escolares com maior rapidez e organização."
@@ -57,7 +65,7 @@ EXEMPLO INCORRECTO para section1Content:
       section2Title: safeString(parsed.section2Title),
       section2Content: safeString(parsed.section2Content, 5000),
       section3Title: safeString(parsed.section3Title),
-      section3Content: safeString(parsed.section3Content, 5000),
+      section3Content: normalizeSection3Content(safeString(parsed.section3Content, 5000)),
     });
   } catch (error) {
     console.error('[requerimento/assist] erro', error);
