@@ -54,6 +54,7 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
   const [aiBrief, setAiBrief] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const docImageInputRef = useRef<HTMLInputElement>(null);
 
   const modalStyle: React.CSSProperties = {
     '--modal-bg':      '#0a0d0a',
@@ -168,6 +169,36 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
   }, [draft, clearDraft, onSubmit]);
 
 
+
+  const handleExtractFromImage = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
+      showAppAlert({ title: 'Formato inválido', message: 'Use PNG ou JPG.' });
+      e.target.value = '';
+      return;
+    }
+    setIsAiLoading(true);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      const res = await fetch('/api/requerimento/extract', { method: 'POST', body: form });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Falha ao extrair');
+      const keys: Array<keyof RequerimentoFormDraft> = ['fullName','fatherName','motherName','birthDate','birthPlace','docNumber','docIssueDate','docIssuePlace','institution','courseName','courseLevel','turma','submissionCity','submissionDate','recipientName','recipientModule','recipientCity'];
+      for (const k of keys) {
+        const v = payload?.[k];
+        if (typeof v === 'string' && v.trim()) setField(k, v);
+      }
+      showAppAlert({ title: 'Dados extraídos', message: 'A IA preencheu os campos reconhecidos da imagem.' });
+    } catch (err) {
+      showAppAlert({ title: 'Erro ao extrair', message: err instanceof Error ? err.message : 'Falha inesperada' });
+    } finally {
+      setIsAiLoading(false);
+      e.target.value = '';
+    }
+  }, [setField]);
+
   const handleAssist = useCallback(async () => {
     if (!aiBrief.trim()) {
       showAppAlert({ title: 'Descrição em falta', message: 'Descreve primeiro o propósito para a IA redigir.' });
@@ -240,6 +271,14 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
 
         {/* Corpo com scroll */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
+
+          <Section label="Preenchimento Inteligente por Imagem">
+            <p className="font-mono text-[10px] text-[var(--modal-faint)]">Carrega foto do BI, ficha ou documento com dados; a IA tenta preencher os campos automaticamente.</p>
+            <button onClick={() => docImageInputRef.current?.click()} disabled={isAiLoading} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">
+              {isAiLoading ? 'A processar imagem…' : '🖼️ Extrair dados de imagem com IA'}
+            </button>
+            <input ref={docImageInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleExtractFromImage} />
+          </Section>
 
           {/* ── CABEÇALHO INSTITUCIONAL ── */}
           <Section label="Cabeçalho Institucional">
