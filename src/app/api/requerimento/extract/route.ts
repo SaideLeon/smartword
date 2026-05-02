@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import { requireAuth } from '@/lib/api-auth';
 import { enforceRateLimit } from '@/lib/rate-limit';
 
-const ALLOWED = new Set(['image/png', 'image/jpeg']);
+const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 
 function collectGeminiKey(): string | null {
@@ -51,8 +51,15 @@ export async function POST(req: Request) {
     });
 
     const raw = String(result?.text ?? '').replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(raw);
-    return NextResponse.json(parsed);
+    const jsonSlice = raw.match(/\{[\s\S]*\}/)?.[0] ?? '';
+    if (!jsonSlice) {
+      return NextResponse.json({ error: 'A IA não devolveu JSON válido.', raw: raw.slice(0, 400) }, { status: 422 });
+    }
+    const parsed = JSON.parse(jsonSlice) as Record<string, unknown>;
+    const keys = ['fullName','fatherName','motherName','birthDate','birthPlace','docNumber','docIssueDate','docIssuePlace','institution','courseName','courseLevel','turma','submissionCity','submissionDate','recipientName','recipientModule','recipientCity','recipientTitle','city','courseHeader'];
+    const clean: Record<string, string> = {};
+    for (const k of keys) clean[k] = typeof parsed[k] === 'string' ? parsed[k].trim().slice(0, 500) : '';
+    return NextResponse.json(clean);
   } catch (error) {
     console.error('[requerimento/extract] erro', error);
     return NextResponse.json({ error: 'Falha ao extrair dados da imagem.' }, { status: 500 });

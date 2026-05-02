@@ -185,7 +185,7 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
       form.append('backImage', backImage);
       const res = await fetch('/api/requerimento/extract', { method: 'POST', body: form });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Falha ao extrair');
+      if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : `Falha ao extrair (HTTP ${res.status})`);
       const keys: Array<keyof RequerimentoFormDraft> = ['fullName','fatherName','motherName','birthDate','birthPlace','docNumber','docIssueDate','docIssuePlace','institution','courseName','courseLevel','turma','submissionCity','submissionDate','recipientName','recipientModule','recipientCity'];
       for (const k of keys) {
         const v = payload?.[k];
@@ -279,8 +279,8 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
               <button onClick={() => backImageInputRef.current?.click()} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-muted)] hover:bg-[var(--modal-surface)]">📄 Verso {backImage ? '✓' : ''}</button>
               <button onClick={handleExtractFromImage} disabled={isAiLoading || !frontImage || !backImage} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">{isAiLoading ? 'A processar…' : '🖼️ Extrair com IA'}</button>
             </div>
-            <input ref={frontImageInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => setFrontImage(e.target.files?.[0] ?? null)} />
-            <input ref={backImageInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => setBackImage(e.target.files?.[0] ?? null)} />
+            <input ref={frontImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => setFrontImage(e.target.files?.[0] ?? null)} />
+            <input ref={backImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => setBackImage(e.target.files?.[0] ?? null)} />
           </Section>
 
           {/* ── CABEÇALHO INSTITUCIONAL ── */}
@@ -330,7 +330,7 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
                 <span>Carregar brasão da instituição (PNG / JPG)</span>
               </button>
             )}
-            <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" onChange={handleLogo} className="hidden" />
+            <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogo} className="hidden" />
           </Section>
 
           {/* ── DESTINATÁRIO ── */}
