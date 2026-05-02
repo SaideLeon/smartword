@@ -46,6 +46,37 @@ function validate(f: RequerimentoFormDraft): Record<string, string> {
   return e;
 }
 
+
+
+async function compressImageFile(file: File, maxWidth = 1600, quality = 0.82): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  if (typeof window === 'undefined') return file;
+
+  const imgUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = imgUrl;
+    });
+
+    const scale = Math.min(1, maxWidth / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[a-zA-Z0-9]+$/, '.jpg'), { type: 'image/jpeg' });
+  } finally {
+    URL.revokeObjectURL(imgUrl);
+  }
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: Props) {
@@ -185,7 +216,12 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
       form.append('backImage', backImage);
       const res = await fetch('/api/requerimento/extract', { method: 'POST', body: form });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : `Falha ao extrair (HTTP ${res.status})`);
+      if (!res.ok) {
+        const fallback = res.status === 413
+          ? 'Imagens demasiado grandes para upload. Tenta fotos mais leves (serão comprimidas automaticamente).'
+          : `Falha ao extrair (HTTP ${res.status})`;
+        throw new Error(typeof payload?.error === 'string' ? payload.error : fallback);
+      }
       const keys: Array<keyof RequerimentoFormDraft> = ['fullName','fatherName','motherName','birthDate','birthPlace','docNumber','docIssueDate','docIssuePlace','institution','courseName','courseLevel','turma','submissionCity','submissionDate','recipientName','recipientModule','recipientCity'];
       for (const k of keys) {
         const v = payload?.[k];
@@ -279,8 +315,8 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
               <button onClick={() => backImageInputRef.current?.click()} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-muted)] hover:bg-[var(--modal-surface)]">📄 Verso {backImage ? '✓' : ''}</button>
               <button onClick={handleExtractFromImage} disabled={isAiLoading || !frontImage || !backImage} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">{isAiLoading ? 'A processar…' : '🖼️ Extrair com IA'}</button>
             </div>
-            <input ref={frontImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => setFrontImage(e.target.files?.[0] ?? null)} />
-            <input ref={backImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => setBackImage(e.target.files?.[0] ?? null)} />
+            <input ref={frontImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0] ?? null; setFrontImage(f ? await compressImageFile(f) : null); }} />
+            <input ref={backImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0] ?? null; setBackImage(f ? await compressImageFile(f) : null); }} />
           </Section>
 
           {/* ── CABEÇALHO INSTITUCIONAL ── */}
