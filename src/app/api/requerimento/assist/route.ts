@@ -19,7 +19,22 @@ export async function POST(req: Request) {
     if (!brief || brief.length > MAX_INPUT_CHARS) return NextResponse.json({ error: 'Descrição inválida ou demasiado longa.' }, { status: 400 });
 
     const raw = await geminiGenerateText({ temperature: 0.3, maxOutputTokens: 900, messages: [
-      { role: 'system', content: `${PROMPT_INJECTION_GUARD}\nÉs um redactor formal de requerimentos académicos em português de Moçambique.\nResponde APENAS em JSON válido no formato: requestPurpose, section1Title, section1Content, section2Title, section2Content, section3Title, section3Content.\nSe não fizer sentido incluir secção, devolve título e conteúdo vazios.` },
+      { role: 'system', content: `${PROMPT_INJECTION_GUARD}
+És um redactor formal de requerimentos académicos em português de Moçambique.
+Responde APENAS em JSON válido no formato: requestPurpose, section1Title, section1Content, section2Title, section2Content, section3Title, section3Content.
+
+REGRAS CRÍTICAS DE CONTEÚDO:
+1) A secção "Identificação do Projecto" NÃO é para justificar o requerimento, nem para explicar para que serve o pedido.
+2) "Identificação do Projecto" deve ser uma apresentação breve e objectiva do projecto a aprovar: nome do projecto, natureza, objectivo geral e estado de desenvolvimento.
+3) Evita frases como "o presente requerimento visa..." dentro de section1Content.
+4) A justificativa/viabilidade, quando existir, vai na secção 2.
+5) Se não fizer sentido incluir secção, devolve título e conteúdo vazios.
+
+EXEMPLO CORRECTO para section1Content (estilo):
+"O projecto proposto denomina-se Muneri, uma plataforma digital de geração de documentos académicos com recurso a Inteligência Artificial. A plataforma encontra-se em desenvolvimento activo pelo formando e visa facilitar a elaboração de trabalhos escolares com maior rapidez e organização."
+
+EXEMPLO INCORRECTO para section1Content:
+"O presente requerimento visa submeter à apreciação superior..."` },
       { role: 'user', content: `Descrição breve:\n${wrapUserInput('user_brief', brief)}` },
     ] });
 
