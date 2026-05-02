@@ -5,6 +5,7 @@
 // Segue os padrões visuais de CoverFormModal.tsx e usa IndexedDB via hook.
 
 import { useCallback, useRef, useState, type ChangeEvent } from 'react';
+import { AudioInputButton } from '@/components/AudioInputButton';
 import type { RequerimentoData } from '@/lib/docx/requerimento-types';
 import { workTheme as C } from '@/lib/theme';
 import { showAppAlert } from '@/lib/ui-alert';
@@ -50,6 +51,8 @@ function validate(f: RequerimentoFormDraft): Record<string, string> {
 export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: Props) {
   const { draft, setField, loading, clearDraft, hasDraft } = useRequerimentoFormPersistence();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [aiBrief, setAiBrief] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const modalStyle: React.CSSProperties = {
@@ -163,6 +166,32 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
     await clearDraft();
     onSubmit(data);
   }, [draft, clearDraft, onSubmit]);
+
+
+  const handleAssist = useCallback(async () => {
+    if (!aiBrief.trim()) {
+      showAppAlert({ title: 'Descrição em falta', message: 'Descreve primeiro o propósito para a IA redigir.' });
+      return;
+    }
+    setIsAiLoading(true);
+    try {
+      const res = await fetch('/api/requerimento/assist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brief: aiBrief }) });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Falha ao gerar sugestão');
+      setField('requestPurpose', payload.requestPurpose ?? '');
+      setField('section1Title', payload.section1Title ?? '');
+      setField('section1Content', payload.section1Content ?? '');
+      setField('section2Title', payload.section2Title ?? '');
+      setField('section2Content', payload.section2Content ?? '');
+      setField('section3Title', payload.section3Title ?? '');
+      setField('section3Content', payload.section3Content ?? '');
+      showAppAlert({ title: 'Sugestão aplicada', message: 'A IA preencheu propósito e secções opcionais.' });
+    } catch (err) {
+      showAppAlert({ title: 'Erro da IA', message: err instanceof Error ? err.message : 'Falha ao sugerir texto' });
+    } finally {
+      setIsAiLoading(false);
+    }
+  }, [aiBrief, setField]);
 
   const logoPreview = draft.logoBase64 || null;
 
@@ -331,6 +360,21 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
 
           {/* ── PROPÓSITO DO PEDIDO ── */}
           <Section label="Propósito do Pedido">
+            <Field label="Descrição breve para IA (opcional)">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={aiBrief}
+                  onChange={e => setAiBrief(e.target.value)}
+                  placeholder="Descreve em poucas linhas o pedido para a IA redigir o requerimento"
+                  rows={2}
+                  hasError={false}
+                />
+                <AudioInputButton onTranscription={(text) => setAiBrief(prev => (prev ? `${prev} ${text}` : text))} className="py-2" title="Áudio para descrição da IA" />
+              </div>
+              <button onClick={handleAssist} disabled={isAiLoading} className="mt-2 rounded border border-[var(--modal-border)] px-3 py-1.5 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">
+                {isAiLoading ? 'A gerar com IA…' : '✦ Gerar propósito e secções com IA'}
+              </button>
+            </Field>
             <Field label="O que solicita (complemento do parágrafo de abertura)" required error={validationErrors.requestPurpose}>
               <Textarea
                 value={draft.requestPurpose}
