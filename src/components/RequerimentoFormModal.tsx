@@ -5,6 +5,7 @@
 // Segue os padrões visuais de CoverFormModal.tsx e usa IndexedDB via hook.
 
 import { useCallback, useRef, useState, type ChangeEvent } from 'react';
+import { AudioInputButton } from '@/components/AudioInputButton';
 import type { RequerimentoData } from '@/lib/docx/requerimento-types';
 import { workTheme as C } from '@/lib/theme';
 import { showAppAlert } from '@/lib/ui-alert';
@@ -45,12 +46,49 @@ function validate(f: RequerimentoFormDraft): Record<string, string> {
   return e;
 }
 
+
+
+async function compressImageFile(file: File, maxWidth = 1600, quality = 0.82): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  if (typeof window === 'undefined') return file;
+
+  const imgUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = imgUrl;
+    });
+
+    const scale = Math.min(1, maxWidth / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[a-zA-Z0-9]+$/, '.jpg'), { type: 'image/jpeg' });
+  } finally {
+    URL.revokeObjectURL(imgUrl);
+  }
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: Props) {
   const { draft, setField, loading, clearDraft, hasDraft } = useRequerimentoFormPersistence();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [aiBrief, setAiBrief] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const frontImageInputRef = useRef<HTMLInputElement>(null);
+  const backImageInputRef = useRef<HTMLInputElement>(null);
+  const [frontImage, setFrontImage] = useState<File | null>(null);
+  const [backImage, setBackImage] = useState<File | null>(null);
 
   const modalStyle: React.CSSProperties = {
     '--modal-bg':      '#0a0d0a',
@@ -164,6 +202,64 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
     onSubmit(data);
   }, [draft, clearDraft, onSubmit]);
 
+
+
+  const handleExtractFromImage = useCallback(async () => {
+    if (!frontImage || !backImage) {
+      showAppAlert({ title: 'Imagens em falta', message: 'Carrega a imagem frontal e o verso do documento.' });
+      return;
+    }
+    setIsAiLoading(true);
+    try {
+      const form = new FormData();
+      form.append('frontImage', frontImage);
+      form.append('backImage', backImage);
+      const res = await fetch('/api/requerimento/extract', { method: 'POST', body: form });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const fallback = res.status === 413
+          ? 'Imagens demasiado grandes para upload. Tenta fotos mais leves (serão comprimidas automaticamente).'
+          : `Falha ao extrair (HTTP ${res.status})`;
+        throw new Error(typeof payload?.error === 'string' ? payload.error : fallback);
+      }
+      const keys: Array<keyof RequerimentoFormDraft> = ['fullName','fatherName','motherName','birthDate','birthPlace','docNumber','docIssueDate','docIssuePlace','institution','courseName','courseLevel','turma','submissionCity','submissionDate','recipientName','recipientModule','recipientCity'];
+      for (const k of keys) {
+        const v = payload?.[k];
+        if (typeof v === 'string' && v.trim()) setField(k, v);
+      }
+      showAppAlert({ title: 'Dados extraídos', message: 'A IA preencheu os campos reconhecidos das imagens.' });
+    } catch (err) {
+      showAppAlert({ title: 'Erro ao extrair', message: err instanceof Error ? err.message : 'Falha inesperada' });
+    } finally {
+      setIsAiLoading(false);
+    }
+  }, [backImage, frontImage, setField]);
+
+  const handleAssist = useCallback(async () => {
+    if (!aiBrief.trim()) {
+      showAppAlert({ title: 'Descrição em falta', message: 'Descreve primeiro o propósito para a IA redigir.' });
+      return;
+    }
+    setIsAiLoading(true);
+    try {
+      const res = await fetch('/api/requerimento/assist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brief: aiBrief }) });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Falha ao gerar sugestão');
+      setField('requestPurpose', payload.requestPurpose ?? '');
+      setField('section1Title', payload.section1Title ?? '');
+      setField('section1Content', payload.section1Content ?? '');
+      setField('section2Title', payload.section2Title ?? '');
+      setField('section2Content', payload.section2Content ?? '');
+      setField('section3Title', payload.section3Title ?? '');
+      setField('section3Content', payload.section3Content ?? '');
+      showAppAlert({ title: 'Sugestão aplicada', message: 'A IA preencheu propósito e secções opcionais.' });
+    } catch (err) {
+      showAppAlert({ title: 'Erro da IA', message: err instanceof Error ? err.message : 'Falha ao sugerir texto' });
+    } finally {
+      setIsAiLoading(false);
+    }
+  }, [aiBrief, setField]);
+
   const logoPreview = draft.logoBase64 || null;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -212,6 +308,17 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
         {/* Corpo com scroll */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
 
+          <Section label="Preenchimento Inteligente por Imagem">
+            <p className="font-mono text-[10px] text-[var(--modal-faint)]">Carrega frente e verso do documento; a IA cruza ambos para preencher os campos.</p>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => frontImageInputRef.current?.click()} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-muted)] hover:bg-[var(--modal-surface)]">📄 Frente {frontImage ? '✓' : ''}</button>
+              <button onClick={() => backImageInputRef.current?.click()} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-muted)] hover:bg-[var(--modal-surface)]">📄 Verso {backImage ? '✓' : ''}</button>
+              <button onClick={handleExtractFromImage} disabled={isAiLoading || !frontImage || !backImage} className="rounded border border-[var(--modal-border)] px-3 py-2 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">{isAiLoading ? 'A processar…' : '🖼️ Extrair com IA'}</button>
+            </div>
+            <input ref={frontImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0] ?? null; setFrontImage(f ? await compressImageFile(f) : null); }} />
+            <input ref={backImageInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0] ?? null; setBackImage(f ? await compressImageFile(f) : null); }} />
+          </Section>
+
           {/* ── CABEÇALHO INSTITUCIONAL ── */}
           <Section label="Cabeçalho Institucional">
 
@@ -259,7 +366,7 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
                 <span>Carregar brasão da instituição (PNG / JPG)</span>
               </button>
             )}
-            <input ref={logoInputRef} type="file" accept="image/png,image/jpeg" onChange={handleLogo} className="hidden" />
+            <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleLogo} className="hidden" />
           </Section>
 
           {/* ── DESTINATÁRIO ── */}
@@ -331,6 +438,21 @@ export function RequerimentoFormModal({ onSubmit, onCancel, isMobile = false }: 
 
           {/* ── PROPÓSITO DO PEDIDO ── */}
           <Section label="Propósito do Pedido">
+            <Field label="Descrição breve para IA (opcional)">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={aiBrief}
+                  onChange={e => setAiBrief(e.target.value)}
+                  placeholder="Descreve em poucas linhas o pedido para a IA redigir o requerimento"
+                  rows={2}
+                  hasError={false}
+                />
+                <AudioInputButton onTranscription={(text) => setAiBrief(prev => (prev ? `${prev} ${text}` : text))} className="py-2" title="Áudio para descrição da IA" />
+              </div>
+              <button onClick={handleAssist} disabled={isAiLoading} className="mt-2 rounded border border-[var(--modal-border)] px-3 py-1.5 font-mono text-[10px] text-[var(--modal-accent)] hover:bg-[var(--modal-surface)] disabled:opacity-60">
+                {isAiLoading ? 'A gerar com IA…' : '✦ Gerar propósito e secções com IA'}
+              </button>
+            </Field>
             <Field label="O que solicita (complemento do parágrafo de abertura)" required error={validationErrors.requestPurpose}>
               <Textarea
                 value={draft.requestPurpose}
