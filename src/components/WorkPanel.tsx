@@ -13,12 +13,14 @@ import { useWorkSession } from '@/hooks/useWorkSession';
 import { useCoverAgent } from '@/hooks/useCoverAgent';
 import { useEditorActions } from '@/hooks/useEditorStore';
 import { CoverFormModal } from '@/components/CoverFormModal';
+import { RequerimentoFormModal } from '@/components/RequerimentoFormModal';
 import { AudioInputButton } from '@/components/AudioInputButton';
 import { ProcessingBars } from '@/components/ProcessingBars';
 import { ResourceUploadStep } from '@/components/ResourceUploadStep';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
 import type { WorkSection } from '@/lib/work/types';
+import { useRequerimento } from '@/hooks/useRequerimento';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -193,6 +195,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
+  const req = useRequerimento();
   const { setIncludeCover, setCoverData, resetExportPreferences, setContent } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
@@ -396,6 +399,14 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
         />
       )}
 
+      {req.isFormOpen && (
+        <RequerimentoFormModal
+          onSubmit={req.generate}
+          onCancel={req.closeForm}
+          isMobile={isMobile}
+        />
+      )}
+
       <div style={vars} className={`flex h-full flex-col bg-[var(--panel-bg)] ${isMobile ? '' : 'border-l border-[var(--panel-border)]'}`}>
 
         {/* Cabeçalho */}
@@ -484,6 +495,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               </p>
               <div className="flex flex-col gap-2.5">
                 <Btn onClick={() => { setProcessingButtonId('start-new'); if (autoTimerRef.current) clearTimeout(autoTimerRef.current); autoModeRef.current = false; setAutoMode(false); startNew(); setShowSessions(false); }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar trabalho</Btn>
+                <Btn onClick={req.openForm} color={C.muted} outline flex disabled={req.isGenerating}>📋 Gerar Requerimento</Btn>
                 <Btn onClick={() => { setProcessingButtonId('toggle-sessions'); setShowSessions(v => !v); }} color={C.muted} outline processing={isProcessing('toggle-sessions')} ariaLabel={showSessions ? 'Ocultar trabalhos' : 'Mostrar trabalhos'} ariaExpanded={showSessions} ariaControls={sessionsRegionId}>↩ Retomar trabalho</Btn>
               </div>
             </div>
