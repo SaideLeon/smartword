@@ -21,6 +21,7 @@ import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
 import type { WorkSection } from '@/lib/work/types';
 import { useRequerimento } from '@/hooks/useRequerimento';
+import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -197,6 +198,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
 
   const coverAgent = useCoverAgent();
   const req = useRequerimento();
+  const { exportDocx } = useDocumentEditor();
   const { setIncludeCover, setCoverData, resetExportPreferences, setContent } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
@@ -588,6 +590,19 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
               <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
                 ↕ Cada secção principal começa numa nova página. O agente revisor enriquece cada secção com as tuas fontes.
+              </div>
+
+              <div className="flex gap-2">
+                <Btn
+                  color={C.gold}
+                  outline
+                  flex
+                  onClick={() => { void exportDocx({ includeCover: true }); }}
+                  disabled={!session || session.sections.every(s => !s.content.trim())}
+                  ariaLabel="Baixar trabalho"
+                >
+                  ⭳ Download do trabalho
+                </Btn>
               </div>
 
               {autoMode ? (
