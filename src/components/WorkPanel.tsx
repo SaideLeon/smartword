@@ -420,7 +420,8 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               </span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <Btn onClick={req.openForm} color={C.muted} outline disabled={req.isGenerating}>📋 Gerar Requerimento</Btn>
             {session && (
               <button
                 onClick={() => {
@@ -495,7 +496,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               </p>
               <div className="flex flex-col gap-2.5">
                 <Btn onClick={() => { setProcessingButtonId('start-new'); if (autoTimerRef.current) clearTimeout(autoTimerRef.current); autoModeRef.current = false; setAutoMode(false); startNew(); setShowSessions(false); }} color={C.accent} processing={isProcessing('start-new')}>✦ Iniciar trabalho</Btn>
-                <Btn onClick={req.openForm} color={C.muted} outline flex disabled={req.isGenerating}>📋 Gerar Requerimento</Btn>
                 <Btn onClick={() => { setProcessingButtonId('toggle-sessions'); setShowSessions(v => !v); }} color={C.muted} outline processing={isProcessing('toggle-sessions')} ariaLabel={showSessions ? 'Ocultar trabalhos' : 'Mostrar trabalhos'} ariaExpanded={showSessions} ariaControls={sessionsRegionId}>↩ Retomar trabalho</Btn>
               </div>
             </div>
