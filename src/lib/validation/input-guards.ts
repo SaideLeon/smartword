@@ -27,7 +27,16 @@ export function isValidUUID(value: unknown): value is string {
   return typeof value === 'string' && UUID_V4_PATTERN.test(value.trim());
 }
 
-export function parseSessionPayload(payload: unknown): { sessionId: string; sectionIndex: number } | null {
+export type NivelEnsino = 'Ensino Universitário' | 'Ensino Secundário' | 'Ensino Médio';
+
+function parseNivelEnsino(value: unknown): NivelEnsino | null {
+  if (value === 'Ensino Universitário' || value === 'Ensino Secundário' || value === 'Ensino Médio') {
+    return value;
+  }
+  return null;
+}
+
+export function parseSessionPayload(payload: unknown): { sessionId: string; sectionIndex: number; nivelEnsino: NivelEnsino } | null {
   if (!payload || typeof payload !== 'object') return null;
 
   const sessionId = asTrimmedString((payload as Record<string, unknown>).sessionId);
@@ -38,7 +47,10 @@ export function parseSessionPayload(payload: unknown): { sessionId: string; sect
     return null;
   }
 
-  return { sessionId, sectionIndex: sectionIndexRaw };
+  const nivelEnsino = parseNivelEnsino((payload as Record<string, unknown>).nivelEnsino);
+  if (!nivelEnsino) return null;
+
+  return { sessionId, sectionIndex: sectionIndexRaw, nivelEnsino };
 }
 
 export function parseChatMessages(value: unknown): ChatMessage[] | null {
@@ -68,7 +80,7 @@ export function parseChatMessages(value: unknown): ChatMessage[] | null {
   return parsed;
 }
 
-export function parseOutlinePayload(payload: unknown): { sessionId: string; topic: string; suggestions: string | null } | null {
+export function parseOutlinePayload(payload: unknown): { sessionId: string; topic: string; suggestions: string | null; nivelEnsino: NivelEnsino } | null {
   if (!payload || typeof payload !== 'object') return null;
 
   const sessionId = asTrimmedString((payload as Record<string, unknown>).sessionId);
@@ -87,7 +99,10 @@ export function parseOutlinePayload(payload: unknown): { sessionId: string; topi
     return null;
   }
 
-  return { sessionId, topic, suggestions };
+  const nivelEnsino = parseNivelEnsino((payload as Record<string, unknown>).nivelEnsino);
+  if (!nivelEnsino) return null;
+
+  return { sessionId, topic, suggestions, nivelEnsino };
 }
 
 export function parseCoverAbstractPayload(payload: unknown): { theme: string; topic: string | null; outline: string | null } | null {

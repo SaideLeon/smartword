@@ -21,6 +21,7 @@ import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
 import type { WorkSection } from '@/lib/work/types';
 import { useRequerimento } from '@/hooks/useRequerimento';
+import { useDocumentEditor } from '@/hooks/useDocumentEditor';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -192,10 +193,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     reset, startNew, submitTopic, approveOutline, requestNewOutline,
     developSection, insertSection, backToOutline, loadSessions, resumeSession, isSectionRegenerated,
     skipResources, confirmResources, uploadRagFiles, uploadRagFile, uploadingRag,
+    nivelEnsino, setNivelEnsino,
   } = useWorkSession();
 
   const coverAgent = useCoverAgent();
   const req = useRequerimento();
+  const { exportDocx } = useDocumentEditor();
   const { setIncludeCover, setCoverData, resetExportPreferences, setContent } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
@@ -491,7 +494,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
 
               <div className="mb-3 text-[2.5rem]">📚</div>
               <p className="mb-6 font-mono text-[13px] leading-[1.65] text-[var(--panel-text-dim)]">
-                Copiloto para trabalhos do ensino secundário e médio.<br />
+                Copiloto para trabalhos de ensino universitário, secundário e médio.<br />
                 Gera e desenvolve cada secção — <span className="text-[var(--panel-accent)]">com base nas tuas fontes.</span>
               </p>
               <div className="flex flex-col gap-2.5">
@@ -504,6 +507,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {/* ── TOPIC INPUT ── */}
           {step === 'topic_input' && (
             <div className="flex flex-col gap-3">
+              <Label>Nível de ensino</Label>
+              <select value={nivelEnsino} onChange={e => setNivelEnsino(e.target.value as any)} className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-xs text-[var(--panel-text)] outline-none focus:border-[var(--panel-accent-dim)]">
+                <option>Ensino Universitário</option>
+                <option>Ensino Secundário</option>
+                <option>Ensino Médio</option>
+              </select>
               <Label>Qual é o tema do trabalho?</Label>
               <div className="flex items-end gap-2">
                 <textarea value={topicInput} onChange={e => setTopicInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTopicSubmit(); } }} placeholder="Ex: A importância da água potável para a saúde pública em Moçambique" rows={4} autoFocus className="flex-1 resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
@@ -581,6 +590,19 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
               <Label>Esboço aprovado. Selecciona uma secção para desenvolver.</Label>
               <div className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[var(--panel-text-faint)]">
                 ↕ Cada secção principal começa numa nova página. O agente revisor enriquece cada secção com as tuas fontes.
+              </div>
+
+              <div className="flex gap-2">
+                <Btn
+                  color={C.gold}
+                  outline
+                  flex
+                  onClick={() => { void exportDocx({ includeCover: true }); }}
+                  disabled={!session || session.sections.every(s => !s.content.trim())}
+                  ariaLabel="Baixar trabalho"
+                >
+                  ⭳ Download do trabalho
+                </Btn>
               </div>
 
               {autoMode ? (
