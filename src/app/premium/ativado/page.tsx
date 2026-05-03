@@ -4,6 +4,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import {
+  BookOpenText,
+  Download,
+  FileText,
+  GraduationCap,
+  Sparkles,
+} from 'lucide-react';
 
 function PremiumAtivadoContent() {
   const searchParams = useSearchParams();
@@ -202,11 +209,11 @@ function PremiumAtivadoContent() {
             O que tens acesso
           </p>
           {[
-            { icon: '📝', label: 'Geração ilimitada de trabalhos escolares' },
-            { icon: '🎓', label: 'Modo TCC completo com compressão de contexto' },
-            { icon: '✦', label: 'IA Chat especialista em matemática e ciências' },
-            { icon: '📄', label: 'Capa e contracapa automáticas personalizadas' },
-            { icon: '⬇', label: 'Exportação Word completa (sem truncagem)' },
+            { icon: FileText, label: 'Geração ilimitada de trabalhos escolares' },
+            { icon: GraduationCap, label: 'Modo TCC completo com compressão de contexto' },
+            { icon: Sparkles, label: 'IA Chat especialista em matemática e ciências' },
+            { icon: BookOpenText, label: 'Capa e contracapa automáticas personalizadas' },
+            { icon: Download, label: 'Exportação Word completa (sem truncagem)' },
           ].map((item, i) => (
             <div
               key={item.label}
@@ -220,7 +227,9 @@ function PremiumAtivadoContent() {
                 transition: `opacity 0.4s ease ${0.4 + i * 0.08}s, transform 0.4s ease ${0.4 + i * 0.08}s`,
               }}
             >
-              <span style={{ fontSize: '15px', flexShrink: 0, marginTop: '1px' }}>{item.icon}</span>
+              <span style={{ display: 'inline-flex', flexShrink: 0, marginTop: '1px', color: '#C7B06F' }}>
+                <item.icon size={15} strokeWidth={1.9} />
+              </span>
               <span
                 style={{
                   fontFamily: 'Georgia, serif',
