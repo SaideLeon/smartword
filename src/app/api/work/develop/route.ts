@@ -85,9 +85,9 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
 
 // ── Instruções específicas por secção ────────────────────────────────────────
 
-function getSectionInstruction(normalizedName: string, isSubsection: boolean): string {
+function getSectionInstruction(normalizedName: string, isSubsection: boolean, nivelEnsino: string): string {
   if (isSubsection) {
-    return `Desenvolve este subtópico de forma clara e didáctica para alunos do ensino secundário. Deve:
+    return `Desenvolve este subtópico de forma clara e didáctica para alunos de ${nivelEnsino}. Deve:
 - Apresentar o conceito com uma definição simples e acessível
 - Incluir pelo menos 1 exemplo prático quando isso ajudar a compreensão
 - Ter entre 220 e 380 palavras
@@ -96,7 +96,7 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - NÃO incluir conclusão nem lista de referências no final`;
   }
   if (normalizedName === 'introducao') {
-    return `Escreve uma introdução académica simples para um trabalho do ensino secundário/médio. Deve:
+    return `Escreve uma introdução académica simples para um trabalho de ${nivelEnsino}. Deve:
 - Contextualizar o tema de forma acessível (o que é e porquê é importante)
 - Apresentar o problema de pesquisa em 1-2 frases
 - Referir os objectivos gerais do trabalho
@@ -106,7 +106,7 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - NÃO incluir conclusão nem referências no final`;
   }
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
-    return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para o ensino secundário/médio.
+    return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para ${nivelEnsino}.
 
 Estrutura OBRIGATÓRIA:
 **Objectivo Geral**
@@ -121,7 +121,7 @@ PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO incluas conclusão nem referências no final`;
   }
   if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ensino secundário/médio.
+    return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ${nivelEnsino}.
 
 Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
@@ -151,7 +151,7 @@ PROIBIÇÕES ABSOLUTAS:
 - Apresentar cada referência numa linha separada
 - Incluir: livros didácticos, artigos académicos, sites educativos ou institucionais`;
   }
-  return `Desenvolve o conteúdo de forma académica adequada ao ensino secundário, entre 220 e 380 palavras. NÃO incluas conclusão nem referências no final.`;
+  return `Desenvolve o conteúdo de forma académica adequada a ${nivelEnsino}, entre 220 e 380 palavras. NÃO incluas conclusão nem referências no final.`;
 }
 
 // ── Prompt do rascunho rápido (Pass 1 — apenas com RAG activo) ────────────────
@@ -161,10 +161,11 @@ function buildDraftPrompt(
   topic: string,
   outline: string,
   specificInstruction: string,
+  nivelEnsino: string,
 ): string {
   return `${PROMPT_INJECTION_GUARD}
 
-És um redactor académico do ensino secundário moçambicano. Gera um RASCUNHO INICIAL da secção "${sectionTitle}" para um trabalho sobre ${wrapUserInput('user_topic', topic)}.
+És um redactor académico moçambicano especializado em ${nivelEnsino}. Gera um RASCUNHO INICIAL da secção "${sectionTitle}" para um trabalho sobre ${wrapUserInput('user_topic', topic)}.
 
 Esboço orientador:
 ${wrapUserInput('user_outline', outline.slice(0, 700))}
@@ -192,10 +193,11 @@ function buildRefinedSystemPrompt(params: {
   researchBrief: string | null;
   ragContext: string;
   enrichedContext: string;
+  nivelEnsino: string;
 }): string {
   const {
     topic, outline, sectionTitle, specificInstruction,
-    previousContext, researchBrief, ragContext, enrichedContext,
+    previousContext, researchBrief, ragContext, enrichedContext, nivelEnsino,
   } = params;
 
   const researchBlock = researchBrief
@@ -223,7 +225,7 @@ PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
 ==================
 ${PROMPT_INJECTION_GUARD}
 
-És um redactor académico especializado em trabalhos escolares do ensino secundário e médio.
+És um redactor académico especializado em trabalhos escolares de ${nivelEnsino}.
 Escreves sempre em português europeu com normas ortográficas moçambicanas quando aplicável.
 A norma de referenciação é APA (7.ª edição) em todo o trabalho.
 
@@ -258,7 +260,7 @@ REGRAS DE ESCRITA — OBRIGATÓRIAS
 - Usa Markdown: negrito para termos-chave, ### para sub-títulos, listas quando adequado
 - Mantém coerência terminológica com as secções anteriores
 - Se existir contexto enriquecido acima, integra-o com citações APA no corpo do texto
-- Tom académico claro e acessível ao nível do ensino secundário/médio`.trim();
+- Tom académico claro e acessível ao nível de ${nivelEnsino}`.trim();
 }
 
 // ── Handler principal ────────────────────────────────────────────────────────
@@ -282,7 +284,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { sessionId, sectionIndex } = parsedPayload;
+    const { sessionId, sectionIndex, nivelEnsino } = parsedPayload;
 
     const session = await getWorkSession(sessionId);
     if (!session) return NextResponse.json({ error: 'Sessão não encontrada' }, { status: 404 });
@@ -375,7 +377,7 @@ export async function POST(req: Request) {
 
     const isSubsection = /^\d+\.\d+/.test(section.title);
     const normalizedName = normalizeTitle(section.title);
-    const specificInstruction = getSectionInstruction(normalizedName, isSubsection);
+    const specificInstruction = getSectionInstruction(normalizedName, isSubsection, nivelEnsino);
 
     const encoder = new TextEncoder();
 
