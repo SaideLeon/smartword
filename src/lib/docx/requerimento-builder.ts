@@ -106,8 +106,7 @@ function sectionTitle(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.LEFT,
     spacing: { before: 240, after: 120, line: 360, lineRule: 'auto' as any },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000', space: 2 } },
-    children: [new TextRun({ text, bold: true, underline: {}, size: 24 })],
+    children: [new TextRun({ text, bold: true, size: 24 })],
   });
 }
 
