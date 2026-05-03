@@ -8,7 +8,7 @@ import { requireAuth } from '@/lib/api-auth';
 
 const SYSTEM = `${PROMPT_INJECTION_GUARD}
 
-És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
+És um especialista em metodologia académica para trabalhos de nível 
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
 
 O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenhuma). A estrutura principal obrigatória é:
@@ -33,7 +33,7 @@ REGRAS DE ESTRUTURA OBRIGATÓRIAS:
 Para cada secção, descreve em 2-4 frases o que o aluno deve abordar. Usa Markdown: ## para secções principais, ### para subsecções.
 Norma de redacção obrigatória para todo o trabalho: APA (7.ª edição).
 
-REGRAS DE ADEQUAÇÃO AO NÍVEL SECUNDÁRIO/MÉDIO — OBRIGATÓRIAS:
+REGRAS DE ADEQUAÇÃO AO NÍVEL SELECCIONADO — OBRIGATÓRIAS:
 - "II. Objectivos" deve ter APENAS: 1 objectivo geral (1 frase no infinitivo) + 3 a 4 objectivos específicos simples (bullets no infinitivo). SEM metodologia aqui. SEM referências ou citações.
 - "III. Metodologia" deve descrever: tipo de pesquisa (qualitativa/bibliográfica), método de análise (histórico, comparativo, etc.) e critérios de selecção das fontes. SEM objectivos aqui.
 - "I. Introdução" deve conter: contextualização do tema, problema de pesquisa, objectivos gerais e estrutura do trabalho. Máximo 1 página. SEM desenvolvimento teórico antecipado.
@@ -41,7 +41,7 @@ REGRAS DE ADEQUAÇÃO AO NÍVEL SECUNDÁRIO/MÉDIO — OBRIGATÓRIAS:
 - "Conclusão" resume os pontos principais e apresenta a opinião do aluno. Máximo 1 página.
 - "Referências Bibliográficas" lista todas as fontes em formato APA 7.ª edição. NÃO aparece em nenhuma outra secção.
 
-Escreve em português europeu/moçambicano. Sê concreto e útil.`;
+Escreve em português europeu/moçambicano. Sê concreto e útil para o nível seleccionado.`;
 
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payload inválido ou demasiado longo' }, { status: 400 });
     }
 
-    const { topic, sessionId, suggestions } = parsedPayload;
+    const { topic, sessionId, suggestions, nivelEnsino } = parsedPayload;
 
     const suggestionBlock = suggestions
       ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura com I., II., III. e Objectivos separados de Metodologia.`
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const stream = await geminiGenerateTextStreamSSE({
       model: 'gemini-3.1-flash-lite-preview',
       messages: [
-        { role: 'system', content: SYSTEM },
+        { role: 'system', content: `${SYSTEM}${nivelEnsino} em Moçambique.` },
         {
           role: 'user',
           content: `Gera o esboço orientador para um trabalho escolar sobre:\n${wrapUserInput('user_topic', topic)}${suggestionBlock}`,

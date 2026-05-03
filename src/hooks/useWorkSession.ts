@@ -11,6 +11,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
 import { readApiErrorMessage } from '@/lib/api-error';
+import type { NivelEnsino } from '@/lib/validation/input-guards';
 
 export type WorkStep =
   | 'idle'
@@ -147,6 +148,7 @@ function parseOutlineSections(outline: string): WorkSection[] {
 // ── Hook principal ───────────────────────────────────────────────────────────
 
 export function useWorkSession() {
+  const [nivelEnsino, setNivelEnsino] = useState<NivelEnsino>('Ensino Secundário');
   const [step, setStep] = useState<WorkStep>('idle');
   const [session, setSession] = useState<WorkSessionRecord | null>(null);
   const [streamingText, setStreamingText] = useState('');
@@ -236,7 +238,7 @@ export function useWorkSession() {
       const res = await fetch('/api/work/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, sessionId: activeSessionId, suggestions: options?.suggestions?.trim() || undefined }),
+        body: JSON.stringify({ topic, sessionId: activeSessionId, suggestions: options?.suggestions?.trim() || undefined, nivelEnsino }),
         signal: ctrl.signal,
       });
       if (!res.ok) {
@@ -265,7 +267,7 @@ export function useWorkSession() {
     } catch (e: any) {
       if (e.name !== 'AbortError') { setError(e.message); setStep('topic_input'); }
     }
-  }, []);
+  }, [nivelEnsino]);
 
   const submitTopic = useCallback(async (topic: string) => {
     setError(null);
@@ -363,7 +365,7 @@ export function useWorkSession() {
       const res = await fetch('/api/work/develop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, sectionIndex: index }),
+        body: JSON.stringify({ sessionId: session.id, sectionIndex: index, nivelEnsino }),
         signal: ctrl.signal,
       });
       if (!res.ok) {
@@ -442,7 +444,7 @@ export function useWorkSession() {
         setDevelopPhase('idle');
       }
     }
-  }, [session]);
+  }, [nivelEnsino, session]);
 
   const insertSection = useCallback(async (
     index: number,
@@ -513,5 +515,6 @@ export function useWorkSession() {
     developSection, insertSection, backToOutline, loadSessions, resumeSession,
     isSectionRegenerated, ragSources, uploadingRag, uploadRagFile, uploadRagFiles,
     skipResources, confirmResources,
+    nivelEnsino, setNivelEnsino,
   };
 }
