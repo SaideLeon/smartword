@@ -200,9 +200,9 @@ function Sidebar({ tab, setTab, themeMode, onToggleTheme }:
 ════════════════════════════════════════════ */
 function TabInvite() {
   const [emails, setEmails] = useState('');
-  const [subject, setSubject] = useState('Convite para o Muneri — plataforma académica gratuita');
+  const [subject, setSubject] = useState('📄 Gera o teu Trabalho de Campo em minutos — Experimenta grátis');
   const [body, setBody] = useState(
-    'Olá!\n\nFui convidado(a) a partilhar contigo o Muneri, uma plataforma que ajuda estudantes a criar trabalhos académicos completos — com capa, índice, desenvolvimento e referências — em minutos.\n\nPodes criar a tua conta gratuitamente usando o link abaixo:\n\n{{link}}\n\nBom estudo!'
+    'Olá,\n\nSomos estudantes como tu — e sabemos o quanto um Trabalho de Campo pode consumir tempo e energia.\n\nPor isso criámos o Muneri, um sistema de geração de trabalhos académicos com Inteligência Artificial, pensado especificamente para estudantes moçambicanos.\n\n✅ Gera estrutura completa do trabalho (introdução, desenvolvimento, conclusão)\n✅ Segue as normas APA e o formato exigido pelas universidades\n✅ Editor estilo Microsoft Word — edita directamente no navegador\n✅ Exporta em DOCX pronto para entregar\n✅ Contextualizado para a realidade de Moçambique\n\nEstamos em fase de lançamento e tens acesso antecipado gratuito.\n\n👉 Experimenta agora: {{link}}\n\nQualquer dúvida, responde a este email.\n\nBons estudos,\nEquipa Muneri'
   );
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
