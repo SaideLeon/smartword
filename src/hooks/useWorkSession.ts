@@ -515,5 +515,6 @@ export function useWorkSession() {
     developSection, insertSection, backToOutline, loadSessions, resumeSession,
     isSectionRegenerated, ragSources, uploadingRag, uploadRagFile, uploadRagFiles,
     skipResources, confirmResources,
+    nivelEnsino, setNivelEnsino,
   };
 }

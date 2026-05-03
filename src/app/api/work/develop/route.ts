@@ -400,6 +400,7 @@ export async function POST(req: Request) {
                     session.topic,
                     outline,
                     specificInstruction,
+                    nivelEnsino,
                   ),
                 },
                 {
@@ -467,6 +468,7 @@ export async function POST(req: Request) {
             researchBrief: session.research_brief,
             ragContext,
             enrichedContext,
+            nivelEnsino,
           });
 
           const refinedStream = await geminiGenerateTextStreamSSE({
