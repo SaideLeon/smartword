@@ -1,8 +1,11 @@
-# Global directives
+# robots.txt — SEO avançado
+# Ambiente de produção: ajuste o domínio no Sitemap/Host quando necessário.
+
+# Regras globais
 User-agent: *
 Allow: /
 
-# Block private and non-indexable application areas
+# Evitar indexação de áreas privadas e rotas utilitárias
 Disallow: /admin/
 Disallow: /app/
 Disallow: /auth/
@@ -10,19 +13,44 @@ Disallow: /api/
 Disallow: /premium/
 Disallow: /offline/
 
-# Block low-value technical assets and internal query patterns
+# Evitar rastreio de parâmetros e arquivos técnicos sem valor de SEO
 Disallow: /*?*
 Disallow: /sw.js
 Disallow: /*.json$
 
-# Explicitly allow static assets and core public pages
-Allow: /$
-Allow: /landing/
-Allow: /planos/
-Allow: /afiliados/
-Allow: /calc/
+# Permitir assets essenciais
 Allow: /icon.svg
 Allow: /apple-icon.svg
+Allow: /icon-*.png
 
-# Sitemap discovery
+# Bots de busca principais: prioridade para rastreio eficiente
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /premium/
+Disallow: /offline/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /app/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /premium/
+Disallow: /offline/
+Crawl-delay: 2
+
+# Bots agressivos: reduzir carga
+User-agent: AhrefsBot
+Crawl-delay: 10
+Disallow: /
+
+User-agent: SemrushBot
+Crawl-delay: 10
+Disallow: /
+
+# Descoberta de sitemap
 Sitemap: /sitemap.xml
