@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { PwaRegistrar } from '@/components/PwaRegistrar';
 import { AppAlertModal } from '@/components/AppAlertModal';
 import 'temml/dist/Temml-Local.css';
 import './globals.css';
@@ -22,7 +21,6 @@ export const metadata: Metadata = {
     'estudantes',
     'muneri',
   ],
-  manifest: '/manifest.webmanifest',
   openGraph: {
     title: 'Muneri | Plataforma para trabalhos académicos e documentos em Word',
     description:
@@ -37,11 +35,6 @@ export const metadata: Metadata = {
     title: 'Muneri | Plataforma para trabalhos académicos e documentos em Word',
     description:
       'Menos stress para produzir trabalhos e relatórios: o Muneri organiza o processo e acelera a entrega.',
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Muneri',
   },
   formatDetection: {
     telephone: false,
@@ -72,7 +65,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" data-theme="dark">
       <body suppressHydrationWarning>
-        <PwaRegistrar />
         <AppAlertModal />
         {children}
       </body>
