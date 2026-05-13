@@ -8,7 +8,6 @@ Editor académico em **Markdown** com exportação para **.docx** e conversão d
 - Exportação para Word (.docx) com formatação académica.
 - Conversão de matemática inline e bloco para OMML nativo do Word.
 - Assistente de escrita com IA (chat, TCC e trabalhos).
-- PWA instalável com suporte offline para recursos essenciais.
 
 ## Stack
 
@@ -76,7 +75,6 @@ SUPABASE_SERVICE_ROLE_KEY="<sua_service_role_key_supabase>"
 - `app/app/page.tsx` — editor principal
 - `app/api/*` — rotas API (export, chat, TCC, trabalho)
 - `lib/docx/*` — parsing e geração de .docx
-- `public/sw.js` — service worker da PWA
 
 
 ## Testes adversariais (R25)
