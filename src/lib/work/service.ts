@@ -215,11 +215,23 @@ function isAutomaticIndex(title: string): boolean {
 // ── Secções fixas de fallback ─────────────────────────────────────────────────
 
 const FALLBACK_SECTIONS = [
-  'I. Introdução',
-  'II. Objectivos',
-  'III. Metodologia',
-  'Conclusão',
-  'Referências Bibliográficas',
+  '1. Introdução',
+  '1.1 Objetivo',
+  '1.1.1 Objetivo Geral',
+  '1.1.2 Objetivos Específicos',
+  '2. Metodologia',
+  '2.1 Problematização',
+  '2.2 Justificativa',
+  '3. Enquadramento Teórico',
+  '3.1 Análise FOFA',
+  '3.2 Localização do projeto',
+  '3.3 Recursos Humanos',
+  '4. Implementação do projeto',
+  '4.1 Análise financeira / Despesas',
+  '4.2 Lucro',
+  '5. Marketing',
+  '6. Conclusão',
+  'Referência Bibliográfica',
 ];
 
 function buildFallbackSections(): WorkSection[] {
@@ -235,11 +247,12 @@ function buildFallbackSections(): WorkSection[] {
 
 function extractSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
-  const raw: { title: string; level: 2 | 3 }[] = [];
+  const raw: { title: string; level: 2 | 3 | 4 }[] = [];
 
   for (const line of lines) {
     const h2 = line.match(/^##\s+(.+)/);
     const h3 = line.match(/^###\s+(.+)/);
+    const h4 = line.match(/^####\s+(.+)/);
 
     if (h2) {
       const title = h2[1].trim();
@@ -247,6 +260,9 @@ function extractSections(outline: string): WorkSection[] {
     } else if (h3) {
       const title = h3[1].trim();
       if (!isAutomaticIndex(title)) raw.push({ title, level: 3 });
+    } else if (h4) {
+      const title = h4[1].trim();
+      if (!isAutomaticIndex(title)) raw.push({ title, level: 4 });
     }
   }
 
@@ -257,8 +273,14 @@ function extractSections(outline: string): WorkSection[] {
 
   for (let i = 0; i < raw.length; i++) {
     if (raw[i].level === 2) {
-      const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
-      if (!nextIsH3) {
+      const nextIsChild = i + 1 < raw.length && (raw[i + 1].level === 3 || raw[i + 1].level === 4);
+      if (!nextIsChild) {
+        sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
+        index++;
+      }
+    } else if (raw[i].level === 3) {
+      const nextIsChild = i + 1 < raw.length && raw[i + 1].level === 4;
+      if (!nextIsChild) {
         sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
         index++;
       }

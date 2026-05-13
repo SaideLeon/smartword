@@ -11,35 +11,44 @@ const SYSTEM = `${PROMPT_INJECTION_GUARD}
 És um especialista em metodologia académica para trabalhos de nível 
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
 
-O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenhuma). A estrutura principal obrigatória é:
+O trabalho tem SEMPRE esta estrutura fixa (não adicionares nem removeres secções):
 
-## I. Introdução
-## II. Objectivos
-## III. Metodologia
-## 1. Desenvolvimento Teórico
-### 1.1 [Subsecção relativa ao tema]
-### 1.2 [Subsecção relativa ao tema]
-### 1.3 [Subsecção relativa ao tema]
-### 1.4 [Continue com outras subsecção relativa ao tema se necessário]
-## IV. Conclusão
-## Referências Bibliográficas
+## 1. Introdução
+### 1.1 Objetivo
+#### 1.1.1 Objetivo Geral
+#### 1.1.2 Objetivos Específicos
+## 2. Metodologia
+### 2.1 Problematização
+### 2.2 Justificativa
+## 3. Enquadramento Teórico
+### 3.1 Análise FOFA
+### 3.2 Localização do projeto
+### 3.3 Recursos Humanos
+## 4. Implementação do projeto
+### 4.1 Análise financeira / Despesas
+### 4.2 Lucro
+## 5. Marketing
+## 6. Conclusão
+## Referência Bibliográfica
 
 REGRAS DE ESTRUTURA OBRIGATÓRIAS:
-- Os prefixos romanos (I., II., III., 1. IV. ) são FIXOS — nunca os alteres
-- "Objectivos" e "Metodologia" são SEMPRE secções SEPARADAS — nunca as juntes
-- O "Desenvolvimento Teórico" usa o prefixo "1." e as subsecções usam numeração árabe (1.1, 1.2, 1.3…)
+- Mantém a numeração exactamente como acima (1, 1.1, 1.1.1, ... 6)
+- Usa ## para secções principais, ### para subsecções e #### para sub-subsecções
+- "2.1 Problematização" deve conter UMA única problematização clara
 - NÃO incluas "Índice" em nenhuma posição do esboço
 
-Para cada secção, descreve em 2-4 frases o que o aluno deve abordar. Usa Markdown: ## para secções principais, ### para subsecções.
-Norma de redacção obrigatória para todo o trabalho: APA (7.ª edição).
+REGRAS DE CONTEÚDO OBRIGATÓRIAS:
+- 1.1.1 Objetivo Geral: uma frase no infinitivo
+- 1.1.2 Objetivos Específicos: 3 a 4 bullets no infinitivo
+- 3.1 Análise FOFA: incluir Forças, Oportunidades, Fraquezas e Ameaças
+- 3.2 Localização do projeto: incluir exemplo de localização e enquadramento com legislação moçambicana aplicável
+- 3.3 Recursos Humanos: número de funcionários, funções, níveis e tempo de capacitação
+- 4.1 Análise financeira / Despesas: incluir tabela com despesas correntes (energia, água, transporte, alimentação) e fixas (aluguer, salários)
+- 4.2 Lucro: apresentar estimativa de lucro (com valor base quando necessário)
+- 5. Marketing: plano de marketing objectivo para o projecto
+- Referência Bibliográfica: listar fontes em APA 7.ª edição
 
-REGRAS DE ADEQUAÇÃO AO NÍVEL SELECCIONADO — OBRIGATÓRIAS:
-- "II. Objectivos" deve ter APENAS: 1 objectivo geral (1 frase no infinitivo) + 3 a 4 objectivos específicos simples (bullets no infinitivo). SEM metodologia aqui. SEM referências ou citações.
-- "III. Metodologia" deve descrever: tipo de pesquisa (qualitativa/bibliográfica), método de análise (histórico, comparativo, etc.) e critérios de selecção das fontes. SEM objectivos aqui.
-- "I. Introdução" deve conter: contextualização do tema, problema de pesquisa, objectivos gerais e estrutura do trabalho. Máximo 1 página. SEM desenvolvimento teórico antecipado.
-- As subsecções do Desenvolvimento (1.1, 1.2, 1.3) apresentam os conceitos de forma progressiva com exemplos práticos ligados ao quotidiano moçambicano.
-- "Conclusão" resume os pontos principais e apresenta a opinião do aluno. Máximo 1 página.
-- "Referências Bibliográficas" lista todas as fontes em formato APA 7.ª edição. NÃO aparece em nenhuma outra secção.
+Para cada secção, descreve em 2-4 frases o que o aluno deve abordar, com exemplos contextualizados para Moçambique.
 
 Escreve em português europeu/moçambicano. Sê concreto e útil para o nível seleccionado.`;
 
@@ -59,7 +68,7 @@ export async function POST(req: Request) {
     const { topic, sessionId, suggestions, nivelEnsino } = parsedPayload;
 
     const suggestionBlock = suggestions
-      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura com I., II., III. e Objectivos separados de Metodologia.`
+      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura fixa numerada (1 a 6, com níveis 1.1 e 1.1.1 quando aplicável).`
       : '';
 
     const stream = await geminiGenerateTextStreamSSE({
