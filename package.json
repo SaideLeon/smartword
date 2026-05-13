@@ -51,7 +51,8 @@
     "y-webrtc": "^10.3.0",
     "yjs": "^13.6.30",
     "zustand": "^5.0.8",
-    "@tiptap/extension-text-align": "^3.22.3"
+    "@tiptap/extension-text-align": "^3.22.3",
+    "@ducanh2912/next-pwa": "^10.2.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",
