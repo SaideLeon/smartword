@@ -48,7 +48,7 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
 
 function getParentTitleFromOutline(outline: string, parentNum: string): string | null {
   for (const line of outline.split('\n')) {
-    const match = line.match(/^##\s+(\d+)\.?\s+(.+)/);
+    const match = line.match(/^#{2,4}\s+(\d+(?:\.\d+)*)\.?\s+(.+)/);
     if (match && match[1] === parentNum) return `${match[1]}. ${match[2].trim()}`;
   }
   return null;
@@ -60,13 +60,15 @@ function buildReconstructedContent(sections: WorkSection[], outline: string | nu
   const insertedParentNums = new Set<string>();
 
   for (const section of sorted) {
-    const isSubsection = /^\d+\.\d+/.test(section.title);
-    const heading = isSubsection ? '###' : '##';
+    const depthMatch = section.title.match(/^(\d+(?:\.\d+)*)/);
+    const depth = depthMatch ? depthMatch[1].split('.').length : 1;
+    const isSubsection = depth > 1;
+    const heading = depth >= 3 ? '####' : depth === 2 ? '###' : '##';
     const hasHeading = contentStartsWithTitle(section.content, section.title);
     const body = hasHeading ? section.content : `${heading} ${section.title}\n\n${section.content}`;
 
     if (isSubsection && outline) {
-      const parentMatch = section.title.match(/^(\d+)\.\d+/);
+      const parentMatch = section.title.match(/^(\d+(?:\.\d+)*)\.\d+/);
       if (parentMatch) {
         const parentNum = parentMatch[1];
         if (!insertedParentNums.has(parentNum)) {
@@ -84,8 +86,10 @@ function buildReconstructedContent(sections: WorkSection[], outline: string | nu
 }
 
 function buildSectionMarkdown(title: string, content: string, isFirstInEditor: boolean, parentTitle?: string | null): string {
-  const isSubsection = /^\d+\.\d+/.test(title);
-  const heading = isSubsection ? '###' : '##';
+  const depthMatch = title.match(/^(\d+(?:\.\d+)*)/);
+  const depth = depthMatch ? depthMatch[1].split('.').length : 1;
+  const isSubsection = depth > 1;
+  const heading = depth >= 3 ? '####' : depth === 2 ? '###' : '##';
   const titleAlreadyPresent = contentStartsWithTitle(content, title);
   const body = titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
 
