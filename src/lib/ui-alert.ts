@@ -1,6 +1,7 @@
 export type AppAlertDetail = {
   title?: string;
   message: string;
+  kind?: 'default' | 'construction';
 };
 
 const APP_ALERT_EVENT = 'app-alert';
