@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { saveOutlineDraft } from '@/lib/tcc/service';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { geminiGenerateTextStreamSSE } from '@/lib/gemini-resilient';
-import { parseOutlinePayload } from '@/lib/validation/input-guards';
+import { parseOutlinePayloadDetailed } from '@/lib/validation/input-guards';
 import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 import { requireAuth } from '@/lib/api-auth';
 
@@ -41,9 +41,10 @@ export async function POST(req: Request) {
   if (authError) return authError;
 
   try {
-    const parsedPayload = parseOutlinePayload(await req.json());
+    const { value: parsedPayload, error: payloadError } = parseOutlinePayloadDetailed(await req.json());
     if (!parsedPayload) {
-      return NextResponse.json({ error: 'Payload inválido ou demasiado longo' }, { status: 400 });
+      const message = payloadError === 'too_long' ? 'Payload demasiado longo' : 'Payload inválido';
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     const { sessionId, topic, suggestions } = parsedPayload;
