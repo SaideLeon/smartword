@@ -121,7 +121,8 @@ function shouldAlwaysBeDevelopedAsOwnSection(title: string): boolean {
   const normalized = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   const isIntroducao = normalized.startsWith('1.') && normalized.includes('introducao');
   const isMetodologia = normalized.startsWith('2.') && normalized.includes('metodologia');
-  return isIntroducao || isMetodologia;
+  const isEnquadramentoTeorico = normalized.startsWith('3.') && normalized.includes('enquadramento teorico');
+  return isIntroducao || isMetodologia || isEnquadramentoTeorico;
 }
 
 function parseOutlineSections(outline: string): WorkSection[] {
