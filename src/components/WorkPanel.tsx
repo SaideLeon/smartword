@@ -18,7 +18,7 @@ import { ProcessingBars } from '@/components/ProcessingBars';
 import { ResourceUploadStep } from '@/components/ResourceUploadStep';
 import { workTheme as C } from '@/lib/theme';
 import type { CoverData } from '@/lib/docx/cover-types';
-import type { WorkSection } from '@/lib/work/types';
+import type { WorkSection, WorkType } from '@/lib/work/types';
 
 interface Props {
   onInsert: (text: string) => void;
@@ -31,7 +31,7 @@ interface Props {
 // ── Normalização de título ────────────────────────────────────────────────────
 
 function normalizeTitleForMatch(title: string): string {
-  return title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^[ivxlcdm]+\.\s*/i, '').replace(/^\d+(\.\d+)?\.\s*/, '').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  return title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^[ivxlcdm]+\.\s*/i, '').replace(/^\d+\.\d+\.\d+\.?\s*/, '').replace(/^\d+\.\d+\.?\s*/, '').replace(/^\d+\.?\s*/, '').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
@@ -205,6 +205,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [autoMode, setAutoMode] = useState(false);
+  const [workType, setWorkType] = useState<WorkType>('academic');
   const sessionsTopRef = useRef<HTMLDivElement>(null);
   const panelScrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -283,7 +284,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (!topic) return;
     setProcessingButtonId('submit-topic');
     onTopicChange(topic);
-    submitTopic(topic);
+    submitTopic(topic, workType);
   };
 
   const handleApproveOutline = async () => {

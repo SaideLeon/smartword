@@ -9,7 +9,7 @@
 //   - Parsing de SSE custom events: {"type":"phase","phase":"reviewing",...}
 
 import { useState, useCallback, useRef } from 'react';
-import type { WorkSection, WorkSessionRecord } from '@/lib/work/types';
+import type { WorkSection, WorkSessionRecord, WorkType } from '@/lib/work/types';
 import { readApiErrorMessage } from '@/lib/api-error';
 
 export type WorkStep =
@@ -153,7 +153,7 @@ export function useWorkSession() {
   const [activeSectionIdx, setActiveSectionIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recentSessions, setRecentSessions] = useState<
-    Pick<WorkSessionRecord, 'id' | 'topic' | 'status' | 'created_at' | 'updated_at'>[]
+    Pick<WorkSessionRecord, 'id' | 'topic' | 'work_type' | 'status' | 'created_at' | 'updated_at'>[]
   >([]);
   const [regeneratedSections, setRegeneratedSections] = useState<Set<number>>(new Set());
   const [uploadingRag, setUploadingRag] = useState(false);
@@ -206,7 +206,7 @@ export function useWorkSession() {
 
   const generateOutline = useCallback(async (
     topic: string,
-    options?: { sessionId?: string; suggestions?: string },
+    options?: { sessionId?: string; suggestions?: string; workType?: WorkType },
   ) => {
     setError(null);
     setStreamingText('');
@@ -219,7 +219,7 @@ export function useWorkSession() {
         const sessionRes = await fetch('/api/work/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic }),
+          body: JSON.stringify({ topic, workType: options?.workType ?? 'academic' }),
         });
         if (!sessionRes.ok) {
           const errorMessage = await readApiErrorMessage(sessionRes, 'Erro ao criar sessão');
@@ -236,7 +236,7 @@ export function useWorkSession() {
       const res = await fetch('/api/work/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, sessionId: activeSessionId, suggestions: options?.suggestions?.trim() || undefined }),
+        body: JSON.stringify({ topic, sessionId: activeSessionId, suggestions: options?.suggestions?.trim() || undefined, workType: options?.workType ?? session?.work_type ?? 'academic' }),
         signal: ctrl.signal,
       });
       if (!res.ok) {
@@ -267,13 +267,13 @@ export function useWorkSession() {
     }
   }, []);
 
-  const submitTopic = useCallback(async (topic: string) => {
+  const submitTopic = useCallback(async (topic: string, workType: WorkType = 'academic') => {
     setError(null);
     try {
       const sessionRes = await fetch('/api/work/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify({ topic, workType: options?.workType ?? 'academic' }),
       });
       if (!sessionRes.ok) {
         const errorMessage = await readApiErrorMessage(sessionRes, 'Erro ao criar sessão');

@@ -5,8 +5,11 @@ import { GeminiApiError, geminiGenerateTextStreamSSE } from '@/lib/gemini-resili
 import { parseOutlinePayload } from '@/lib/validation/input-guards';
 import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 import { requireAuth } from '@/lib/api-auth';
+import type { WorkType } from '@/lib/work/types';
 
-const SYSTEM = `${PROMPT_INJECTION_GUARD}
+// ── Sistema prompt: trabalho académico clássico ────────────────────────────────
+
+const SYSTEM_ACADEMIC = `${PROMPT_INJECTION_GUARD}
 
 És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
@@ -43,6 +46,61 @@ REGRAS DE ADEQUAÇÃO AO NÍVEL SECUNDÁRIO/MÉDIO — OBRIGATÓRIAS:
 
 Escreve em português europeu/moçambicano. Sê concreto e útil.`;
 
+// ── Sistema prompt: projecto empresarial / empreendedor ───────────────────────
+
+const SYSTEM_PROJECT = `${PROMPT_INJECTION_GUARD}
+
+És um especialista em elaboração de projectos empresariais e empreendedorismo para o ensino secundário e médio em Moçambique.
+Vais gerar um esboço orientador para um projecto sobre o tópico fornecido.
+
+O projecto tem SEMPRE esta estrutura fixa (não adicionares nem removeres secções):
+
+## 1. Introdução
+### 1.1 Objetivo
+#### 1.1.1 Objetivo Geral
+#### 1.1.2 Objetivos Específicos
+## 2. Metodologia
+### 2.1 Problematização
+### 2.2 Justificativa
+## 3. Enquadramento Teórico
+### 3.1 Análise FOFA
+### 3.2 Localização do projeto
+### 3.3 Recursos Humanos
+## 4. Implementação do projeto
+### 4.1 Análise financeira / Despesas
+### 4.2 Lucro
+## 5. Marketing
+## 6. Conclusão
+## Referência Bibliográfica
+
+REGRAS DE ESTRUTURA OBRIGATÓRIAS:
+- Os prefixos numéricos são FIXOS — nunca os alteres (1., 2., 3.1, 4.1.1, etc.)
+- Os Objetivos ficam SEMPRE dentro de 1.1, com subníveis #### para Geral e Específicos
+- NÃO incluas "Índice" em nenhuma posição do esboço
+- Usa ## para secções principais, ### para subsecções, #### para subsubsecções
+
+Para cada secção/subsecção, descreve em 2-4 frases o que o aluno deve abordar. Norma APA 7.ª edição.
+
+GUIA DE CONTEÚDO POR SECÇÃO:
+- "1.1.1 Objetivo Geral": 1 frase no infinitivo que resume a ambição do projecto
+- "1.1.2 Objetivos Específicos": 3-4 bullets no infinitivo, mensuráveis
+- "2.1 Problematização": problema real identificado que o projecto resolve
+- "2.2 Justificativa": porquê este projecto é relevante para o contexto moçambicano
+- "3.1 Análise FOFA": Forças, Oportunidades, Fraquezas e Ameaças (tabela ou bullets)
+- "3.2 Localização do projeto": onde será implementado e porquê essa localização
+- "3.3 Recursos Humanos": equipa necessária, funções e qualificações
+- "4.1 Análise financeira / Despesas": orçamento detalhado (custo inicial, operacional, fontes de financiamento)
+- "4.2 Lucro": projecção de receitas, ponto de equilíbrio, retorno do investimento
+- "5. Marketing": público-alvo, estratégia de comunicação, canais de divulgação, preço e distribuição
+- "6. Conclusão": síntese dos pontos-chave e viabilidade do projecto
+- "Referência Bibliográfica": fontes em APA 7.ª edição
+
+Escreve em português europeu/moçambicano. Sê concreto, prático e orientado ao negócio.`;
+
+function getSystemPrompt(workType: WorkType): string {
+  return workType === 'project' ? SYSTEM_PROJECT : SYSTEM_ACADEMIC;
+}
+
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
@@ -56,10 +114,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payload inválido ou demasiado longo' }, { status: 400 });
     }
 
-    const { topic, sessionId, suggestions } = parsedPayload;
+    const { topic, sessionId, suggestions, workType = 'academic' } = parsedPayload as typeof parsedPayload & { workType?: WorkType };
+
+    const SYSTEM = getSystemPrompt(workType);
 
     const suggestionBlock = suggestions
-      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura com I., II., III. e Objectivos separados de Metodologia.`
+      ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura de secções definida.`
       : '';
 
     const stream = await geminiGenerateTextStreamSSE({
@@ -68,10 +128,10 @@ export async function POST(req: Request) {
         { role: 'system', content: SYSTEM },
         {
           role: 'user',
-          content: `Gera o esboço orientador para um trabalho escolar sobre:\n${wrapUserInput('user_topic', topic)}${suggestionBlock}`,
+          content: `Gera o esboço orientador para um ${workType === 'project' ? 'projecto' : 'trabalho escolar'} sobre:\n${wrapUserInput('user_topic', topic)}${suggestionBlock}`,
         },
       ],
-      maxOutputTokens: 1024,
+      maxOutputTokens: 1200,
       temperature: 0.4,
     });
 

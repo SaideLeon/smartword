@@ -11,6 +11,9 @@ import { enforceRateLimit } from '@/lib/rate-limit';
 import { requireAuth } from '@/lib/api-auth';
 import { isValidUUID } from '@/lib/validation/input-guards';
 import { parseCoverDataPayload } from '@/lib/validation/cover-data-validator';
+import type { WorkType } from '@/lib/work/types';
+
+const VALID_WORK_TYPES: WorkType[] = ['academic', 'project'];
 
 export async function GET(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:session:get', maxRequests: 60, windowMs: 60_000 });
@@ -81,7 +84,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Tópico demasiado longo (máx 500 caracteres)' }, { status: 400 });
     }
 
-    const session = await createWorkSession(topic);
+    // Tipo de trabalho: 'academic' (padrão) ou 'project'
+    const workTypeRaw = typeof body.workType === 'string' ? body.workType.trim() : 'academic';
+    const workType: WorkType = VALID_WORK_TYPES.includes(workTypeRaw as WorkType)
+      ? (workTypeRaw as WorkType)
+      : 'academic';
+
+    const session = await createWorkSession(topic, workType);
     return NextResponse.json(session);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

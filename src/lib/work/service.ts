@@ -3,16 +3,19 @@
 // Usa o cliente Supabase autenticado (via cookies) para que o RLS funcione.
 
 import { createClient, requireUserId } from '@/lib/supabase';
-import type { WorkSection, WorkSessionRecord } from './types';
+import type { WorkSection, WorkSessionRecord, WorkType } from './types';
 import type { CoverData } from '@/lib/docx/cover-types';
 
-export async function createWorkSession(topic: string): Promise<WorkSessionRecord> {
+export async function createWorkSession(
+  topic: string,
+  workType: WorkType = 'academic',
+): Promise<WorkSessionRecord> {
   const supabase = await createClient();
   const userId = await requireUserId();
 
   const { data, error } = await supabase
     .from('work_sessions')
-    .insert({ topic, status: 'outline_pending', user_id: userId })
+    .insert({ topic, work_type: workType, status: 'outline_pending', user_id: userId })
     .select()
     .single();
 
@@ -40,7 +43,7 @@ export async function listWorkSessions(): Promise<WorkSessionRecord[]> {
 
   const { data, error } = await supabase
     .from('work_sessions')
-    .select('id, topic, status, created_at, updated_at')
+    .select('id, topic, work_type, status, created_at, updated_at')
     .order('updated_at', { ascending: false })
     .limit(20);
 
@@ -149,7 +152,10 @@ export async function markWorkSectionInserted(
 
   if (fetchError || !session) throw new Error('Sessão não encontrada');
 
-  const currentSections: WorkSection[] = Array.isArray(session.sections) ? session.sections as WorkSection[] : [];
+  const currentSections: WorkSection[] = Array.isArray(session.sections)
+    ? (session.sections as WorkSection[])
+    : [];
+
   const sections = currentSections.map(section =>
     section.index === index
       ? { ...section, status: 'inserted' as const }
@@ -194,15 +200,24 @@ export async function deleteWorkSession(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-// ── Normalização de título para comparação ────────────────────────────────────
+// ── Normalização de título para comparação ─────────────────────────────────────
+// Remove prefixos romanos (I., II.), numéricos simples (1., 2.) e
+// numéricos compostos de 2 ou 3 níveis (1.1., 1.1.1.) para que
+// a comparação semântica funcione independentemente do esquema de numeração.
 
 function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    // Prefixo romano: "I.", "IV.", etc.
     .replace(/^[ivxlcdm]+\.\s*/i, '')
-    .replace(/^\d+(\.\d+)?\.\s*/, '')
+    // Prefixo numérico de 3 níveis: "1.1.1."
+    .replace(/^\d+\.\d+\.\d+\.?\s*/, '')
+    // Prefixo numérico de 2 níveis: "1.1."
+    .replace(/^\d+\.\d+\.?\s*/, '')
+    // Prefixo numérico simples: "1."
+    .replace(/^\d+\.?\s*/, '')
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -212,7 +227,7 @@ function isAutomaticIndex(title: string): boolean {
   return normalizeTitle(title) === 'indice';
 }
 
-// ── Secções fixas de fallback ─────────────────────────────────────────────────
+// ── Secções fixas de fallback (estrutura académica clássica) ───────────────────
 
 const FALLBACK_SECTIONS = [
   'I. Introdução',
@@ -231,22 +246,39 @@ function buildFallbackSections(): WorkSection[] {
   }));
 }
 
-// ── Extracção de secções do esboço Markdown ───────────────────────────────────
+// ── Extracção de secções do esboço Markdown ────────────────────────────────────
+//
+// Suporta 3 níveis de cabeçalho:
+//   ##   → secção principal (nível 2)
+//   ###  → subsecção (nível 3)
+//   #### → subsecção de 3.º nível (nível 4)
+//
+// Regra de colapso: uma secção ## que seja imediatamente seguida por ###
+// não é adicionada como item autónomo (o seu conteúdo está nas subsecções).
+// O mesmo se aplica a ### seguido por ####.
+//
+// Isto garante que o utilizador só desenvolve "folhas" da árvore,
+// nunca contêineres vazios.
 
-function extractSections(outline: string): WorkSection[] {
+export function extractSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
-  const raw: { title: string; level: 2 | 3 }[] = [];
+  const raw: { title: string; level: 2 | 3 | 4 }[] = [];
 
   for (const line of lines) {
-    const h2 = line.match(/^##\s+(.+)/);
-    const h3 = line.match(/^###\s+(.+)/);
+    // Ordem importante: h4 antes de h3 antes de h2 para evitar falsos positivos
+    const h4 = line.match(/^####\s+(.+)/);
+    const h3 = !h4 && line.match(/^###\s+(.+)/);
+    const h2 = !h4 && !h3 && line.match(/^##\s+(.+)/);
 
-    if (h2) {
-      const title = h2[1].trim();
-      if (!isAutomaticIndex(title)) raw.push({ title, level: 2 });
+    if (h4) {
+      const title = h4[1].trim();
+      if (!isAutomaticIndex(title)) raw.push({ title, level: 4 });
     } else if (h3) {
       const title = h3[1].trim();
       if (!isAutomaticIndex(title)) raw.push({ title, level: 3 });
+    } else if (h2) {
+      const title = h2[1].trim();
+      if (!isAutomaticIndex(title)) raw.push({ title, level: 2 });
     }
   }
 
@@ -256,14 +288,22 @@ function extractSections(outline: string): WorkSection[] {
   let index = 0;
 
   for (let i = 0; i < raw.length; i++) {
-    if (raw[i].level === 2) {
-      const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
-      if (!nextIsH3) {
-        sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
-        index++;
-      }
+    const current = raw[i];
+    const next = raw[i + 1];
+
+    if (current.level === 2) {
+      // Colapsa ## se o seguinte for ### (o ## é apenas contêiner)
+      if (next && next.level === 3) continue;
+      sections.push({ index, title: current.title, content: '', status: 'pending' });
+      index++;
+    } else if (current.level === 3) {
+      // Colapsa ### se o seguinte for #### (o ### é apenas contêiner)
+      if (next && next.level === 4) continue;
+      sections.push({ index, title: current.title, content: '', status: 'pending' });
+      index++;
     } else {
-      sections.push({ index, title: raw[i].title, content: '', status: 'pending' });
+      // #### → sempre folha, nunca colapsa
+      sections.push({ index, title: current.title, content: '', status: 'pending' });
       index++;
     }
   }
