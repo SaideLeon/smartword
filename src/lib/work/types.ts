@@ -11,11 +11,18 @@ export interface WorkSection {
 
 export type WorkStatus = 'outline_pending' | 'outline_approved' | 'in_progress' | 'completed';
 
+/**
+ * 'academic' → estrutura clássica escolar (I. Introdução, II. Objectivos…)
+ * 'project'  → estrutura de projecto empresarial/empreendedor (1. Introdução, 2. Metodologia…)
+ */
+export type WorkType = 'academic' | 'project';
+
 export interface WorkSessionRecord {
   id: string;
   created_at: string;
   updated_at: string;
   topic: string;
+  work_type: WorkType;
   outline_draft: string | null;
   outline_approved: string | null;
   sections: WorkSection[];

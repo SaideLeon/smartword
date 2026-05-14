@@ -36,7 +36,9 @@ function normalizeTitle(title: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/^[ivxlcdm]+\.\s*/i, '')
-    .replace(/^\d+(\.\d+)?\.\s*/, '')
+    .replace(/^\d+\.\d+\.\d+\.?\s*/, '')
+    .replace(/^\d+\.\d+\.?\s*/, '')
+    .replace(/^\d+\.?\s*/, '')
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -50,6 +52,7 @@ const CLOSING_SECTION_NAMES = new Set([
   'referencias',
   'referencias bibliograficas',
   'bibliography',
+  'referencia bibliografica',
 ]);
 
 function sectionAllowsClosing(title: string): boolean {
@@ -86,6 +89,16 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
 // ── Instruções específicas por secção ────────────────────────────────────────
 
 function getSectionInstruction(normalizedName: string, isSubsection: boolean): string {
+  if (normalizedName === 'objetivo geral') return `Escreve o Objetivo Geral do projecto em exactamente 1 frase no infinitivo, clara e mensurável. Máximo 40 palavras.`;
+  if (normalizedName === 'objetivos especificos' || normalizedName === 'objectivos especificos') return `Lista 3 a 5 Objetivos Específicos do projecto em bullets, iniciando com verbos no infinitivo.`;
+  if (normalizedName === 'problematizacao') return `Descreve o problema real que o projecto pretende resolver, com evidências e impacto no contexto local.`;
+  if (normalizedName === 'justificativa') return `Explica por que o projecto é relevante e os benefícios esperados para a comunidade.`;
+  if (normalizedName === 'analise fofa') return `Apresenta uma análise FOFA (Forças, Oportunidades, Fraquezas e Ameaças) em bullets.`;
+  if (normalizedName === 'localizacao do projeto' || normalizedName === 'localizacao do projecto') return `Descreve a localização de implementação e justifica a escolha.`;
+  if (normalizedName === 'recursos humanos') return `Descreve equipa, funções, quantidade de pessoas e competências necessárias.`;
+  if (normalizedName.includes('financeira') && normalizedName.includes('despesa')) return `Apresenta análise financeira e despesas com estrutura organizada e valores estimados.`;
+  if (normalizedName === 'lucro') return `Apresenta projeção de receitas, lucro líquido e ponto de equilíbrio.`;
+  if (normalizedName === 'marketing') return `Desenvolve estratégia de marketing com público-alvo e os 4 Ps.`;
   if (isSubsection) {
     return `Desenvolve este subtópico de forma clara e didáctica para alunos do ensino secundário. Deve:
 - Apresentar o conceito com uma definição simples e acessível

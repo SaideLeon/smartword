@@ -68,7 +68,7 @@ export function parseChatMessages(value: unknown): ChatMessage[] | null {
   return parsed;
 }
 
-export function parseOutlinePayload(payload: unknown): { sessionId: string; topic: string; suggestions: string | null } | null {
+export function parseOutlinePayload(payload: unknown): { sessionId: string; topic: string; suggestions: string | null; workType: import('@/lib/work/types').WorkType } | null {
   if (!payload || typeof payload !== 'object') return null;
 
   const sessionId = asTrimmedString((payload as Record<string, unknown>).sessionId);
@@ -87,7 +87,10 @@ export function parseOutlinePayload(payload: unknown): { sessionId: string; topi
     return null;
   }
 
-  return { sessionId, topic, suggestions };
+  const workTypeRaw = asTrimmedString((payload as Record<string, unknown>).workType) ?? 'academic';
+  const workType = workTypeRaw === 'project' ? 'project' : 'academic';
+
+  return { sessionId, topic, suggestions, workType };
 }
 
 export function parseCoverAbstractPayload(payload: unknown): { theme: string; topic: string | null; outline: string | null } | null {
