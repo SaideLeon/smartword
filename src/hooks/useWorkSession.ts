@@ -273,7 +273,7 @@ export function useWorkSession() {
       const sessionRes = await fetch('/api/work/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, workType: options?.workType ?? 'academic' }),
+        body: JSON.stringify({ topic, workType }),
       });
       if (!sessionRes.ok) {
         const errorMessage = await readApiErrorMessage(sessionRes, 'Erro ao criar sessão');
