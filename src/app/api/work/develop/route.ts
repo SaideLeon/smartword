@@ -97,9 +97,10 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean, ni
   }
   if (normalizedName === 'introducao') {
     return `Escreve uma introdução académica simples para um trabalho de ${nivelEnsino}. Deve:
-- Contextualizar o tema de forma acessível (o que é e porquê é importante)
-- Apresentar o problema de pesquisa em 1-2 frases
-- Referir os objectivos gerais do trabalho
+- Começar com a definição central do tema proposto
+- Incluir um resumo breve do que será desenvolvido, cobrindo apenas ~20% das informações essenciais para orientar o leitor
+- Apresentar a problematização de forma resumida (1 problema apenas, em 1-2 frases)
+- Antecipar os objectivos de forma breve (podem reaparecer depois na secção de objectivos)
 - Descrever brevemente a estrutura do trabalho (as secções que existem)
 - Ter entre 280 e 480 palavras — NÃO ultrapasses este limite
 - NÃO desenvolver conceitos teóricos — isso é para o Desenvolvimento
@@ -108,30 +109,41 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean, ni
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
     return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para ${nivelEnsino}.
 
-Estrutura OBRIGATÓRIA:
-**Objectivo Geral**
-1 frase que resume o propósito do trabalho (começa com infinitivo: "Analisar...", "Compreender...", "Identificar...")
+ERRO A EVITAR (OBRIGATÓRIO):
+- NÃO confundir objectivos com justificativa, fundamentação teórica ou explicações.
+- Objectivos NÃO têm parágrafos explicativos.
 
-**Objectivos Específicos**
-Lista de 3 a 4 bullets curtos, cada um com 1 frase simples no infinitivo.
+Formato OBRIGATÓRIO (respeitar exactamente):
+**1.1.1 Objectivo Geral**
+- Uma ÚNICA frase no infinitivo, que resume o propósito central.
+
+**1.1.2 Objectivos Específicos**
+- Lista com 4 a 5 bullets curtos.
+- Cada bullet começa com verbo no infinitivo (ex.: Identificar, Analisar, Desenvolver, Implementar, Avaliar, Capacitar, Promover, Descrever).
+- Sem qualquer explicação após os bullets.
+
 PROIBIÇÕES ABSOLUTAS:
-❌ NÃO escrevas nada sobre metodologia aqui
-❌ NÃO uses referências nem citações
-❌ NÃO ultrapasses 100 palavras no total
-❌ NÃO incluas conclusão nem referências no final`;
+❌ NÃO escrever exemplos, contextualizações ou argumentações
+❌ NÃO usar citações, autores ou referências (ex.: Gisslen, ILO)
+❌ NÃO escrever parágrafos depois de cada objetivo específico
+❌ NÃO escrever metodologia aqui
+❌ NÃO ultrapassar 110 palavras no total
+❌ NÃO incluir conclusão nem referências no final`;
   }
   if (normalizedName === 'metodologia') {
     return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ${nivelEnsino}.
 
 Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
-1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
-2. **Método de análise** — descreve o método usado (histórico, comparativo, descritivo, qualitativo, etc.)
-3. **Fontes e critérios de selecção** — que tipo de fontes foram consultadas e por que razão
-4. **Organização dos dados** — como a informação foi tratada e apresentada (ex: tematicamente, segundo APA 7.ª edição)
+1. **Problematização** — apresentar apenas um problema, de forma curta e directa
+2. **Justificativa** — detalhar por que o tema foi escolhido, por que o problema é relevante e como o trabalho contribuirá para resolver/compreender esse problema
+3. **Método e fontes** — indicar método de análise e tipo de fontes consultadas
+4. **Organização dos dados** — como a informação será tratada e apresentada (ex: tematicamente, segundo APA 7.ª edição)
+
+Se o trabalho for de projecto de negócio, incluir no plano um valor monetário base constante.
 
 PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO escrevas objectivos aqui
-❌ NÃO ultrapasses 150 palavras no total
+❌ NÃO ultrapasses 170 palavras no total
 ❌ NÃO incluas conclusão nem referências no final`;
   }
   if (normalizedName === 'conclusao' || normalizedName === 'conclusão') {

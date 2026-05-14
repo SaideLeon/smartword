@@ -38,13 +38,14 @@ REGRAS DE ESTRUTURA OBRIGATÓRIAS:
 - NÃO incluas "Índice" em nenhuma posição do esboço
 
 REGRAS DE CONTEÚDO OBRIGATÓRIAS:
-- 1.1.1 Objetivo Geral: uma frase no infinitivo
-- 1.1.2 Objetivos Específicos: 3 a 4 bullets no infinitivo
+- 1.1 Objetivo: deve aparecer depois de uma introdução com definição do tema e resumo breve (regra 20/80: apenas ~20% das informações essenciais para orientar o leitor)
+- 1.1.1 Objetivo Geral: uma frase no infinitivo, alinhada ao tema
+- 1.1.2 Objetivos Específicos: 4 a 5 bullets curtos no infinitivo, sem explicação, sem exemplos e sem citações
 - 3.1 Análise FOFA: incluir Forças, Oportunidades, Fraquezas e Ameaças
 - 3.2 Localização do projeto: incluir exemplo de localização e enquadramento com legislação moçambicana aplicável
 - 3.3 Recursos Humanos: número de funcionários, funções, níveis e tempo de capacitação
 - 4.1 Análise financeira / Despesas: incluir tabela com despesas correntes (energia, água, transporte, alimentação) e fixas (aluguer, salários)
-- 4.2 Lucro: apresentar estimativa de lucro (com valor base quando necessário)
+- 4.2 Lucro: apresentar estimativa de lucro (com valor base quando necessário). Em trabalhos de projecto de negócio, indicar um valor monetário base constante no plano
 - 5. Marketing: plano de marketing objectivo para o projecto
 - Referência Bibliográfica: listar fontes em APA 7.ª edição
 

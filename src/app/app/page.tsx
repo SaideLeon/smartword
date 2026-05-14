@@ -22,6 +22,7 @@ import {
   isFullscreenSupported as detectFullscreenSupport,
   requestAppFullscreen,
 } from '@/lib/fullscreen';
+import { showAppAlert } from '@/lib/ui-alert';
 
 type RibbonTab = 'inicio' | 'inserir' | 'design' | 'layout' | 'referencias' | 'revisao';
 
@@ -87,6 +88,20 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen]     = useState(false);
   const [fullscreenSupported] = useState(() => detectFullscreenSupport());
 
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const key = 'muneri-instability-alert-shown';
+    if (sessionStorage.getItem(key) === '1') return;
+
+    showAppAlert({
+      kind: 'construction',
+      title: 'Aviso Importante',
+      message: 'O sistema está com algumas instabilidades devido a novas atualizações em aplicação. Neste momento, o trabalho gerado pode não estar totalmente conforme os regulamentos específicos exigidos por algumas instituições.',
+    });
+
+    sessionStorage.setItem(key, '1');
+  }, []);
   // ── Tema ───────────────────────────────────────────────────────────────────
   const themeVars = themeMode === 'dark'
     ? '[--ink:#f1e8da] [--parchment:#0f0e0d] [--surface:#1a1714] [--surface2:#141210] [--gold:#d4b37b] [--gold2:#c9a96e] [--gold3:#8b6914] [--muted:#c8bfb4] [--faint:#8a7d6e] [--dim:#5a5248] [--green:#6ea886] [--teal:#61aa9d] [--border:#2c2721] [--border2:#3a332a] [--navBg:#1a1714] [--heroRight:#090908]'
