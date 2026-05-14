@@ -51,18 +51,6 @@ REGRAS DE CONTEÚDO OBRIGATÓRIAS:
 
 EXEMPLOS EXPLÍCITOS (seguir sempre este padrão em todas as sessões):
 Correto:
-## Análise e Correção dos Objetivos
-
-Tens razão. O documento comete um erro académico comum: confunde **objetivos** com **justificativas e explicações**. Veja o diagnóstico e a versão corrigida:
-
-### O que está errado no documento
-
-**Objetivo Geral** — ocupa quase uma página inteira, com exemplos práticos, contextualizações e argumentações. Isso é corpo do trabalho, não objetivo.
-
-**Objetivos Específicos** — cada ponto tem dois ou três parágrafos explicativos com citações (Gisslen, ILO). Isso também pertence ao enquadramento teórico, não aos objetivos.
-
-### Versão corrigida
-
 **1.1.1 Objetivo Geral**
 
 > Implementar uma escola de confeitaria especializada em bolos de formas simples como instrumento de capacitação técnica e promoção da autonomia financeira de pequenos empreendedores em Moçambique.
@@ -82,7 +70,13 @@ Regra prática para não errar:
 Errado (nunca repetir):
 - Objetivo Geral com vários parágrafos, citações, exemplos práticos e justificativas extensas.
 - Objetivos Específicos com textos explicativos longos, exemplos e citações em cada bullet.
+## Análise e Correção dos Objetivos
+Não pode cometer um erro académico comum: confunde **objetivos** com **justificativas e explicações**.
+**Objetivo Geral** — Não pode ocupar quase uma página inteira, com exemplos práticos, contextualizações e argumentações. Isso é corpo do trabalho, não objetivo.
 
+**Objetivos Específicos** — cada ponto não pode ter dois ou três parágrafos explicativos com citações de autor. Isso também pertence ao enquadramento teórico, não aos objetivos.
+
+### Versão corrigida
 Para cada secção, descreve em 2-4 frases o que o aluno deve abordar, com exemplos contextualizados para Moçambique.
 
 Escreve em português europeu/moçambicano. Sê concreto e útil para o nível seleccionado.`;
