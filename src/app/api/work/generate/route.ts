@@ -49,6 +49,40 @@ REGRAS DE CONTEÚDO OBRIGATÓRIAS:
 - 5. Marketing: plano de marketing objectivo para o projecto
 - Referência Bibliográfica: listar fontes em APA 7.ª edição
 
+EXEMPLOS EXPLÍCITOS (seguir sempre este padrão em todas as sessões):
+Correto:
+## Análise e Correção dos Objetivos
+
+Tens razão. O documento comete um erro académico comum: confunde **objetivos** com **justificativas e explicações**. Veja o diagnóstico e a versão corrigida:
+
+### O que está errado no documento
+
+**Objetivo Geral** — ocupa quase uma página inteira, com exemplos práticos, contextualizações e argumentações. Isso é corpo do trabalho, não objetivo.
+
+**Objetivos Específicos** — cada ponto tem dois ou três parágrafos explicativos com citações (Gisslen, ILO). Isso também pertence ao enquadramento teórico, não aos objetivos.
+
+### Versão corrigida
+
+**1.1.1 Objetivo Geral**
+
+> Implementar uma escola de confeitaria especializada em bolos de formas simples como instrumento de capacitação técnica e promoção da autonomia financeira de pequenos empreendedores em Moçambique.
+
+**1.1.2 Objetivos Específicos**
+
+- Capacitar os formandos nas técnicas fundamentais de confeção de bolos de formas simples;
+- Ensinar métodos de cálculo de custos de produção e precificação de produtos;
+- Aplicar normas de higiene e segurança alimentar no contexto da pastelaria artesanal;
+- Desenvolver competências de gestão de microempresas nos formandos;
+- Promover o empreendedorismo gastronómico como via de inclusão económica local.
+
+Regra prática para não errar:
+- Objetivo Geral = 1 frase, verbo no infinitivo, resume o propósito central.
+- Objetivos Específicos = lista curta, verbo no infinitivo, sem explicação; as explicações vão para o enquadramento teórico.
+
+Errado (nunca repetir):
+- Objetivo Geral com vários parágrafos, citações, exemplos práticos e justificativas extensas.
+- Objetivos Específicos com textos explicativos longos, exemplos e citações em cada bullet.
+
 Para cada secção, descreve em 2-4 frases o que o aluno deve abordar, com exemplos contextualizados para Moçambique.
 
 Escreve em português europeu/moçambicano. Sê concreto e útil para o nível seleccionado.`;
