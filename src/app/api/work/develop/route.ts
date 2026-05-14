@@ -27,6 +27,7 @@ import { parseSessionPayload } from '@/lib/validation/input-guards';
 import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 import { semanticSearch, generateRagFicha } from '@/lib/work/rag-service';
 import { runSectionReviewer, type ReviewerResult } from '@/lib/work/section-reviewer';
+import { enforceSection } from '@/lib/work/section-cleaners';
 
 // ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
 
@@ -121,135 +122,48 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean, ni
 
   // ── Objectivos ──────────────────────────────────────────────────────────────
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
-    return `Escreve APENAS os objectivos do trabalho. Segue as regras abaixo com rigor absoluto.
-
-════════════════════════════════════════
-ERRO REAL QUE NÃO PODES REPETIR — retirado de trabalho reprovado:
-════════════════════════════════════════
-
-ERRADO — Objetivo Geral (exemplo de trabalho reprovado):
-"O objetivo geral deste projeto consiste na implementação de uma escola de confeitaria
-especializada em bolos de formas simples, estruturada para promover a autonomia financeira
-dos formandos através da aquisição de competências técnicas práticas. A iniciativa visa
-colmatar o skill gap — ou lacuna de competências — identificado no setor da pastelaria
-artesanal em Moçambique [...] A proposta pedagógica centra-se na padronização de receitas
-e na aplicação de boas práticas de fabrico [...] Um exemplo prático desta capacitação é a
-transição de uma produção doméstica irregular para a criação de um catálogo de produtos
-[...] (International Labour Organization [ILO], 2021)."
-
-PORQUÊ ESTÁ ERRADO: vários parágrafos, exemplos práticos, citações de autores, contextualizações
-e argumentações. O Objetivo Geral deve ser UMA ÚNICA FRASE.
-
-ERRADO — Objetivos Específicos (exemplo de trabalho reprovado):
-"● Gestão de custos e precificação: É imperativo que os formandos compreendam a lógica
-do ponto de equilíbrio (break-even point). Este objetivo visa ensinar o cálculo rigoroso
-do custo unitário de cada produto, considerando o valor dos insumos e as despesas
-operacionais. Por exemplo, um formando aprenderá a contabilizar o custo exato de cada
-grama de farinha ou açúcar, evitando prejuízos [...] (Gisslen, 2016)."
-
-PORQUÊ ESTÁ ERRADO: cada bullet tem parágrafos explicativos, exemplos práticos e citações
-de autores. Os Objetivos Específicos são apenas uma lista de verbos no infinitivo — sem
-qualquer texto adicional.
-
-════════════════════════════════════════
-FORMATO CORRECTO — seguir exactamente:
-════════════════════════════════════════
+    return `Escreve APENAS os objetivos do trabalho. Formato OBRIGATÓRIO e inegociável:
 
 **1.1.1 Objetivo Geral**
 
-Implementar [tema do trabalho] como [propósito central em termos simples].
-
-[Máximo 40 palavras. Uma frase. Verbo no infinitivo. Sem parênteses, sem citações, sem exemplos.]
+[Uma frase. Verbo no infinitivo. Máximo 40 palavras. Sem parênteses, citações, exemplos ou parágrafos adicionais.]
 
 **1.1.2 Objetivos Específicos**
 
-- [Verbo infinitivo] [complemento directo];
-- [Verbo infinitivo] [complemento directo];
-- [Verbo infinitivo] [complemento directo];
-- [Verbo infinitivo] [complemento directo];
-- [Verbo infinitivo] [complemento directo].
+- [Verbo] [complemento];
+- [Verbo] [complemento];
+- [Verbo] [complemento];
+- [Verbo] [complemento];
+- [Verbo] [complemento].
 
-[4 a 5 bullets. Cada bullet = uma linha. Sem texto adicional após o complemento.]
-
-════════════════════════════════════════
-PROIBIÇÕES ABSOLUTAS:
-════════════════════════════════════════
-❌ NÃO escrevas parágrafos a seguir ao Objetivo Geral
-❌ NÃO escrevas parágrafos, exemplos ou explicações a seguir a cada Objetivo Específico
-❌ NÃO uses citações, autores ou referências (ex.: Gisslen, ILO, Silva)
-❌ NÃO uses expressões como "Este objetivo visa...", "É imperativo que...", "Por exemplo..."
-❌ NÃO ultrapasses 110 palavras no total desta secção
-❌ NÃO incluas conclusão nem referências bibliográficas no final
-❌ NÃO escrevas metodologia aqui`;
+REGRAS:
+❌ O Objetivo Geral tem APENAS uma frase — nenhum parágrafo a seguir
+❌ Cada bullet tem APENAS uma linha — nenhum texto adicional
+❌ Zero citações, zero exemplos, zero explicações
+❌ Total máximo: 110 palavras`;
   }
 
   // ── Metodologia ─────────────────────────────────────────────────────────────
   if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho. Segue as regras abaixo com rigor absoluto.
-
-════════════════════════════════════════
-ERRO REAL QUE NÃO PODES REPETIR — retirado de trabalho reprovado:
-════════════════════════════════════════
-
-ERRADO — Problematização com múltiplos problemas (exemplo de trabalho reprovado):
-"A problematização deste projeto centra-se na identificação de um skill gap [...].
-A ausência de formação técnica estruturada manifesta-se em três eixos críticos:
-● Deficiência técnica: A falta de domínio sobre as propriedades físico-químicas dos
-ingredientes leva ao desperdício de matérias-primas, resultando em produtos finais
-inconsistentes que não fidelizam o cliente.
-● Gestão financeira rudimentar: Muitos padecem de uma incapacidade de calcular o
-custo real de produção, o que inviabiliza a definição de preços competitivos e
-sustentáveis [...]
-● Inobservância de normas sanitárias: A falta de formação em higiene e segurança
-alimentar coloca em risco a saúde pública [...]
-Um exemplo prático desta problemática observa-se na precificação de bolos simples:
-frequentemente, o empreendedor contabiliza apenas o custo da farinha e do açúcar,
-ignorando custos invisíveis como o gás, a eletricidade, o transporte [...] (ILO, 2021).
-Portanto, a questão central que orienta este estudo é: de que forma a implementação
-de uma escola de confeitaria [...] pode transformar a pastelaria artesanal num motor
-de autonomia financeira [...]?"
-
-PORQUÊ ESTÁ ERRADO:
-- Lista 3 problemas com bullets em vez de 1 único problema numa frase
-- Inclui exemplos práticos (precificação de bolos, custo da farinha)
-- Termina com uma pergunta de investigação longa
-- Mistura o papel da Problematização com a Justificativa e o Enquadramento Teórico
-
-════════════════════════════════════════
-FORMATO CORRECTO — seguir exactamente:
-════════════════════════════════════════
+    return `Escreve APENAS a Problematização e a Justificativa.
 
 **2.1 Problematização**
 
-[UMA ÚNICA FRASE que identifica o problema central. Máximo 35 palavras. Sem bullets.
-Sem exemplos. Sem citações. Sem pergunta de investigação.]
-
-Exemplo de formato correcto:
-"A ausência de formação técnica estruturada em confeitaria impede que pequenos
-empreendedores moçambicanos padronizem os seus produtos, calculem custos reais
-de produção e operem de forma sustentável no mercado informal."
-
----
+[UMA ÚNICA FRASE que nomeia o problema central. Máximo 35 palavras.
+Sem bullets. Sem exemplos. Sem citações. Sem pergunta de investigação.]
 
 **2.2 Justificativa**
 
-[Parágrafo 1 — Por que o problema é relevante: impacto social, económico ou educativo]
+[Parágrafo 1 — por que o problema é relevante]
 
-[Parágrafo 2 — Como o projeto/trabalho resolve o problema: abordagem, método, contribuição]
+[Parágrafo 2 — como o projeto resolve o problema]
 
-[Parágrafo 3 (opcional) — Fontes e organização da informação: método de análise, norma APA 7.ª]
+[Parágrafo 3 opcional — método de análise e norma APA 7.ª]
 
-[2 a 3 parágrafos. Tom académico. Pode incluir 1 citação relevante se aplicável.]
-
-════════════════════════════════════════
-PROIBIÇÕES ABSOLUTAS:
-════════════════════════════════════════
-❌ NÃO escrevas mais do que 1 problema na Problematização
-❌ NÃO uses bullets na Problematização
-❌ NÃO termines a Problematização com uma pergunta
-❌ NÃO incluir objectivos na Metodologia
-❌ NÃO ultrapasses 170 palavras no total desta secção
-❌ NÃO incluas conclusão nem referências bibliográficas no final`;
+REGRAS:
+❌ Problematização = 1 frase apenas, sem bullets, sem exemplos
+❌ Justificativa = prosa corrida, sem bullets (●, -, *)
+❌ Total máximo: 200 palavras`;
   }
 
   // ── Conclusão ───────────────────────────────────────────────────────────────
@@ -306,6 +220,16 @@ REGRAS DO RASCUNHO:
 }
 
 // ── Prompt do refinamento / geração directa (Pass 2) ─────────────────────────
+
+function getTemperatureForSection(normalizedName: string): number {
+  const strictSections = new Set([
+    'objectivos', 'objetivos',
+    'problematizacao', 'problematização',
+    'justificativa',
+    'conclusao', 'conclusão',
+  ]);
+  return strictSections.has(normalizedName) ? 0.2 : 0.45;
+}
 
 function buildRefinedSystemPrompt(params: {
   topic: string;
@@ -598,7 +522,7 @@ export async function POST(req: Request) {
               },
             ],
             maxOutputTokens: 1800,
-            temperature: 0.4,
+            temperature: getTemperatureForSection(normalizedName),
           });
 
           const reader = refinedStream.getReader();
@@ -625,8 +549,9 @@ export async function POST(req: Request) {
 
           // ── Guardar conteúdo gerado ───────────────────────────────────────
           if (accumulated) {
-            const cleaned = stripSpuriousBlocks(accumulated, section.title);
-            await saveWorkSectionContent(sessionId, sectionIndex, cleaned, session.sections);
+            const stripped = stripSpuriousBlocks(accumulated, section.title);
+            const enforced = enforceSection(normalizedName, stripped);
+            await saveWorkSectionContent(sessionId, sectionIndex, enforced, session.sections);
           }
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));

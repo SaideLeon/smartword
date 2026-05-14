@@ -5,6 +5,7 @@ import { GeminiApiError, geminiGenerateTextStreamSSE } from '@/lib/gemini-resili
 import { parseOutlinePayloadDetailed } from '@/lib/validation/input-guards';
 import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 import { requireAuth } from '@/lib/api-auth';
+import { deduplicateOutlineSections } from '@/lib/work/section-cleaners';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SYSTEM PROMPT — Geração de esboço orientador
@@ -40,121 +41,16 @@ O trabalho tem SEMPRE esta estrutura fixa (não adicionares nem removeres secç�
 REGRAS OBRIGATÓRIAS — OBJETIVO GERAL E OBJETIVOS ESPECÍFICOS
 ══════════════════════════════════════════════════════════
 
-ERRO ACADÉMICO GRAVE — nunca reproduzir este padrão:
-┌─────────────────────────────────────────────────────────────────┐
-│ ERRADO — Objetivo Geral extenso (exemplo real de trabalho reprovado):         │
-│                                                                 │
-│ "O objetivo geral deste projeto consiste na implementação de    │
-│ uma escola de confeitaria especializada em bolos de formas       │
-│ simples, estruturada para promover a autonomia financeira dos   │
-│ formandos através da aquisição de competências técnicas         │
-│ práticas. A iniciativa visa colmatar o skill gap — ou lacuna    │
-│ de competências — identificado no setor da pastelaria artesanal │
-│ em Moçambique, onde a procura por formação profissionalizante   │
-│ de curta duração é elevada, mas a oferta de qualidade permanece │
-│ limitada (ILO, 2021). A proposta pedagógica centra-se na        │
-│ padronização de receitas [...] Um exemplo prático desta         │
-│ capacitação é a transição de uma produção doméstica irregular   │
-│ para a criação de um catálogo de produtos com preço de venda    │
-│ tecnicamente calculado. [...]"                                  │
-│                                                                 │
-│ PORQUÊ ESTÁ ERRADO: o Objetivo Geral tem vários parágrafos,     │
-│ exemplos práticos, citações (ILO, 2021), contextualizações e    │
-│ argumentações. Isso é corpo do trabalho, não objetivo.          │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│ ERRADO — Objetivos Específicos com explicações (exemplo real):  │
-│                                                                 │
-│ "● Gestão de custos e precificação: É imperativo que os         │
-│ formandos compreendam a lógica do ponto de equilíbrio           │
-│ (break-even point). Este objetivo visa ensinar o cálculo        │
-│ rigoroso do custo unitário de cada produto, considerando o      │
-│ valor dos insumos e as despesas operacionais. Por exemplo,      │
-│ um formando aprenderá a contabilizar o custo exato de cada      │
-│ grama de farinha ou açúcar [...] (Gisslen, 2016)"               │
-│                                                                 │
-│ PORQUÊ ESTÁ ERRADO: cada objetivo tem parágrafos explicativos,  │
-│ exemplos e citações de autor. Isso pertence ao enquadramento    │
-│ teórico, não aos objetivos.                                     │
-└─────────────────────────────────────────────────────────────────┘
-
-VERSÃO CORRETA — seguir sempre este formato exacto:
-
-**1.1.1 Objetivo Geral**
-
-> [UMA única frase, verbo no infinitivo, resume o propósito central do trabalho. Máximo 40 palavras.]
-
-Exemplo:
-> Implementar uma escola de confeitaria especializada em bolos de formas simples como instrumento de capacitação técnica e promoção da autonomia financeira de pequenos empreendedores em Moçambique.
-
-**1.1.2 Objetivos Específicos**
-
-- [Verbo infinitivo] + [complemento directo, sem explicação];
-- [Verbo infinitivo] + [complemento directo, sem explicação];
-- [Verbo infinitivo] + [complemento directo, sem explicação];
-- [Verbo infinitivo] + [complemento directo, sem explicação];
-- [Verbo infinitivo] + [complemento directo, sem explicação].
-
-Exemplo:
-- Capacitar os formandos nas técnicas fundamentais de confeção de bolos de formas simples;
-- Ensinar métodos de cálculo de custos de produção e precificação de produtos;
-- Aplicar normas de higiene e segurança alimentar no contexto da pastelaria artesanal;
-- Desenvolver competências de gestão de microempresas nos formandos;
-- Promover o empreendedorismo gastronómico como via de inclusão económica local.
-
-REGRA PRÁTICA INVIOLÁVEL:
-- Objetivo Geral = 1 frase, verbo no infinitivo, sem explicações, sem exemplos, sem citações.
-- Objetivos Específicos = lista de 4 a 5 bullets curtos, verbo no infinitivo, SEM qualquer texto a seguir ao bullet.
-- Todo o detalhe, contexto e fundamentação vão para o Enquadramento Teórico — nunca nos objetivos.
+- Objetivo Geral = 1 frase, verbo no infinitivo, máximo 40 palavras, sem exemplos/citações.
+- Objetivos Específicos = 4 a 5 bullets curtos no formato verbo + complemento;
+- Não adicionar explicações após os bullets.
 
 ══════════════════════════════════════════════════════════
 REGRAS OBRIGATÓRIAS — PROBLEMATIZAÇÃO E JUSTIFICATIVA
 ══════════════════════════════════════════════════════════
 
-ERRO ACADÉMICO GRAVE — nunca reproduzir este padrão:
-┌─────────────────────────────────────────────────────────────────┐
-│ ERRADO — Problematização com múltiplos problemas (exemplo real):│
-│                                                                 │
-│ "A problematização deste projeto centra-se na identificação de  │
-│ um skill gap [...]. A ausência de formação técnica estruturada  │
-│ manifesta-se em três eixos críticos:                            │
-│ ● Deficiência técnica: A falta de domínio sobre as propriedades │
-│ físico-químicas dos ingredientes leva ao desperdício [...]      │
-│ ● Gestão financeira rudimentar: Muitos padecem de uma           │
-│ incapacidade de calcular o custo real de produção [...]         │
-│ ● Inobservância de normas sanitárias: A falta de formação em    │
-│ higiene [...]                                                   │
-│ Um exemplo prático desta problemática observa-se na             │
-│ precificação de bolos simples: frequentemente, o empreendedor   │
-│ contabiliza apenas o custo da farinha e do açúcar [...]"        │
-│                                                                 │
-│ PORQUÊ ESTÁ ERRADO: a Problematização lista 3 problemas com     │
-│ bullets, exemplos práticos e citações. Ela deve identificar     │
-│ UM único problema em UMA única frase. O resto pertence à        │
-│ Justificativa ou ao Enquadramento Teórico.                      │
-└─────────────────────────────────────────────────────────────────┘
-
-VERSÃO CORRETA:
-
-**2.1 Problematização**
-
-> [UMA única frase que identifica o problema central. Máximo 35 palavras. Sem bullets, sem exemplos, sem citações.]
-
-Exemplo:
-> A ausência de formação técnica estruturada em confeitaria impede que pequenos empreendedores moçambicanos padronizem os seus produtos, calculem custos reais de produção e operem de forma sustentável no mercado informal.
-
-**2.2 Justificativa**
-
-[2 a 3 parágrafos que:
-  1. Explicam por que o problema identificado é relevante
-  2. Descrevem como o projeto/trabalho vai resolver ou abordar esse problema
-  3. Incluem contexto social/económico e referências se aplicável]
-
-REGRA PRÁTICA INVIOLÁVEL:
-- Problematização = 1 frase que nomeia o problema. Nada mais.
-- Justificativa = detalha o problema e apresenta como o trabalho o resolve.
-- O erro mais comum é usar a Problematização para justificar — quando ela deve apenas nomear o problema com precisão.
+- Problematização = 1 frase única, máximo 35 palavras, sem bullets/exemplos/citações.
+- Justificativa = 2 a 3 parágrafos em prosa corrida, sem bullets.
 
 ══════════════════════════════════════════════════════════
 REGRAS GERAIS DE ESTRUTURA
@@ -175,6 +71,16 @@ REGRAS DE CONTEÚDO:
 - Referência Bibliográfica: fontes em APA 7.ª edição
 
 Escreve em português europeu/moçambicano. Sê concreto e útil para o nível seleccionado.`;
+
+async function flushOutline(sessionId: string | undefined, accumulated: string) {
+  if (!sessionId || !accumulated) return;
+  try {
+    const deduplicated = deduplicateOutlineSections(accumulated);
+    await saveWorkOutlineDraft(sessionId, deduplicated);
+  } catch (e) {
+    console.error('Erro ao guardar esboço do trabalho:', e);
+  }
+}
 
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
@@ -231,13 +137,7 @@ export async function POST(req: Request) {
         controller.enqueue(chunk);
       },
       async flush() {
-        if (sessionId && accumulated) {
-          try {
-            await saveWorkOutlineDraft(sessionId, accumulated);
-          } catch (e) {
-            console.error('Erro ao guardar esboço do trabalho:', e);
-          }
-        }
+        await flushOutline(sessionId, accumulated);
       },
     });
 
