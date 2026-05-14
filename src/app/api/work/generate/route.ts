@@ -40,7 +40,7 @@ REGRAS DE ESTRUTURA OBRIGATÓRIAS:
 REGRAS DE CONTEÚDO OBRIGATÓRIAS:
 - 1.1 Objetivo: deve aparecer depois de uma introdução com definição do tema e resumo breve (regra 20/80: apenas ~20% das informações essenciais para orientar o leitor)
 - 1.1.1 Objetivo Geral: uma frase no infinitivo, alinhada ao tema
-- 1.1.2 Objetivos Específicos: 3 a 4 bullets curtos no infinitivo, sem explicação ou detalhamento
+- 1.1.2 Objetivos Específicos: 4 a 5 bullets curtos no infinitivo, sem explicação, sem exemplos e sem citações
 - 3.1 Análise FOFA: incluir Forças, Oportunidades, Fraquezas e Ameaças
 - 3.2 Localização do projeto: incluir exemplo de localização e enquadramento com legislação moçambicana aplicável
 - 3.3 Recursos Humanos: número de funcionários, funções, níveis e tempo de capacitação

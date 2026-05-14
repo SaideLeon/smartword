@@ -109,19 +109,26 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean, ni
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
     return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para ${nivelEnsino}.
 
-Estrutura OBRIGATÓRIA:
-**Objectivo Geral**
-1 frase curta, sem detalhamento, alinhada ao tema e iniciada no infinitivo (ex.: "Analisar...").
+ERRO A EVITAR (OBRIGATÓRIO):
+- NÃO confundir objectivos com justificativa, fundamentação teórica ou explicações.
+- Objectivos NÃO têm parágrafos explicativos.
 
-**Objectivos Específicos**
-Lista de 3 a 4 bullets curtos, cada um iniciado no infinitivo (ex.: "Estudar...", "Identificar...", "Compreender...").
-Não explicar nem detalhar os objectivos específicos.
+Formato OBRIGATÓRIO (respeitar exactamente):
+**1.1.1 Objectivo Geral**
+- Uma ÚNICA frase no infinitivo, que resume o propósito central.
+
+**1.1.2 Objectivos Específicos**
+- Lista com 4 a 5 bullets curtos.
+- Cada bullet começa com verbo no infinitivo (ex.: Identificar, Analisar, Desenvolver, Implementar, Avaliar, Capacitar, Promover, Descrever).
+- Sem qualquer explicação após os bullets.
 
 PROIBIÇÕES ABSOLUTAS:
-❌ NÃO escrevas nada sobre metodologia aqui
-❌ NÃO uses referências nem citações
-❌ NÃO ultrapasses 100 palavras no total
-❌ NÃO incluas conclusão nem referências no final`;
+❌ NÃO escrever exemplos, contextualizações ou argumentações
+❌ NÃO usar citações, autores ou referências (ex.: Gisslen, ILO)
+❌ NÃO escrever parágrafos depois de cada objetivo específico
+❌ NÃO escrever metodologia aqui
+❌ NÃO ultrapassar 110 palavras no total
+❌ NÃO incluir conclusão nem referências no final`;
   }
   if (normalizedName === 'metodologia') {
     return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ${nivelEnsino}.
