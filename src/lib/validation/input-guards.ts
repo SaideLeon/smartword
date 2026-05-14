@@ -3,18 +3,6 @@ export type ChatMessage = {
   content: string;
 };
 
-const LIMITS = {
-  chatMessagesMax: 50,
-  chatMessageMaxChars: 24000,
-  topicMin: 3,
-  topicMax: 24000,
-  themeMin: 3,
-  themeMax: 24000,
-  suggestionsMax: 24000,
-  outlineMax: 24000,
-  sessionIdMax: 24000,
-} as const;
-
 const UUID_V4_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -42,7 +30,7 @@ export function parseSessionPayload(payload: unknown): { sessionId: string; sect
   const sessionId = asTrimmedString((payload as Record<string, unknown>).sessionId);
   const sectionIndexRaw = (payload as Record<string, unknown>).sectionIndex;
 
-  if (!sessionId || sessionId.length > LIMITS.sessionIdMax) return null;
+  if (!sessionId) return null;
   if (!Number.isInteger(sectionIndexRaw) || typeof sectionIndexRaw !== 'number' || sectionIndexRaw < 0) {
     return null;
   }
@@ -54,7 +42,7 @@ export function parseSessionPayload(payload: unknown): { sessionId: string; sect
 }
 
 export function parseChatMessages(value: unknown): ChatMessage[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > LIMITS.chatMessagesMax) {
+  if (!Array.isArray(value) || value.length === 0) {
     return null;
   }
 
@@ -70,9 +58,6 @@ export function parseChatMessages(value: unknown): ChatMessage[] | null {
       return null;
     }
 
-    if (content.length > LIMITS.chatMessageMaxChars) {
-      return null;
-    }
 
     parsed.push({ role, content });
   }
@@ -87,13 +72,12 @@ export function parseOutlinePayload(payload: unknown): { sessionId: string; topi
   const topic = asTrimmedString((payload as Record<string, unknown>).topic);
   const suggestionsRaw = (payload as Record<string, unknown>).suggestions;
 
-  if (!sessionId || sessionId.length > LIMITS.sessionIdMax) return null;
-  if (!topic || topic.length < LIMITS.topicMin || topic.length > LIMITS.topicMax) return null;
+  if (!sessionId) return null;
+  if (!topic) return null;
 
   let suggestions: string | null = null;
   if (typeof suggestionsRaw === 'string') {
     const normalized = suggestionsRaw.trim();
-    if (normalized.length > LIMITS.suggestionsMax) return null;
     suggestions = normalized || null;
   } else if (suggestionsRaw != null) {
     return null;
@@ -112,12 +96,11 @@ export function parseCoverAbstractPayload(payload: unknown): { theme: string; to
   const topicRaw = (payload as Record<string, unknown>).topic;
   const outlineRaw = (payload as Record<string, unknown>).outline;
 
-  if (!theme || theme.length < LIMITS.themeMin || theme.length > LIMITS.themeMax) return null;
+  if (!theme) return null;
 
   let topic: string | null = null;
   if (typeof topicRaw === 'string') {
     const normalized = topicRaw.trim();
-    if (normalized.length > LIMITS.topicMax) return null;
     topic = normalized || null;
   } else if (topicRaw != null) {
     return null;
@@ -126,7 +109,6 @@ export function parseCoverAbstractPayload(payload: unknown): { theme: string; to
   let outline: string | null = null;
   if (typeof outlineRaw === 'string') {
     const normalized = outlineRaw.trim();
-    if (normalized.length > LIMITS.outlineMax) return null;
     outline = normalized || null;
   } else if (outlineRaw != null) {
     return null;
