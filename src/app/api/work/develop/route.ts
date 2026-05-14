@@ -177,7 +177,7 @@ REGRAS DE CONTEÚDO:
 Escreve em português europeu/moçambicano. Sê concreto e útil para o nível seleccionado.`;
 
 export async function POST(req: Request) {
-  const limited = await enforceRateLimit(req, { scope: 'work:generate', maxRequests: 10, windowMs: 60_000 });
+  const limited = await enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   const { error: authError } = await requireAuth();
