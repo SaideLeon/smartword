@@ -117,6 +117,13 @@ function buildFallbackSections(): WorkSection[] {
   return FALLBACK_SECTIONS.map((title, index) => ({ index, title, content: '', status: 'pending' as const }));
 }
 
+function shouldAlwaysBeDevelopedAsOwnSection(title: string): boolean {
+  const normalized = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const isIntroducao = normalized.startsWith('1.') && normalized.includes('introducao');
+  const isMetodologia = normalized.startsWith('2.') && normalized.includes('metodologia');
+  return isIntroducao || isMetodologia;
+}
+
 function parseOutlineSections(outline: string): WorkSection[] {
   const lines = outline.split('\n');
   const raw: { title: string; level: 2 | 3 }[] = [];
@@ -136,7 +143,7 @@ function parseOutlineSections(outline: string): WorkSection[] {
   for (let i = 0; i < raw.length; i++) {
     if (raw[i].level === 2) {
       const nextIsH3 = i + 1 < raw.length && raw[i + 1].level === 3;
-      if (!nextIsH3) { sections.push({ index, title: raw[i].title, content: '', status: 'pending' }); index++; }
+      if (!nextIsH3 || shouldAlwaysBeDevelopedAsOwnSection(raw[i].title)) { sections.push({ index, title: raw[i].title, content: '', status: 'pending' }); index++; }
     } else {
       sections.push({ index, title: raw[i].title, content: '', status: 'pending' }); index++;
     }
