@@ -247,7 +247,10 @@ function buildFallbackSections(): WorkSection[] {
 
 function shouldAlwaysBeDevelopedAsOwnSection(title: string): boolean {
   const normalized = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  return normalized.startsWith('1.') && normalized.includes('introducao');
+  const isIntroducao = normalized.startsWith('1.') && normalized.includes('introducao');
+  const isMetodologia = normalized.startsWith('2.') && normalized.includes('metodologia');
+  const isEnquadramentoTeorico = normalized.startsWith('3.') && normalized.includes('enquadramento teorico');
+  return isIntroducao || isMetodologia || isEnquadramentoTeorico;
 }
 
 function extractSections(outline: string): WorkSection[] {
