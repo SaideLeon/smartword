@@ -5,14 +5,14 @@ export type ChatMessage = {
 
 const LIMITS = {
   chatMessagesMax: 50,
-  chatMessageMaxChars: 8000,
+  chatMessageMaxChars: 24000,
   topicMin: 3,
-  topicMax: 500,
+  topicMax: 24000,
   themeMin: 3,
-  themeMax: 300,
-  suggestionsMax: 2000,
-  outlineMax: 15000,
-  sessionIdMax: 100,
+  themeMax: 24000,
+  suggestionsMax: 24000,
+  outlineMax: 24000,
+  sessionIdMax: 24000,
 } as const;
 
 const UUID_V4_PATTERN =
