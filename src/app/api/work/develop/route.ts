@@ -171,6 +171,7 @@ NÃO incluas conclusão nem referências no final.`;
 - Mencionar possíveis fontes de financiamento
 - Usar tabela Markdown ou lista com valores em MZN quando possível
 - Ter entre 200 e 350 palavras
+- CONSISTÊNCIA OBRIGATÓRIA: se a Introdução já tiver definido investimento inicial, usar exactamente o mesmo valor aqui.
 NÃO incluas receitas ou lucros aqui. NÃO incluas conclusão.`;
   }
 
@@ -182,6 +183,7 @@ NÃO incluas receitas ou lucros aqui. NÃO incluas conclusão.`;
 - Estimar o período de retorno do investimento
 - Usar tabela Markdown ou cálculos com valores em MZN quando possível
 - Ter entre 180 e 300 palavras
+- CONSISTÊNCIA OBRIGATÓRIA: manter o mesmo investimento inicial definido na Introdução e na Análise financeira/Despesas.
 NÃO repitas as despesas. NÃO incluas conclusão nem referências no final.`;
   }
 
@@ -282,6 +284,7 @@ REGRA OBRIGATÓRIA SOBRE VALOR MONETÁRIO DO PROJETO:
 - A introdução deve apresentar, de forma breve e objectiva, o valor monetário estimado para implementação do projeto
 - O valor deve aparecer naturalmente no texto (preferencialmente no parágrafo do objectivo ou da implementação)
 - Indicar que é uma estimativa inicial e mencionar brevemente a finalidade do investimento
+- Definir um único valor-base de investimento para todo o trabalho e reutilizar o mesmo valor nas secções financeiras
 - Evitar tabelas financeiras, detalhamento excessivo de custos e linguagem contabilística complexa na introdução
 
 MODELO RECOMENDADO:
