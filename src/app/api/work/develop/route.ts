@@ -252,6 +252,9 @@ REGRAS DE QUALIDADE:
 - Linguagem clara, objectiva, académica e organizada
 - Adequada ao nível de projeto integrado
 - Evitar excesso de termos técnicos desnecessários
+- Foco obrigatório no recorte específico do título/tema fornecido pelo utilizador
+- Se o título indicar uma especialidade (ex.: "bolos de forma simples"), desenvolver a introdução principalmente nessa especialidade
+- Evitar abordagem generalista da área (ex.: falar de confeitaria no geral quando o foco é bolos de forma)
 - NÃO começar com problematização extensa nem linguagem excessivamente científica
 - NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
 - NÃO incluir conclusão nem referências no final
