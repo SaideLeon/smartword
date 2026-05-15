@@ -112,12 +112,14 @@ NÃO incluas Objetivo Geral aqui. NÃO incluas conclusão nem referências.`;
   }
 
   if (normalizedName === 'problematizacao') {
-    return `Descreve o problema real que o projecto pretende resolver. Deve:
-- Identificar claramente o problema (quem sofre, onde, com que impacto)
-- Apresentar dados ou evidências que comprovem a existência do problema
-- Ligar ao contexto moçambicano quando relevante
-- Ter entre 200 e 320 palavras
-NÃO incluas soluções aqui. NÃO incluas conclusão nem referências no final.`;
+    return `Escreve APENAS a problematização em 1 frase simples, directa e objectiva.
+Regras obrigatórias:
+- Deve mencionar apenas 1 único problema central (não listar dois ou mais problemas)
+- Máximo 35 palavras
+- Sem explicações longas, sem dados extensos e sem proposta de solução
+- Não transformar em justificativa
+Exemplo de estilo: "A falta de formação técnica acessível em confeitaria limita a qualidade, a competitividade e a autonomia financeira de pequenos empreendedores moçambicanos."
+NÃO incluas conclusão nem referências no final.`;
   }
 
   if (normalizedName === 'justificativa') {
@@ -229,14 +231,31 @@ NÃO incluas conclusão nem referências no final.`;
   }
 
   if (normalizedName === 'introducao') {
-    return `Escreve uma introdução académica simples para um trabalho do ensino secundário/médio. Deve:
-- Contextualizar o tema de forma acessível (o que é e porquê é importante)
-- Apresentar o problema de pesquisa em 1-2 frases
-- Referir os objectivos gerais do trabalho
-- Descrever brevemente a estrutura do trabalho (as secções que existem)
-- Ter entre 280 e 480 palavras — NÃO ultrapasses este limite
-- NÃO desenvolver conceitos teóricos — isso é para o Desenvolvimento
-- NÃO incluir conclusão nem referências no final`;
+    return `Escreve a secção "Introdução" para trabalho escolar/projeto do ensino secundário/médio.
+
+REGRA OBRIGATÓRIA PARA PROJETO INTEGRADO (seguir ao pé da letra):
+1) Definir claramente o projeto/área do projeto logo no início
+2) Explicar brevemente a importância do tema
+3) Apresentar o problema/necessidade existente
+4) Mostrar o objectivo geral do projeto
+5) Demonstrar o valor social, económico ou educacional do projeto
+6) Resumir os conteúdos que serão abordados no trabalho (visão geral final)
+
+ESTRUTURA OBRIGATÓRIA (5 parágrafos):
+- Parágrafo 1: definição do projeto + explicação directa do tema
+- Parágrafo 2: importância do tema + contextualização social/económica breve
+- Parágrafo 3: problema identificado + necessidade do projeto
+- Parágrafo 4: objectivo geral + valor social/económico/educacional
+- Parágrafo 5: resumo dos tópicos que serão abordados ao longo do trabalho
+
+REGRAS DE QUALIDADE:
+- Linguagem clara, objectiva, académica e organizada
+- Adequada ao nível de projeto integrado
+- Evitar excesso de termos técnicos desnecessários
+- NÃO começar com problematização extensa nem linguagem excessivamente científica
+- NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
+- NÃO incluir conclusão nem referências no final
+- 280 a 480 palavras`;
   }
 
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
@@ -256,7 +275,7 @@ PROIBIÇÕES ABSOLUTAS:
   }
 
   if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ensino secundário/médio.
+    return `Escreve APENAS a metodologia do trabalho/projeto, de forma clara e objectiva para o ensino secundário/médio.
 
 Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
@@ -266,7 +285,7 @@ Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 
 PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO escrevas objectivos aqui
-❌ NÃO ultrapasses 150 palavras no total
+❌ NÃO ultrapasses 220 palavras no total
 ❌ NÃO incluas conclusão nem referências no final`;
   }
 
