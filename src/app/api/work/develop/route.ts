@@ -132,14 +132,28 @@ NÃO repitas a problematização. NÃO incluas conclusão nem referências no fi
   }
 
   if (normalizedName === 'analise fofa') {
-    return `Apresenta a Análise FOFA (SWOT) do projecto com 4 blocos bem estruturados:
+    return `Apresenta APENAS a Análise FOFA (SWOT) APLICADA ao projecto concreto (não teoria), com 4 blocos bem estruturados:
 
 **Forças** (internas, positivas) — 3 a 4 bullets
 **Oportunidades** (externas, positivas) — 3 a 4 bullets
 **Fraquezas** (internas, negativas) — 2 a 3 bullets
 **Ameaças** (externas, negativas) — 2 a 3 bullets
 
-Cada item deve ser específico ao projecto. Usa linguagem directa e concisa.
+REGRA FUNDAMENTAL:
+- Esta secção é de análise aplicada ao projecto, não de enquadramento teórico.
+- NÃO explicar o que é FOFA, NÃO citar autores, NÃO descrever como a ferramenta funciona.
+
+REGRAS OBRIGATÓRIAS DA ANÁLISE:
+- Cada ponto deve ser específico ao projecto e conter dados concretos quando possível (valores, localização, equipa, público, produto, mercado).
+- Evitar frases genéricas que sirvam para qualquer projecto.
+- Mostrar mecanismo de impacto nas fraquezas/ameaças (o que acontece e com que consequência para o projecto).
+- Usar linguagem directa, analítica e descritiva da realidade do projecto.
+
+CHECKLIST INTERNO (obrigatório antes de concluir):
+- Há algum ponto genérico/copiável para outro projecto? Se sim, reescrever.
+- Há citação de autor para justificar a análise? Se sim, remover.
+- Estou a aplicar a FOFA ao projecto ou a explicar a ferramenta? Se estiver a explicar, corrigir.
+
 NÃO incluas conclusão nem referências no final.`;
   }
 
@@ -206,6 +220,7 @@ NÃO incluas conclusão nem referências no final.`;
 - Citar autores e teorias relevantes em APA 7.ª edição
 - Contextualizar o projecto no sector em Moçambique
 - Ter entre 250 e 400 palavras
+- Aqui pode haver teoria e citações; nas secções de análise aplicada (FOFA, financeira, mercado), NÃO usar explicação teórica da ferramenta
 NÃO incluas as subsecções (FOFA, Localização, RH) aqui.
 NÃO incluas conclusão nem referências no final.`;
   }
