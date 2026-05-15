@@ -255,7 +255,24 @@ REGRAS DE QUALIDADE:
 - NÃO começar com problematização extensa nem linguagem excessivamente científica
 - NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
 - NÃO incluir conclusão nem referências no final
-- 280 a 480 palavras`;
+- 280 a 480 palavras
+
+EXEMPLO INCORRETO (NÃO SEGUIR):
+"A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
+Problemas deste estilo:
+- demora para definir o projeto
+- inicia com contextualização excessivamente académica
+- usa linguagem científica desnecessária
+- apresenta problematização antes da definição clara do projeto
+
+EXEMPLO CORRETO (ESTILO A SEGUIR):
+"A confeitaria é uma área da gastronomia voltada para a preparação e decoração de bolos, doces e produtos de pastelaria, desempenhando um papel importante na geração de renda e no desenvolvimento de pequenos negócios. O presente projeto consiste na criação de uma escola de confeitaria destinada ao ensino de técnicas básicas para produção de bolos de formas simples, com foco na capacitação de jovens e adultos da comunidade.
+
+Nos últimos anos, a procura por produtos de confeitaria em Moçambique tem aumentado significativamente devido à realização de festas, eventos sociais e crescimento do pequeno comércio alimentar. Apesar disso, muitas pessoas que possuem talento culinário enfrentam dificuldades por não terem acesso à formação técnica adequada, dependendo apenas de conhecimentos empíricos adquiridos no ambiente familiar.
+
+Diante desta realidade, o projeto surge como uma alternativa para promover a formação profissional, incentivar o empreendedorismo e contribuir para a redução do desemprego. A escola pretende oferecer conhecimentos básicos sobre higiene e segurança alimentar, utilização correta de utensílios e ingredientes, preparação de receitas simples e gestão de pequenos negócios de confeitaria.
+
+O trabalho abordará aspectos relacionados à metodologia do projeto, problematização, justificativa, enquadramento teórico, análise FOFA, recursos humanos, implementação, análise financeira e estratégias de marketing. Além disso, pretende demonstrar a importância social e económica da criação de uma escola de confeitaria como instrumento de inclusão produtiva e desenvolvimento comunitário."`;
   }
 
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
