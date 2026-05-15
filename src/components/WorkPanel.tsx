@@ -1,12 +1,17 @@
 'use client';
 
-// src/components/WorkPanel.tsx — versão com agente revisor de 2 passes
+// src/components/WorkPanel.tsx — versão com agente revisor de 2 passes + suporte a projecto
 //
-// NOVIDADES:
-//   - PhaseIndicator: mostra estado do agente durante desenvolvimento
-//   - Badge "Baseado nas tuas fontes" / "Pesquisa automática" nas secções
-//   - reviewMeta: detalhes de quantas fontes foram encontradas
-//   - developPhase: 'drafting' | 'reviewing' | 'refining' | 'idle'
+// ALTERAÇÕES vs versão anterior:
+//   - Estado workType: 'academic' | 'project'
+//   - Seletor de tipo de trabalho no step topic_input
+//   - normalizeTitleForMatch: suporte a prefixos de 3 níveis (1.1.1.)
+//   - getSectionHeading: detecta ## / ### / #### pelo padrão do título
+//   - buildSectionMarkdown: usa heading correcto para cada nível
+//   - getParentTitleFromOutline: suporte a parent ### (para filhos ####)
+//   - buildReconstructedContent: suporte a 3 níveis de hierarquia
+//   - handleInsertSection: suporte a subsecções de nível 3 (####)
+//   - handleTopicSubmit: passa workType ao submitTopic
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useWorkSession } from '@/hooks/useWorkSession';
@@ -28,10 +33,26 @@ interface Props {
   editorMarkdown?: string;
 }
 
-// ── Normalização de título ────────────────────────────────────────────────────
+// ── Helpers de normalização e heading ─────────────────────────────────────────
 
 function normalizeTitleForMatch(title: string): string {
-  return title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^[ivxlcdm]+\.\s*/i, '').replace(/^\d+\.\d+\.\d+\.?\s*/, '').replace(/^\d+\.\d+\.?\s*/, '').replace(/^\d+\.?\s*/, '').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^[ivxlcdm]+\.\s*/i, '')
+    .replace(/^\d+\.\d+\.\d+\.?\s*/, '')
+    .replace(/^\d+\.\d+\.?\s*/, '')
+    .replace(/^\d+\.?\s*/, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getSectionHeading(title: string): '##' | '###' | '####' {
+  if (/^\d+\.\d+\.\d+/.test(title)) return '####';
+  if (/^\d+\.\d+/.test(title)) return '###';
+  return '##';
 }
 
 function contentStartsWithTitle(content: string, sectionTitle: string): boolean {
@@ -40,56 +61,101 @@ function contentStartsWithTitle(content: string, sectionTitle: string): boolean 
   const headingText = firstLine.replace(/^#+\s*/, '');
   const normalizedHeading = normalizeTitleForMatch(headingText);
   const normalizedTitle = normalizeTitleForMatch(sectionTitle);
-  return normalizedHeading === normalizedTitle || normalizedHeading.includes(normalizedTitle) || normalizedTitle.includes(normalizedHeading);
+  return (
+    normalizedHeading === normalizedTitle ||
+    normalizedHeading.includes(normalizedTitle) ||
+    normalizedTitle.includes(normalizedHeading)
+  );
 }
 
-function getParentTitleFromOutline(outline: string, parentNum: string): string | null {
+// Procura o título do parent no esboço.
+// parentKey pode ser "N" (para ### filhos de ##) ou "N.N" (para #### filhos de ###)
+function getParentTitleFromOutline(outline: string, parentKey: string): string | null {
+  const isThreeLevel = /^\d+\.\d+$/.test(parentKey);
   for (const line of outline.split('\n')) {
-    const match = line.match(/^##\s+(\d+)\.?\s+(.+)/);
-    if (match && match[1] === parentNum) return `${match[1]}. ${match[2].trim()}`;
+    if (isThreeLevel) {
+      const match = line.match(/^###\s+(\d+\.\d+)\.?\s+(.+)/);
+      if (match && match[1] === parentKey) return `${match[1]} ${match[2].trim()}`;
+    } else {
+      const match = line.match(/^##\s+(\d+)\.?\s+(.+)/);
+      if (match && match[1] === parentKey) return `${match[1]}. ${match[2].trim()}`;
+    }
   }
   return null;
 }
 
+// Reconstrói o documento completo a partir de todas as secções já desenvolvidas.
+// Suporta 3 níveis de hierarquia (##, ###, ####).
 function buildReconstructedContent(sections: WorkSection[], outline: string | null): string {
   const sorted = [...sections].filter(s => s.content.trim()).sort((a, b) => a.index - b.index);
   const parts: string[] = [];
-  const insertedParentNums = new Set<string>();
+  const insertedParentKeys = new Set<string>();
 
   for (const section of sorted) {
-    const isSubsection = /^\d+\.\d+/.test(section.title);
-    const heading = isSubsection ? '###' : '##';
+    const heading = getSectionHeading(section.title);
     const hasHeading = contentStartsWithTitle(section.content, section.title);
     const body = hasHeading ? section.content : `${heading} ${section.title}\n\n${section.content}`;
 
-    if (isSubsection && outline) {
-      const parentMatch = section.title.match(/^(\d+)\.\d+/);
-      if (parentMatch) {
-        const parentNum = parentMatch[1];
-        if (!insertedParentNums.has(parentNum)) {
-          const parentTitle = getParentTitleFromOutline(outline, parentNum);
-          if (parentTitle) { parts.push(parts.length === 0 ? `## ${parentTitle}` : `{pagebreak}\n\n## ${parentTitle}`); insertedParentNums.add(parentNum); }
+    if ((heading === '###' || heading === '####') && outline) {
+      const threeLevelMatch = section.title.match(/^(\d+\.\d+)\.\d+/); // #### → parent N.N
+      const twoLevelMatch = !threeLevelMatch && section.title.match(/^(\d+)\.\d+/); // ### → parent N
+
+      if (threeLevelMatch) {
+        const parentKey = threeLevelMatch[1];
+        if (!insertedParentKeys.has(parentKey)) {
+          const parentTitle = getParentTitleFromOutline(outline, parentKey);
+          if (parentTitle) {
+            parts.push(parts.length === 0 ? `### ${parentTitle}` : `{pagebreak}\n\n### ${parentTitle}`);
+            insertedParentKeys.add(parentKey);
+          }
         }
-        parts.push(body); continue;
+        parts.push(body);
+        continue;
+      }
+
+      if (twoLevelMatch) {
+        const parentKey = twoLevelMatch[1];
+        if (!insertedParentKeys.has(parentKey)) {
+          const parentTitle = getParentTitleFromOutline(outline, parentKey);
+          if (parentTitle) {
+            parts.push(parts.length === 0 ? `## ${parentTitle}` : `{pagebreak}\n\n## ${parentTitle}`);
+            insertedParentKeys.add(parentKey);
+          }
+        }
+        parts.push(body);
+        continue;
       }
     }
+
     parts.push(parts.length === 0 ? body : `{pagebreak}\n\n${body}`);
   }
 
-  const body = parts.join('\n\n');
-  return body ? `{toc}\n\n${body}` : body;
+  const bodyText = parts.join('\n\n');
+  return bodyText ? `{toc}\n\n${bodyText}` : bodyText;
 }
 
-function buildSectionMarkdown(title: string, content: string, isFirstInEditor: boolean, parentTitle?: string | null): string {
-  const isSubsection = /^\d+\.\d+/.test(title);
-  const heading = isSubsection ? '###' : '##';
+// Constrói o markdown de uma única secção para inserção no editor.
+function buildSectionMarkdown(
+  title: string,
+  content: string,
+  isFirstInEditor: boolean,
+  parentTitle?: string | null,
+): string {
+  const heading = getSectionHeading(title);
   const titleAlreadyPresent = contentStartsWithTitle(content, title);
   const body = titleAlreadyPresent ? content : `${heading} ${title}\n\n${content}`;
 
-  if (isSubsection) {
-    if (parentTitle) { const fullBlock = `## ${parentTitle}\n\n${body}`; return isFirstInEditor ? fullBlock : `{pagebreak}\n\n${fullBlock}`; }
+  // Subsecções (### ou ####): prepend do parent se ainda não inserido
+  if (heading === '###' || heading === '####') {
+    if (parentTitle) {
+      const parentHeading = getSectionHeading(parentTitle);
+      const fullBlock = `${parentHeading} ${parentTitle}\n\n${body}`;
+      return isFirstInEditor ? fullBlock : `{pagebreak}\n\n${fullBlock}`;
+    }
     return body;
   }
+
+  // Secção principal ##
   return isFirstInEditor ? body : `{pagebreak}\n\n${body}`;
 }
 
@@ -164,9 +230,7 @@ function SourceBadge({ isEnhanced, reviewMeta }: {
   reviewMeta: { sourceCount: number; usedWeb: boolean; ragCount: number } | null;
 }) {
   if (!isEnhanced) return null;
-
   const hasRag = (reviewMeta?.ragCount ?? 0) > 0;
-
   return (
     <span
       className={`flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[9px] ${
@@ -196,6 +260,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const { setIncludeCover, setCoverData, resetExportPreferences, setContent } = useEditorActions();
 
   const [topicInput, setTopicInput] = useState('');
+  const [workType, setWorkType] = useState<WorkType>('academic');
   const [outlineEdit, setOutlineEdit] = useState('');
   const [outlineSuggestions, setOutlineSuggestions] = useState('');
   const [isApprovingOutline, setIsApprovingOutline] = useState(false);
@@ -205,7 +270,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const [processingButtonId, setProcessingButtonId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [autoMode, setAutoMode] = useState(false);
-  const [workType, setWorkType] = useState<WorkType>('academic');
+
   const sessionsTopRef = useRef<HTMLDivElement>(null);
   const panelScrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -241,9 +306,18 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     if (step !== 'outline_approved') return;
     panelScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step, session?.sections.length]);
-  useEffect(() => { if (step === 'review_outline') { setOutlineEdit(session?.outline_draft ?? ''); setOutlineSuggestions(''); } }, [step, session]);
+
+  useEffect(() => {
+    if (step === 'review_outline') { setOutlineEdit(session?.outline_draft ?? ''); setOutlineSuggestions(''); }
+  }, [step, session]);
+
   useEffect(() => { if (showSessions) loadSessions(); }, [showSessions, loadSessions]);
-  useEffect(() => { if (!showSessions) return; sessionsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [showSessions, recentSessions.length]);
+
+  useEffect(() => {
+    if (!showSessions) return;
+    sessionsTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [showSessions, recentSessions.length]);
+
   useEffect(() => { autoModeRef.current = autoMode; }, [autoMode]);
 
   useEffect(() => {
@@ -256,8 +330,12 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   }, [resumeRestoreSessionId, session, setContent]);
 
   useEffect(() => {
-    if (coverAgent.step === 'done_with_cover' && coverAgent.coverData) { setIncludeCover(true); setCoverData(coverAgent.coverData); return; }
-    if (coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') { setIncludeCover(false); setCoverData(null); }
+    if (coverAgent.step === 'done_with_cover' && coverAgent.coverData) {
+      setIncludeCover(true); setCoverData(coverAgent.coverData); return;
+    }
+    if (coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') {
+      setIncludeCover(false); setCoverData(null);
+    }
   }, [coverAgent.step, coverAgent.coverData, setCoverData, setIncludeCover]);
 
   useEffect(() => {
@@ -271,13 +349,23 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
   const handleCoverSubmit = async (coverData: CoverData) => {
     setShowCoverModal(false);
     if (!session) return;
-    const finalData = await coverAgent.submitCoverData(coverData, session.topic, session.outline_approved ?? session.outline_draft ?? '', () => {});
+    const finalData = await coverAgent.submitCoverData(
+      coverData, session.topic,
+      session.outline_approved ?? session.outline_draft ?? '',
+      () => {},
+    );
     if (finalData) {
       try {
-        await fetch('/api/work/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ _action: 'saveCoverData', sessionId: session.id, coverData: finalData }) });
+        await fetch('/api/work/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ _action: 'saveCoverData', sessionId: session.id, coverData: finalData }),
+        });
       } catch { console.warn('Não foi possível persistir dados de capa.'); }
     }
   };
+
+  // ── Submissão do tópico — passa workType ──────────────────────────────────
 
   const handleTopicSubmit = () => {
     const topic = topicInput.trim();
@@ -294,6 +382,8 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     try { await approveOutline(outlineEdit); } finally { setIsApprovingOutline(false); }
   };
 
+  // ── Inserção de secção — suporte a 3 níveis de hierarquia ────────────────
+
   const handleInsertSection = useCallback((sectionIndex: number) => {
     if (!session) return;
     setProcessingButtonId(`insert-section-${sectionIndex}`);
@@ -308,18 +398,38 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
     } else {
       const isFirstInEditor = !hasContentInEditor;
       let parentTitle: string | null = null;
-      const parentNumMatch = sec.title.match(/^(\d+)\.\d+/);
-      if (parentNumMatch) {
-        const parentNum = parentNumMatch[1];
-        const hasSiblingAlreadyInserted = session.sections.some(s => {
-          const m = s.title.match(/^(\d+)\.\d+/);
-          return m && m[1] === parentNum && s.status === 'inserted';
-        });
-        if (!hasSiblingAlreadyInserted) {
-          const outline = session.outline_approved ?? session.outline_draft ?? '';
-          parentTitle = getParentTitleFromOutline(outline, parentNum);
+      const heading = getSectionHeading(sec.title);
+
+      if (heading === '####') {
+        // Parent de #### é ### (chave N.N)
+        const m = sec.title.match(/^(\d+\.\d+)\.\d+/);
+        if (m) {
+          const parentKey = m[1];
+          const hasSiblingInserted = session.sections.some(s => {
+            const sm = s.title.match(/^(\d+\.\d+)\.\d+/);
+            return sm && sm[1] === parentKey && s.status === 'inserted';
+          });
+          if (!hasSiblingInserted) {
+            const outline = session.outline_approved ?? session.outline_draft ?? '';
+            parentTitle = getParentTitleFromOutline(outline, parentKey);
+          }
+        }
+      } else if (heading === '###') {
+        // Parent de ### é ## (chave N)
+        const m = sec.title.match(/^(\d+)\.\d+/);
+        if (m) {
+          const parentKey = m[1];
+          const hasSiblingInserted = session.sections.some(s => {
+            const sm = s.title.match(/^(\d+)\.\d+/);
+            return sm && sm[1] === parentKey && s.status === 'inserted';
+          });
+          if (!hasSiblingInserted) {
+            const outline = session.outline_approved ?? session.outline_draft ?? '';
+            parentTitle = getParentTitleFromOutline(outline, parentKey);
+          }
         }
       }
+
       const textToInsert = buildSectionMarkdown(sec.title, sec.content, isFirstInEditor, parentTitle);
       const finalText = isFirstInEditor ? `{toc}\n\n${textToInsert}` : textToInsert;
       insertSection(sectionIndex, () => onInsert(finalText));
@@ -402,8 +512,10 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
         {/* Cabeçalho */}
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-base">📚</span>
-            <span className="font-mono text-[13px] tracking-[0.06em] text-[var(--panel-accent)]">Trabalho Escolar</span>
+            <span className="text-base">{session?.work_type === 'project' ? '💼' : '📚'}</span>
+            <span className="font-mono text-[13px] tracking-[0.06em] text-[var(--panel-accent)]">
+              {session?.work_type === 'project' ? 'Projecto Empresarial' : 'Trabalho Escolar'}
+            </span>
             {session && (
               <span className="rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] px-1.5 py-px font-mono text-[10px] text-[var(--panel-text-faint)]">
                 {session.topic.length > 28 ? `${session.topic.slice(0, 28)}…` : session.topic}
@@ -457,7 +569,10 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                         className={`flex min-w-0 flex-1 items-center justify-between rounded px-1 py-0.5 text-left transition-colors hover:text-[var(--panel-accent)] ${isProcessing(`resume-session-${s.id}`) ? 'animate-pulse [animation-duration:1.6s]' : ''}`}
                       >
                         <div className="min-w-0">
-                          <div className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">{s.work_type === 'project' ? '💼' : '📚'}</span>
+                            <span className="truncate font-mono text-xs text-[var(--panel-text)]">{s.topic}</span>
+                          </div>
                           <div className="mt-0.5 font-mono text-[10px] text-[var(--panel-text-faint)]">{new Date(s.updated_at).toLocaleDateString('pt-PT')}</div>
                         </div>
                         {isProcessing(`resume-session-${s.id}`) ? (
@@ -493,9 +608,49 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
           {/* ── TOPIC INPUT ── */}
           {step === 'topic_input' && (
             <div className="flex flex-col gap-3">
-              <Label>Qual é o tema do trabalho?</Label>
+              <Label>Qual é o tipo de trabalho?</Label>
+
+              {/* ── Seletor de tipo ────────────────────────────────────────── */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWorkType('academic')}
+                  className={`flex-1 rounded border px-3 py-2 font-mono text-xs transition-all ${
+                    workType === 'academic'
+                      ? 'border-[var(--panel-accent)] bg-[var(--panel-accent-dim)] text-[var(--panel-accent)]'
+                      : 'border-[var(--panel-border)] bg-[var(--panel-surface)] text-[var(--panel-text-dim)]'
+                  }`}
+                >
+                  📚 Trabalho Escolar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorkType('project')}
+                  className={`flex-1 rounded border px-3 py-2 font-mono text-xs transition-all ${
+                    workType === 'project'
+                      ? 'border-[var(--panel-accent)] bg-[var(--panel-accent-dim)] text-[var(--panel-accent)]'
+                      : 'border-[var(--panel-border)] bg-[var(--panel-surface)] text-[var(--panel-text-dim)]'
+                  }`}
+                >
+                  💼 Projecto Empresarial
+                </button>
+              </div>
+
+              <Label>Qual é o tema {workType === 'project' ? 'do projecto' : 'do trabalho'}?</Label>
               <div className="flex items-end gap-2">
-                <textarea value={topicInput} onChange={e => setTopicInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTopicSubmit(); } }} placeholder="Ex: A importância da água potável para a saúde pública em Moçambique" rows={4} autoFocus className="flex-1 resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]" />
+                <textarea
+                  value={topicInput}
+                  onChange={e => setTopicInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTopicSubmit(); } }}
+                  placeholder={
+                    workType === 'project'
+                      ? 'Ex: Criação de uma padaria artesanal em Maputo'
+                      : 'Ex: A importância da água potável para a saúde pública em Moçambique'
+                  }
+                  rows={4}
+                  autoFocus
+                  className="flex-1 resize-none rounded border border-[var(--panel-border)] bg-[var(--panel-surface)] p-3 font-mono text-xs leading-[1.6] text-[var(--panel-text)] outline-none caret-[var(--panel-accent)] focus:border-[var(--panel-accent-dim)]"
+                />
                 <AudioInputButton onTranscription={text => setTopicInput(prev => (prev ? `${prev} ${text}` : text))} className="py-2" />
               </div>
               <Btn onClick={handleTopicSubmit} color={C.accent} disabled={!topicInput.trim()} processing={isProcessing('submit-topic')}>✦ Continuar para fontes</Btn>
@@ -562,7 +717,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* ── SECÇÕES com badges de fonte ── */}
+          {/* ── SECÇÕES ── */}
           {(step === 'outline_approved' || step === 'developing' || step === 'section_ready') &&
            (coverAgent.step === 'done_with_cover' || coverAgent.step === 'done_without_cover' || coverAgent.step === 'idle') &&
            session && (
@@ -583,7 +738,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 )
               )}
 
-              {/* ── Indicador de fase (visível durante desenvolvimento) ─────── */}
               {step === 'developing' && (
                 <PhaseIndicator phase={developPhase} reviewMeta={reviewMeta} />
               )}
@@ -594,18 +748,20 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                 const isInserted = sec.status === 'inserted';
                 const isDeveloping = isActive && step === 'developing';
                 const isBusy = activeSectionIdx !== null;
-                const isSubsection = /^\d+\.\d+/.test(sec.title);
+                const heading = getSectionHeading(sec.title);
+                // Indentação visual: ### fica recuado 12px, #### fica recuado 24px
+                const indentClass = heading === '####' ? 'ml-6' : heading === '###' ? 'ml-3' : '';
                 const enhanced = isSourceEnhanced(sec.index);
 
                 return (
                   <div key={sec.index}
-                    className={`flex items-center justify-between gap-2 rounded border px-3 py-2.5 transition-all ${isActive ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20' : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'} ${isSubsection ? 'ml-3' : ''}`}
+                    className={`flex items-center justify-between gap-2 rounded border px-3 py-2.5 transition-all ${isActive ? 'border-[var(--panel-accent-dim)] bg-[color:var(--panel-accent-dim)]/20' : 'border-[var(--panel-border)] bg-[var(--panel-surface)]'} ${indentClass}`}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {isSubsection && <span className="mr-1 text-[var(--panel-text-faint)]">↳</span>}
+                        {heading === '####' && <span className="mr-1 text-[var(--panel-text-faint)]">↳↳</span>}
+                        {heading === '###' && <span className="mr-1 text-[var(--panel-text-faint)]">↳</span>}
                         <span className="truncate font-mono text-xs font-medium text-[var(--panel-text)]">{sec.title}</span>
-                        {/* Badge de enriquecimento por fonte */}
                         {enhanced && (
                           <SourceBadge isEnhanced={enhanced} reviewMeta={isActive ? reviewMeta : null} />
                         )}
@@ -649,7 +805,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
             </div>
           )}
 
-          {/* ── DEVELOPING — Streaming do Pass 2 ── */}
+          {/* ── DEVELOPING ── */}
           {step === 'developing' && (
             <div>
               {session && activeSectionIdx !== null && (
@@ -657,7 +813,7 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                   {developPhase === 'reviewing'
                     ? 'A analisar fontes…'
                     : developPhase === 'refining'
-                      ? `A refinar: `
+                      ? 'A refinar: '
                       : 'A preparar: '}
                   <span className="text-[var(--panel-accent)]">{session.sections[activeSectionIdx]?.title}</span>
                 </Label>
@@ -668,7 +824,6 @@ export function WorkPanel({ onInsert, onTopicChange, onClose, isMobile = false, 
                   <span className="font-mono text-[10px] text-[var(--panel-text-dim)]">A preparar o próximo conteúdo…</span>
                 </div>
               )}
-              {/* O streamingText só contém o Pass 2 — Pass 1 nunca é mostrado */}
               {(developPhase === 'refining' || developPhase === 'idle') && streamingText && (
                 <StreamBox text={streamingText} showProcessing={!streamingText.trim()} />
               )}

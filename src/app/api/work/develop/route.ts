@@ -11,7 +11,6 @@
 //
 // SEM documentos RAG → passe único directo:
 //   PASS 2 (stream): geração directa com conhecimento nativo do modelo
-//   (sem RAG, sem revisor, sem embeddings desnecessários)
 //
 // SSE custom events emitidos antes do streaming (apenas com RAG activo):
 //   {"type":"phase","phase":"reviewing","questionCount":10}
@@ -28,7 +27,8 @@ import { wrapUserInput, PROMPT_INJECTION_GUARD } from '@/lib/prompt-sanitizer';
 import { semanticSearch, generateRagFicha } from '@/lib/work/rag-service';
 import { runSectionReviewer, type ReviewerResult } from '@/lib/work/section-reviewer';
 
-// ── Normalização de título (remove prefixos numéricos/romanos) ────────────────
+// ── Normalização de título ─────────────────────────────────────────────────────
+// Remove prefixos romanos e numéricos até 3 níveis (1.1.1.)
 
 function normalizeTitle(title: string): string {
   return title
@@ -86,19 +86,138 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
   return stripUniversityLanguage(cleaned, sectionTitle);
 }
 
-// ── Instruções específicas por secção ────────────────────────────────────────
+// ── Instruções específicas por secção ─────────────────────────────────────────
+//
+// Cobre AMBAS as estruturas: académica (I. Introdução…) e projecto (1. Introdução…).
+// A correspondência é feita pelo nome normalizado — sem prefixos.
 
 function getSectionInstruction(normalizedName: string, isSubsection: boolean): string {
-  if (normalizedName === 'objetivo geral') return `Escreve o Objetivo Geral do projecto em exactamente 1 frase no infinitivo, clara e mensurável. Máximo 40 palavras.`;
-  if (normalizedName === 'objetivos especificos' || normalizedName === 'objectivos especificos') return `Lista 3 a 5 Objetivos Específicos do projecto em bullets, iniciando com verbos no infinitivo.`;
-  if (normalizedName === 'problematizacao') return `Descreve o problema real que o projecto pretende resolver, com evidências e impacto no contexto local.`;
-  if (normalizedName === 'justificativa') return `Explica por que o projecto é relevante e os benefícios esperados para a comunidade.`;
-  if (normalizedName === 'analise fofa') return `Apresenta uma análise FOFA (Forças, Oportunidades, Fraquezas e Ameaças) em bullets.`;
-  if (normalizedName === 'localizacao do projeto' || normalizedName === 'localizacao do projecto') return `Descreve a localização de implementação e justifica a escolha.`;
-  if (normalizedName === 'recursos humanos') return `Descreve equipa, funções, quantidade de pessoas e competências necessárias.`;
-  if (normalizedName.includes('financeira') && normalizedName.includes('despesa')) return `Apresenta análise financeira e despesas com estrutura organizada e valores estimados.`;
-  if (normalizedName === 'lucro') return `Apresenta projeção de receitas, lucro líquido e ponto de equilíbrio.`;
-  if (normalizedName === 'marketing') return `Desenvolve estratégia de marketing com público-alvo e os 4 Ps.`;
+
+  // ── PROJECTO ──────────────────────────────────────────────────────────────
+
+  if (normalizedName === 'objetivo geral') {
+    return `Escreve o Objetivo Geral do projecto em exactamente 1 frase no infinitivo (ex: "Criar…", "Desenvolver…", "Implementar…"). A frase deve resumir a ambição central do projecto de forma clara e mensurável. Máximo 40 palavras. NÃO uses lista. NÃO incluas conclusão nem referências.`;
+  }
+
+  if (normalizedName === 'objetivos especificos' || normalizedName === 'objectivos especificos') {
+    return `Lista 3 a 5 Objetivos Específicos do projecto, cada um numa linha com bullet (-). Cada objetivo:
+- Começa com verbo no infinitivo (Identificar, Analisar, Elaborar, Calcular, Promover…)
+- É concreto, mensurável e ligado ao contexto do projecto
+- Máximo 25 palavras por item
+NÃO incluas Objetivo Geral aqui. NÃO incluas conclusão nem referências.`;
+  }
+
+  if (normalizedName === 'objetivo') {
+    return `Apresenta brevemente a finalidade desta secção: os objetivos estão divididos em Objetivo Geral (o propósito central) e Objetivos Específicos (os passos mensuráveis). 2-3 frases introdutórias. NÃO listes os objetivos aqui.`;
+  }
+
+  if (normalizedName === 'problematizacao') {
+    return `Descreve o problema real que o projecto pretende resolver. Deve:
+- Identificar claramente o problema (quem sofre, onde, com que impacto)
+- Apresentar dados ou evidências que comprovem a existência do problema
+- Ligar ao contexto moçambicano quando relevante
+- Ter entre 200 e 320 palavras
+NÃO incluas soluções aqui. NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'justificativa') {
+    return `Explica POR QUÊ este projecto é necessário e relevante. Deve:
+- Mostrar o impacto esperado do projecto
+- Argumentar sobre os benefícios para a comunidade, escola ou região
+- Mencionar quem beneficia e de que forma
+- Ter entre 180 e 280 palavras
+NÃO repitas a problematização. NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'analise fofa') {
+    return `Apresenta a Análise FOFA (SWOT) do projecto com 4 blocos bem estruturados:
+
+**Forças** (internas, positivas) — 3 a 4 bullets
+**Oportunidades** (externas, positivas) — 3 a 4 bullets
+**Fraquezas** (internas, negativas) — 2 a 3 bullets
+**Ameaças** (externas, negativas) — 2 a 3 bullets
+
+Cada item deve ser específico ao projecto. Usa linguagem directa e concisa.
+NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'localizacao do projeto' || normalizedName === 'localizacao do projecto') {
+    return `Descreve a localização onde o projecto será implementado. Deve:
+- Indicar a localização específica (cidade, bairro, estabelecimento)
+- Justificar a escolha (acesso ao público-alvo, infraestrutura, concorrência)
+- Mencionar vantagens logísticas ou estratégicas
+- Ter entre 150 e 250 palavras
+NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'recursos humanos') {
+    return `Descreve a equipa necessária para o projecto. Deve:
+- Listar os cargos/funções necessários
+- Indicar o número de pessoas por função
+- Descrever as responsabilidades de cada função
+- Mencionar qualificações desejáveis
+- Organizar em formato de lista ou tabela Markdown
+- Ter entre 150 e 280 palavras
+NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName.includes('financeira') && normalizedName.includes('despesa')) {
+    return `Apresenta a análise financeira e as despesas do projecto. Deve:
+- Listar as despesas de investimento inicial (equipamento, espaço, licenças)
+- Listar as despesas operacionais mensais (salários, matéria-prima, electricidade)
+- Indicar o custo total estimado
+- Mencionar possíveis fontes de financiamento
+- Usar tabela Markdown ou lista com valores em MZN quando possível
+- Ter entre 200 e 350 palavras
+NÃO incluas receitas ou lucros aqui. NÃO incluas conclusão.`;
+  }
+
+  if (normalizedName === 'lucro') {
+    return `Apresenta a projecção de receitas e lucratividade do projecto. Deve:
+- Estimar as receitas mensais esperadas (preço × volume estimado)
+- Calcular o lucro líquido (receitas − despesas operacionais)
+- Indicar o ponto de equilíbrio (break-even)
+- Estimar o período de retorno do investimento
+- Usar tabela Markdown ou cálculos com valores em MZN quando possível
+- Ter entre 180 e 300 palavras
+NÃO repitas as despesas. NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'marketing') {
+    return `Desenvolve a estratégia de marketing do projecto cobrindo os 4 Ps:
+
+**Produto/Serviço** — o que é oferecido e o que o diferencia
+**Preço** — estratégia de preço e justificação
+**Praça/Distribuição** — como e onde o produto chegará ao cliente
+**Promoção** — canais de comunicação (redes sociais, boca-a-boca, cartazes)
+
+Identifica também o **público-alvo** (perfil do cliente ideal).
+Ter entre 250 e 380 palavras. Usar subtítulos em negrito.
+NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'enquadramento teorico') {
+    return `Apresenta o enquadramento teórico do projecto. Deve:
+- Definir conceitos-chave relacionados com o tipo de negócio/projecto
+- Citar autores e teorias relevantes em APA 7.ª edição
+- Contextualizar o projecto no sector em Moçambique
+- Ter entre 250 e 400 palavras
+NÃO incluas as subsecções (FOFA, Localização, RH) aqui.
+NÃO incluas conclusão nem referências no final.`;
+  }
+
+  if (normalizedName === 'implementacao do projeto' || normalizedName === 'implementacao do projecto') {
+    return `Descreve o plano de implementação do projecto. Deve:
+- Apresentar as etapas cronológicas
+- Indicar responsáveis por cada etapa
+- Mencionar recursos necessários em cada fase
+- Ter entre 200 e 320 palavras
+NÃO incluas a análise financeira detalhada aqui.
+NÃO incluas conclusão nem referências no final.`;
+  }
+
+  // ── ACADÉMICO ─────────────────────────────────────────────────────────────
+
   if (isSubsection) {
     return `Desenvolve este subtópico de forma clara e didáctica para alunos do ensino secundário. Deve:
 - Apresentar o conceito com uma definição simples e acessível
@@ -108,6 +227,7 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - NÃO repetir conteúdo já presente nas secções anteriores
 - NÃO incluir conclusão nem lista de referências no final`;
   }
+
   if (normalizedName === 'introducao') {
     return `Escreve uma introdução académica simples para um trabalho do ensino secundário/médio. Deve:
 - Contextualizar o tema de forma acessível (o que é e porquê é importante)
@@ -118,6 +238,7 @@ function getSectionInstruction(normalizedName: string, isSubsection: boolean): s
 - NÃO desenvolver conceitos teóricos — isso é para o Desenvolvimento
 - NÃO incluir conclusão nem referências no final`;
   }
+
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
     return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para o ensino secundário/médio.
 
@@ -133,6 +254,7 @@ PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO ultrapasses 100 palavras no total
 ❌ NÃO incluas conclusão nem referências no final`;
   }
+
   if (normalizedName === 'metodologia') {
     return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ensino secundário/médio.
 
@@ -147,6 +269,7 @@ PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO ultrapasses 150 palavras no total
 ❌ NÃO incluas conclusão nem referências no final`;
   }
+
   if (normalizedName === 'conclusao' || normalizedName === 'conclusão') {
     return `Escreve uma conclusão consistente e académica. Deve:
 - Retomar os pontos mais importantes desenvolvidos no trabalho (1 parágrafo)
@@ -157,6 +280,7 @@ PROIBIÇÕES ABSOLUTAS:
 - Usar linguagem clara: "Conclui-se que...", "O presente trabalho demonstrou..."
 - NÃO introduzir informação nova`;
   }
+
   if (normalizedName.includes('referencia') || normalizedName.includes('bibliografia')) {
     return `Lista as referências bibliográficas em formato APA (7.ª edição). Deve:
 - Incluir no mínimo 4 referências relevantes e credíveis para o tema
@@ -164,6 +288,7 @@ PROIBIÇÕES ABSOLUTAS:
 - Apresentar cada referência numa linha separada
 - Incluir: livros didácticos, artigos académicos, sites educativos ou institucionais`;
   }
+
   return `Desenvolve o conteúdo de forma académica adequada ao ensino secundário, entre 220 e 380 palavras. NÃO incluas conclusão nem referências no final.`;
 }
 
@@ -236,7 +361,7 @@ PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
 ==================
 ${PROMPT_INJECTION_GUARD}
 
-És um redactor académico especializado em trabalhos escolares do ensino secundário e médio.
+És um redactor académico especializado em trabalhos escolares e projectos do ensino secundário e médio.
 Escreves sempre em português europeu com normas ortográficas moçambicanas quando aplicável.
 A norma de referenciação é APA (7.ª edição) em todo o trabalho.
 
@@ -255,7 +380,7 @@ ${ragBlock}
 
 REGRAS DE ADEQUAÇÃO AO CONTEXTO MOÇAMBICANO
 ===========================================
-O trabalho é produzido em Moçambique. Aplica contexto moçambicano APENAS quando o tema for social, económico, histórico ou geográfico, e quando isso enriqueça o argumento. NÃO forces contexto geográfico em temas universais (matemática, física, química, filosofia geral).
+O trabalho é produzido em Moçambique. Aplica contexto moçambicano APENAS quando o tema for social, económico, histórico ou geográfico. NÃO forces contexto geográfico em temas universais.
 
 INSTRUÇÃO DA TAREFA ACTUAL
 ==========================
@@ -268,13 +393,13 @@ REGRAS DE ESCRITA — OBRIGATÓRIAS
 =================================
 - Começa directamente pelo conteúdo — sem "Nesta secção…", "Vou desenvolver…"
 - NÃO incluas o título da secção no início — é inserido automaticamente
-- Usa Markdown: negrito para termos-chave, ### para sub-títulos, listas quando adequado
+- Usa Markdown: negrito para termos-chave, subtítulos quando adequado, listas quando necessário
 - Mantém coerência terminológica com as secções anteriores
 - Se existir contexto enriquecido acima, integra-o com citações APA no corpo do texto
 - Tom académico claro e acessível ao nível do ensino secundário/médio`.trim();
 }
 
-// ── Handler principal ────────────────────────────────────────────────────────
+// ── Handler principal ─────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   const limited = await enforceRateLimit(req, { scope: 'work:develop', maxRequests: 10, windowMs: 60_000 });
@@ -306,12 +431,9 @@ export async function POST(req: Request) {
     const section = session.sections.find(s => s.index === sectionIndex);
     if (!section) return NextResponse.json({ error: 'Secção não encontrada' }, { status: 404 });
 
-    // ── Determinar modo de operação ────────────────────────────────────────
-    // Se não há documentos RAG carregados, salta toda a pipeline de embeddings
-    // e agente revisor — usa directamente o conhecimento nativo do modelo.
     const hasRagDocuments = !!session.rag_enabled;
 
-    // ── Garantir ficha de pesquisa (apenas sem RAG; com RAG, o revisor trata disto) ──
+    // Garantir ficha de pesquisa (apenas sem RAG)
     if (!hasRagDocuments && !session.research_brief) {
       try {
         const research = await generateResearchBrief(session.topic, outline);
@@ -320,13 +442,11 @@ export async function POST(req: Request) {
         session.research_brief = research.brief;
         session.research_generated_at = new Date().toISOString();
       } catch (researchError) {
-        // Não bloqueia a geração — continua sem ficha de pesquisa.
         console.warn('[work/develop] Falha ao gerar ficha de pesquisa (sem RAG):', researchError);
       }
     }
 
-    // ── Contexto das secções anteriores ───────────────────────────────────
-
+    // Contexto das secções anteriores
     const previousSections = session.sections
       .filter(s => s.index < sectionIndex && s.content)
       .map(s => ({ title: s.title, content: s.content }));
@@ -341,12 +461,10 @@ export async function POST(req: Request) {
           )}\n`
         : '\n[SECÇÕES ANTERIORES]\n(nenhuma secção anterior disponível)\n';
 
-    // ── Contexto RAG multimodal (apenas se há documentos carregados) ──────
-
+    // Contexto RAG multimodal
     let ragContext = '';
 
     if (hasRagDocuments) {
-      // Garantir ficha RAG
       if (!session.rag_ficha) {
         const supabase = await (await import('@/lib/supabase')).createClient();
         const ficha = await generateRagFicha(session.id, session.topic);
@@ -369,30 +487,24 @@ export async function POST(req: Request) {
         const chunksTxt = ragChunks
           .map((c, i) => {
             const icon =
-              c.metadata?.modal_type === 'image'
-                ? '[FIGURA]'
-                : c.metadata?.modal_type === 'pdf_visual'
-                  ? '[PDF VISUAL]'
-                  : c.metadata?.modal_type === 'audio'
-                    ? '[ÁUDIO]'
-                    : '[TEXTO]';
+              c.metadata?.modal_type === 'image' ? '[FIGURA]'
+              : c.metadata?.modal_type === 'pdf_visual' ? '[PDF VISUAL]'
+              : c.metadata?.modal_type === 'audio' ? '[ÁUDIO]'
+              : '[TEXTO]';
             return `${icon} Excerto ${i + 1}:\n${c.chunk_text}`;
           })
           .join('\n\n---\n\n');
 
-        ragContext = `${fichaTxt}\nEXCERTOS RELEVANTES:\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos nos excertos acima\n- [FIGURA] e [PDF VISUAL] indicam conteúdo extraído visualmente\n- [ÁUDIO] indica conteúdo de gravação\n- Cita os autores reais da ficha técnica (APA 7.ª)\n- Não inventes referências — usa APENAS as listadas\n`;
+        ragContext = `${fichaTxt}\nEXCERTOS RELEVANTES:\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos nos excertos acima\n- Cita os autores reais da ficha técnica (APA 7.ª)\n- Não inventes referências — usa APENAS as listadas\n`;
       }
     }
 
-    // ── Preparação do prompt ───────────────────────────────────────────────
-
+    // isSubsection: qualquer título com pelo menos 2 níveis numéricos (1.1, 1.1.1)
     const isSubsection = /^\d+\.\d+/.test(section.title);
     const normalizedName = normalizeTitle(section.title);
     const specificInstruction = getSectionInstruction(normalizedName, isSubsection);
 
     const encoder = new TextEncoder();
-
-    // ── Stream orquestrado ─────────────────────────────────────────────────
 
     const orchestratedStream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -400,37 +512,22 @@ export async function POST(req: Request) {
           let enrichedContext = '';
 
           if (hasRagDocuments) {
-            // ── PASS 1: Rascunho rápido (apenas com RAG activo) ─────────────
+            // PASS 1: Rascunho rápido
             const draft = await geminiGenerateText({
               model: 'gemini-3.1-flash-lite-preview',
               messages: [
                 {
                   role: 'system',
-                  content: buildDraftPrompt(
-                    section.title,
-                    session.topic,
-                    outline,
-                    specificInstruction,
-                  ),
+                  content: buildDraftPrompt(section.title, session.topic, outline, specificInstruction),
                 },
-                {
-                  role: 'user',
-                  content: `Gera o rascunho inicial da secção "${section.title}".`,
-                },
+                { role: 'user', content: `Gera o rascunho inicial da secção "${section.title}".` },
               ],
               maxOutputTokens: 700,
               temperature: 0.5,
             });
 
-            // ── Anunciar fase: revisão ──────────────────────────────────────
-            const reviewingEvt = JSON.stringify({
-              type: 'phase',
-              phase: 'reviewing',
-              questionCount: 10,
-            });
-            controller.enqueue(encoder.encode(`data: ${reviewingEvt}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'phase', phase: 'reviewing', questionCount: 10 })}\n\n`));
 
-            // ── AGENTE REVISOR (apenas com RAG activo) ──────────────────────
             let reviewResult: ReviewerResult = {
               knowledgeMatrix: [],
               enrichedContext: '',
@@ -450,25 +547,21 @@ export async function POST(req: Request) {
                 researchBrief: session.research_brief,
               });
             } catch (reviewErr) {
-              console.error('[work/develop] Agente revisor falhou — continuando sem enriquecimento:', reviewErr);
+              console.error('[work/develop] Agente revisor falhou:', reviewErr);
             }
 
             enrichedContext = reviewResult.enrichedContext;
 
-            // ── Anunciar fase: refinamento ──────────────────────────────────
-            const refiningEvt = JSON.stringify({
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'phase',
               phase: 'refining',
               sourceCount: reviewResult.sourceCount,
               usedWeb: reviewResult.usedWeb,
               ragCount: reviewResult.ragCount,
-            });
-            controller.enqueue(encoder.encode(`data: ${refiningEvt}\n\n`));
+            })}\n\n`));
           }
-          // Sem RAG: salta Pass 1 e revisor inteiramente —
-          // vai directamente para o Pass 2 com conhecimento nativo do modelo.
 
-          // ── PASS 2: Geração final (streaming) ─────────────────────────────
+          // PASS 2: Geração final (streaming)
           const refinedSystemPrompt = buildRefinedSystemPrompt({
             topic: session.topic,
             outline,
@@ -515,7 +608,6 @@ export async function POST(req: Request) {
             controller.enqueue(value);
           }
 
-          // ── Guardar conteúdo gerado ───────────────────────────────────────
           if (accumulated) {
             const cleaned = stripSpuriousBlocks(accumulated, section.title);
             await saveWorkSectionContent(sessionId, sectionIndex, cleaned, session.sections);
