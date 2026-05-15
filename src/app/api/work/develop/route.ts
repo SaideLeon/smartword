@@ -245,7 +245,7 @@ ESTRUTURA OBRIGATÓRIA (5 parágrafos):
 - Parágrafo 1: definição do projeto + explicação directa do tema
 - Parágrafo 2: importância do tema + contextualização social/económica breve
 - Parágrafo 3: problema identificado + necessidade do projeto
-- Parágrafo 4: objectivo geral + valor social/económico/educacional
+- Parágrafo 4: objectivo geral + valor social/económico/educacional + estimativa resumida de investimento inicial
 - Parágrafo 5: resumo dos tópicos que serão abordados ao longo do trabalho
 
 REGRAS DE QUALIDADE:
@@ -277,6 +277,15 @@ EXEMPLOS DE TRECHOS A EVITAR E COMO SIMPLIFICAR:
 ✅ "fortalecimento da produção local"
 ❌ "alinhando-se com as metas de sustentabilidade"
 ✅ "contribuindo para o desenvolvimento local"
+
+REGRA OBRIGATÓRIA SOBRE VALOR MONETÁRIO DO PROJETO:
+- A introdução deve apresentar, de forma breve e objectiva, o valor monetário estimado para implementação do projeto
+- O valor deve aparecer naturalmente no texto (preferencialmente no parágrafo do objectivo ou da implementação)
+- Indicar que é uma estimativa inicial e mencionar brevemente a finalidade do investimento
+- Evitar tabelas financeiras, detalhamento excessivo de custos e linguagem contabilística complexa na introdução
+
+MODELO RECOMENDADO:
+"Para a implementação do projeto, estima-se um investimento inicial de aproximadamente [VALOR], destinado à aquisição de equipamentos, materiais, infraestrutura e recursos necessários para o funcionamento da actividade."
 
 EXEMPLO INCORRETO (NÃO SEGUIR):
 "A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
