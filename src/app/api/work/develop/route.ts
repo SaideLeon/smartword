@@ -252,10 +252,31 @@ REGRAS DE QUALIDADE:
 - Linguagem clara, objectiva, académica e organizada
 - Adequada ao nível de projeto integrado
 - Evitar excesso de termos técnicos desnecessários
+- Foco obrigatório no recorte específico do título/tema fornecido pelo utilizador
+- Se o título indicar uma especialidade (ex.: "bolos de forma simples"), desenvolver a introdução principalmente nessa especialidade
+- Evitar abordagem generalista da área (ex.: falar de confeitaria no geral quando o foco é bolos de forma)
 - NÃO começar com problematização extensa nem linguagem excessivamente científica
 - NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
 - NÃO incluir conclusão nem referências no final
 - 280 a 480 palavras
+
+REGRA DE SIMPLIFICAÇÃO ACADÉMICA (OBRIGATÓRIA):
+- Usar linguagem académica simples, clara e acessível (nível projeto integrado/ensino médio-técnico)
+- Evitar excesso de formalismo e linguagem semelhante a artigo científico universitário
+- Evitar frases muito longas e parágrafos densos
+- Evitar termos económicos/técnicos complexos quando houver alternativa simples
+- Priorizar frases curtas, objectivas e explicação directa do projeto
+- Escrever como estudante organizado e competente, não como pesquisador científico universitário
+
+EXEMPLOS DE TRECHOS A EVITAR E COMO SIMPLIFICAR:
+❌ "solução integrada que abrange desde a sementeira…"
+✅ "empresa voltada para o cultivo e venda de flores…"
+❌ "cadeia de valor"
+✅ "processo de produção e comercialização"
+❌ "soberania económica no setor da floricultura"
+✅ "fortalecimento da produção local"
+❌ "alinhando-se com as metas de sustentabilidade"
+✅ "contribuindo para o desenvolvimento local"
 
 EXEMPLO INCORRETO (NÃO SEGUIR):
 "A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
