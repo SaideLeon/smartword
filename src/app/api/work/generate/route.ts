@@ -55,14 +55,14 @@ Vais gerar um esboço orientador para um projecto sobre o tópico fornecido.
 
 O projecto tem SEMPRE esta estrutura fixa (não adicionares nem removeres secções):
 
-## 1. Introdução
+### 1. Introdução
 ### 1.1 Objetivo
 #### 1.1.1 Objetivo Geral
 #### 1.1.2 Objetivos Específicos
-## 2. Metodologia
+### 2. Metodologia
 ### 2.1 Problematização
 ### 2.2 Justificativa
-## 3. Enquadramento Teórico
+### 3. Enquadramento Teórico
 ### 3.1 Análise FOFA
 ### 3.2 Localização do projeto
 ### 3.3 Recursos Humanos
@@ -78,6 +78,7 @@ REGRAS DE ESTRUTURA OBRIGATÓRIAS:
 - Os Objetivos ficam SEMPRE dentro de 1.1, com subníveis #### para Geral e Específicos
 - NÃO incluas "Índice" em nenhuma posição do esboço
 - Usa ## para secções principais, ### para subsecções, #### para subsubsecções
+- REGRA EXPLÍCITA E OBRIGATÓRIA: embora sejam secções-pai, "Introdução", "Metodologia" e "Enquadramento Teórico" devem ser escritas obrigatoriamente com ### (não usar ## nestes 3 títulos).
 
 Para cada secção/subsecção, descreve em 2-4 frases o que o aluno deve abordar. Norma APA 7.ª edição.
 
