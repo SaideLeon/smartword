@@ -112,12 +112,14 @@ NÃO incluas Objetivo Geral aqui. NÃO incluas conclusão nem referências.`;
   }
 
   if (normalizedName === 'problematizacao') {
-    return `Descreve o problema real que o projecto pretende resolver. Deve:
-- Identificar claramente o problema (quem sofre, onde, com que impacto)
-- Apresentar dados ou evidências que comprovem a existência do problema
-- Ligar ao contexto moçambicano quando relevante
-- Ter entre 200 e 320 palavras
-NÃO incluas soluções aqui. NÃO incluas conclusão nem referências no final.`;
+    return `Escreve APENAS a problematização em 1 frase simples, directa e objectiva.
+Regras obrigatórias:
+- Deve mencionar apenas 1 único problema central (não listar dois ou mais problemas)
+- Máximo 35 palavras
+- Sem explicações longas, sem dados extensos e sem proposta de solução
+- Não transformar em justificativa
+Exemplo de estilo: "A falta de formação técnica acessível em confeitaria limita a qualidade, a competitividade e a autonomia financeira de pequenos empreendedores moçambicanos."
+NÃO incluas conclusão nem referências no final.`;
   }
 
   if (normalizedName === 'justificativa') {
@@ -169,6 +171,7 @@ NÃO incluas conclusão nem referências no final.`;
 - Mencionar possíveis fontes de financiamento
 - Usar tabela Markdown ou lista com valores em MZN quando possível
 - Ter entre 200 e 350 palavras
+- CONSISTÊNCIA OBRIGATÓRIA: se a Introdução já tiver definido investimento inicial, usar exactamente o mesmo valor aqui.
 NÃO incluas receitas ou lucros aqui. NÃO incluas conclusão.`;
   }
 
@@ -180,6 +183,7 @@ NÃO incluas receitas ou lucros aqui. NÃO incluas conclusão.`;
 - Estimar o período de retorno do investimento
 - Usar tabela Markdown ou cálculos com valores em MZN quando possível
 - Ter entre 180 e 300 palavras
+- CONSISTÊNCIA OBRIGATÓRIA: manter o mesmo investimento inicial definido na Introdução e na Análise financeira/Despesas.
 NÃO repitas as despesas. NÃO incluas conclusão nem referências no final.`;
   }
 
@@ -229,14 +233,79 @@ NÃO incluas conclusão nem referências no final.`;
   }
 
   if (normalizedName === 'introducao') {
-    return `Escreve uma introdução académica simples para um trabalho do ensino secundário/médio. Deve:
-- Contextualizar o tema de forma acessível (o que é e porquê é importante)
-- Apresentar o problema de pesquisa em 1-2 frases
-- Referir os objectivos gerais do trabalho
-- Descrever brevemente a estrutura do trabalho (as secções que existem)
-- Ter entre 280 e 480 palavras — NÃO ultrapasses este limite
-- NÃO desenvolver conceitos teóricos — isso é para o Desenvolvimento
-- NÃO incluir conclusão nem referências no final`;
+    return `Escreve a secção "Introdução" para trabalho escolar/projeto do ensino secundário/médio.
+
+REGRA OBRIGATÓRIA PARA PROJETO INTEGRADO (seguir ao pé da letra):
+1) Definir claramente o projeto/área do projeto logo no início
+2) Explicar brevemente a importância do tema
+3) Apresentar o problema/necessidade existente
+4) Mostrar o objectivo geral do projeto
+5) Demonstrar o valor social, económico ou educacional do projeto
+6) Resumir os conteúdos que serão abordados no trabalho (visão geral final)
+
+ESTRUTURA OBRIGATÓRIA (5 parágrafos):
+- Parágrafo 1: definição do projeto + explicação directa do tema
+- Parágrafo 2: importância do tema + contextualização social/económica breve
+- Parágrafo 3: problema identificado + necessidade do projeto
+- Parágrafo 4: objectivo geral + valor social/económico/educacional + estimativa resumida de investimento inicial
+- Parágrafo 5: resumo dos tópicos que serão abordados ao longo do trabalho
+
+REGRAS DE QUALIDADE:
+- Linguagem clara, objectiva, académica e organizada
+- Adequada ao nível de projeto integrado
+- Evitar excesso de termos técnicos desnecessários
+- Foco obrigatório no recorte específico do título/tema fornecido pelo utilizador
+- Se o título indicar uma especialidade (ex.: "bolos de forma simples"), desenvolver a introdução principalmente nessa especialidade
+- Evitar abordagem generalista da área (ex.: falar de confeitaria no geral quando o foco é bolos de forma)
+- NÃO começar com problematização extensa nem linguagem excessivamente científica
+- NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
+- NÃO incluir conclusão nem referências no final
+- 280 a 480 palavras
+
+REGRA DE SIMPLIFICAÇÃO ACADÉMICA (OBRIGATÓRIA):
+- Usar linguagem académica simples, clara e acessível (nível projeto integrado/ensino médio-técnico)
+- Evitar excesso de formalismo e linguagem semelhante a artigo científico universitário
+- Evitar frases muito longas e parágrafos densos
+- Evitar termos económicos/técnicos complexos quando houver alternativa simples
+- Priorizar frases curtas, objectivas e explicação directa do projeto
+- Escrever como estudante organizado e competente, não como pesquisador científico universitário
+
+EXEMPLOS DE TRECHOS A EVITAR E COMO SIMPLIFICAR:
+❌ "solução integrada que abrange desde a sementeira…"
+✅ "empresa voltada para o cultivo e venda de flores…"
+❌ "cadeia de valor"
+✅ "processo de produção e comercialização"
+❌ "soberania económica no setor da floricultura"
+✅ "fortalecimento da produção local"
+❌ "alinhando-se com as metas de sustentabilidade"
+✅ "contribuindo para o desenvolvimento local"
+
+REGRA OBRIGATÓRIA SOBRE VALOR MONETÁRIO DO PROJETO:
+- A introdução deve apresentar, de forma breve e objectiva, o valor monetário estimado para implementação do projeto
+- O valor deve aparecer naturalmente no texto (preferencialmente no parágrafo do objectivo ou da implementação)
+- Indicar que é uma estimativa inicial e mencionar brevemente a finalidade do investimento
+- Definir um único valor-base de investimento para todo o trabalho e reutilizar o mesmo valor nas secções financeiras
+- Evitar tabelas financeiras, detalhamento excessivo de custos e linguagem contabilística complexa na introdução
+
+MODELO RECOMENDADO:
+"Para a implementação do projeto, estima-se um investimento inicial de aproximadamente [VALOR], destinado à aquisição de equipamentos, materiais, infraestrutura e recursos necessários para o funcionamento da actividade."
+
+EXEMPLO INCORRETO (NÃO SEGUIR):
+"A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
+Problemas deste estilo:
+- demora para definir o projeto
+- inicia com contextualização excessivamente académica
+- usa linguagem científica desnecessária
+- apresenta problematização antes da definição clara do projeto
+
+EXEMPLO CORRETO (ESTILO A SEGUIR):
+"A confeitaria é uma área da gastronomia voltada para a preparação e decoração de bolos, doces e produtos de pastelaria, desempenhando um papel importante na geração de renda e no desenvolvimento de pequenos negócios. O presente projeto consiste na criação de uma escola de confeitaria destinada ao ensino de técnicas básicas para produção de bolos de formas simples, com foco na capacitação de jovens e adultos da comunidade.
+
+Nos últimos anos, a procura por produtos de confeitaria em Moçambique tem aumentado significativamente devido à realização de festas, eventos sociais e crescimento do pequeno comércio alimentar. Apesar disso, muitas pessoas que possuem talento culinário enfrentam dificuldades por não terem acesso à formação técnica adequada, dependendo apenas de conhecimentos empíricos adquiridos no ambiente familiar.
+
+Diante desta realidade, o projeto surge como uma alternativa para promover a formação profissional, incentivar o empreendedorismo e contribuir para a redução do desemprego. A escola pretende oferecer conhecimentos básicos sobre higiene e segurança alimentar, utilização correta de utensílios e ingredientes, preparação de receitas simples e gestão de pequenos negócios de confeitaria.
+
+O trabalho abordará aspectos relacionados à metodologia do projeto, problematização, justificativa, enquadramento teórico, análise FOFA, recursos humanos, implementação, análise financeira e estratégias de marketing. Além disso, pretende demonstrar a importância social e económica da criação de uma escola de confeitaria como instrumento de inclusão produtiva e desenvolvimento comunitário."`;
   }
 
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
@@ -256,7 +325,7 @@ PROIBIÇÕES ABSOLUTAS:
   }
 
   if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho, de forma APROFUNDADA mas acessível ao ensino secundário/médio.
+    return `Escreve APENAS a metodologia do trabalho/projeto, de forma clara e objectiva para o ensino secundário/médio.
 
 Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
@@ -266,7 +335,7 @@ Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 
 PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO escrevas objectivos aqui
-❌ NÃO ultrapasses 150 palavras no total
+❌ NÃO ultrapasses 220 palavras no total
 ❌ NÃO incluas conclusão nem referências no final`;
   }
 
