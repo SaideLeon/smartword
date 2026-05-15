@@ -231,14 +231,48 @@ NÃO incluas conclusão nem referências no final.`;
   }
 
   if (normalizedName === 'introducao') {
-    return `Escreve a secção "Introdução" para trabalho escolar/projeto do ensino secundário/médio. Deve:
-- Contextualizar o tema de forma acessível (o que é e porquê é importante)
-- Apresentar o problema de pesquisa em 1-2 frases
-- Referir os objectivos gerais do trabalho
-- Descrever brevemente a estrutura do trabalho (as secções que existem)
-- Ter entre 280 e 480 palavras — NÃO ultrapasses este limite
-- NÃO desenvolver conceitos teóricos — isso é para o Desenvolvimento
-- NÃO incluir conclusão nem referências no final`;
+    return `Escreve a secção "Introdução" para trabalho escolar/projeto do ensino secundário/médio.
+
+REGRA OBRIGATÓRIA PARA PROJETO INTEGRADO (seguir ao pé da letra):
+1) Definir claramente o projeto/área do projeto logo no início
+2) Explicar brevemente a importância do tema
+3) Apresentar o problema/necessidade existente
+4) Mostrar o objectivo geral do projeto
+5) Demonstrar o valor social, económico ou educacional do projeto
+6) Resumir os conteúdos que serão abordados no trabalho (visão geral final)
+
+ESTRUTURA OBRIGATÓRIA (5 parágrafos):
+- Parágrafo 1: definição do projeto + explicação directa do tema
+- Parágrafo 2: importância do tema + contextualização social/económica breve
+- Parágrafo 3: problema identificado + necessidade do projeto
+- Parágrafo 4: objectivo geral + valor social/económico/educacional
+- Parágrafo 5: resumo dos tópicos que serão abordados ao longo do trabalho
+
+REGRAS DE QUALIDADE:
+- Linguagem clara, objectiva, académica e organizada
+- Adequada ao nível de projeto integrado
+- Evitar excesso de termos técnicos desnecessários
+- NÃO começar com problematização extensa nem linguagem excessivamente científica
+- NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
+- NÃO incluir conclusão nem referências no final
+- 280 a 480 palavras
+
+EXEMPLO INCORRETO (NÃO SEGUIR):
+"A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
+Problemas deste estilo:
+- demora para definir o projeto
+- inicia com contextualização excessivamente académica
+- usa linguagem científica desnecessária
+- apresenta problematização antes da definição clara do projeto
+
+EXEMPLO CORRETO (ESTILO A SEGUIR):
+"A confeitaria é uma área da gastronomia voltada para a preparação e decoração de bolos, doces e produtos de pastelaria, desempenhando um papel importante na geração de renda e no desenvolvimento de pequenos negócios. O presente projeto consiste na criação de uma escola de confeitaria destinada ao ensino de técnicas básicas para produção de bolos de formas simples, com foco na capacitação de jovens e adultos da comunidade.
+
+Nos últimos anos, a procura por produtos de confeitaria em Moçambique tem aumentado significativamente devido à realização de festas, eventos sociais e crescimento do pequeno comércio alimentar. Apesar disso, muitas pessoas que possuem talento culinário enfrentam dificuldades por não terem acesso à formação técnica adequada, dependendo apenas de conhecimentos empíricos adquiridos no ambiente familiar.
+
+Diante desta realidade, o projeto surge como uma alternativa para promover a formação profissional, incentivar o empreendedorismo e contribuir para a redução do desemprego. A escola pretende oferecer conhecimentos básicos sobre higiene e segurança alimentar, utilização correta de utensílios e ingredientes, preparação de receitas simples e gestão de pequenos negócios de confeitaria.
+
+O trabalho abordará aspectos relacionados à metodologia do projeto, problematização, justificativa, enquadramento teórico, análise FOFA, recursos humanos, implementação, análise financeira e estratégias de marketing. Além disso, pretende demonstrar a importância social e económica da criação de uma escola de confeitaria como instrumento de inclusão produtiva e desenvolvimento comunitário."`;
   }
 
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
