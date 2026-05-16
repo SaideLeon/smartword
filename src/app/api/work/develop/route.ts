@@ -367,9 +367,12 @@ PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO incluas conclusão nem referências no final
 
 EXEMPLO DE METODOLOGIA ERRADA (NÃO SEGUIR):
-"A presente pesquisa assume uma natureza qualitativa e bibliográfica, fundamentada na análise de modelos de ensino técnico e gestão de pequenos negócios. Esta abordagem justifica-se pela necessidade de compreender a viabilidade da implementação de uma escola de confeitaria em Quelimane, considerando as especificidades do mercado local e a eficácia da metodologia de micro-learning na capacitação profissional.
+"A presente pesquisa assume uma natureza qualitativa e bibliográfica, fundamentada na análise de modelos de ensino técnico e gestão de pequenos negócios. Esta abordagem justifica-se pela necessidade de compreender a viabilidade da implementação de uma escola de confeitaria em Quelimane, considerando as especificidades do mercado local e a eficácia da metodologia de micro-learning na capacitação profissional (Gisslen, 2017).
 
-O estudo utiliza um método descritivo (...) utilizando a análise FOFA como ferramenta estratégica para avaliar o ambiente de negócio."
+O estudo utiliza um método descritivo, permitindo a caracterização detalhada das necessidades formativas da população local e a estruturação de um plano de negócio que responda à escassez de formação técnica acessível. A análise foca-se na correlação entre a oferta de competências práticas e o potencial de autoemprego, utilizando a análise FOFA como ferramenta estratégica para avaliar o ambiente de negócio.
+
+As fontes consultadas incluem manuais técnicos de culinária, relatórios de organizações internacionais sobre empreendedorismo alimentar (ILO, 2021) e diretrizes de padrões de educação culinária (Worldchefs, 2023). A seleção destas fontes baseou-se na sua autoridade técnica e na aplicabilidade dos conceitos a economias em desenvolvimento, garantindo que o projeto esteja alinhado com as melhores práticas globais de segurança alimentar e gestão de custos. 
+O tratamento dos dados foi realizado de forma temática, organizando as informações recolhidas em eixos estruturantes que abrangem desde a viabilidade financeira até às estratégias de marketing. Todo o conteúdo foi redigido em conformidade com as normas da APA (7.ª edição), assegurando o rigor académico e a clareza na apresentação dos resultados propostos."
 
 Por que está errado:
 - mistura teoria e fundamentação temática extensa com metodologia
