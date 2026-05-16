@@ -262,7 +262,7 @@ ESTRUTURA OBRIGATÓRIA (5 parágrafos):
 - Parágrafo 1: definição do projeto + explicação directa do tema
 - Parágrafo 2: importância do tema + contextualização social/económica breve
 - Parágrafo 3: problema identificado + necessidade do projeto
-- Parágrafo 4: objectivo geral + valor social/económico/educacional + estimativa resumida de investimento inicial
+- Parágrafo 4: objectivo geral + metas principais + grupo-alvo + valor social/económico/educacional + estimativa resumida de investimento inicial
 - Parágrafo 5: resumo dos tópicos que serão abordados ao longo do trabalho
 
 REGRAS DE QUALIDADE:
@@ -304,6 +304,11 @@ REGRA OBRIGATÓRIA SOBRE VALOR MONETÁRIO DO PROJETO:
 
 MODELO RECOMENDADO:
 "Para a implementação do projeto, estima-se um investimento inicial de aproximadamente [VALOR], destinado à aquisição de equipamentos, materiais, infraestrutura e recursos necessários para o funcionamento da actividade."
+
+REGRA OBRIGATÓRIA SOBRE METAS E GRUPO-ALVO:
+- A introdução deve mencionar as metas principais do projeto de forma breve e mensurável
+- A introdução deve identificar claramente o grupo-alvo (quem será atendido/beneficiado)
+- Metas e grupo-alvo devem aparecer de forma natural no parágrafo do objectivo (ou implementação), junto da visão geral do projeto
 
 EXEMPLO INCORRETO (NÃO SEGUIR):
 "A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
