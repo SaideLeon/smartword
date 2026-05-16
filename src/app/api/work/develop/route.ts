@@ -380,13 +380,13 @@ Por que está errado:
 - aproxima o texto de enquadramento teórico, em vez de focar no procedimento
 
 EXEMPLO DE METODOLOGIA CORRETA (ESTILO A SEGUIR):
-"A presente pesquisa possui natureza qualitativa e bibliográfica, baseada na consulta e análise de obras científicas, manuais técnicos e documentos relacionados ao tema do projeto.
+"A presente pesquisa possui natureza qualitativa e bibliográfica, baseada na consulta e análise de obras científicas, manuais técnicos e documentos relacionados ao ensino profissional e ao empreendedorismo na área da confeitaria. Esta abordagem permitiu compreender a viabilidade da implementação de uma escola de confeitaria na cidade de Quelimane, considerando as necessidades do mercado local e as oportunidades de capacitação profissional.
 
-O estudo adotou o método descritivo, com o objetivo de identificar e descrever necessidades do público-alvo e estruturar a proposta do projeto.
+O estudo adotou o método descritivo, com o objetivo de identificar e descrever as necessidades formativas da população local, bem como estruturar uma proposta de negócio voltada para o ensino da produção de bolos de formas simples. A pesquisa procurou analisar a relação entre a formação técnica em confeitaria e a promoção do autoemprego e da geração de renda.
 
-Para a recolha de dados, foram utilizadas fontes bibliográficas, incluindo livros, artigos científicos, relatórios institucionais e documentos técnicos relevantes.
+Para a recolha de dados, foram utilizadas fontes bibliográficas, incluindo livros, artigos científicos, relatórios institucionais e documentos de organizações internacionais relacionados à educação profissional, segurança alimentar e gestão de pequenos negócios. As informações recolhidas foram selecionadas com base na relevância, credibilidade e adequação ao tema em estudo.
 
-Os dados foram analisados de forma temática, permitindo organizar as informações nas áreas centrais do projeto e apresentar os resultados com clareza."`;
+Os dados foram analisados de forma temática, permitindo organizar as informações em diferentes áreas do projeto, tais como viabilidade financeira, recursos humanos, marketing e implementação da escola de confeitaria."`;
   }
 
   if (normalizedName === 'conclusao' || normalizedName === 'conclusão') {
