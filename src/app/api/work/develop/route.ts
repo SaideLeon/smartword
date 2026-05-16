@@ -59,7 +59,217 @@ function sectionAllowsClosing(title: string): boolean {
   return CLOSING_SECTION_NAMES.has(normalizeTitle(title));
 }
 
-// ── Filtro pós-processamento ──────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE CONTROLO DE CITAÇÕES — 3 CAMADAS DE DEFESA
+//
+// PROBLEMA:  O modelo inseria "(Gisslen, 2017)", "(ILO, 2020)" em secções
+//            operacionais como FOFA, Implementação, Recursos Humanos, etc.
+//
+// SOLUÇÃO:   3 camadas complementares que trabalham em sequência:
+//   CAMADA 1 → allowsCitations():        decisão lógica por nome de secção
+//   CAMADA 2 → buildCitationGuard():     bloco injectado no prompt do modelo
+//   CAMADA 3 → stripSpuriousCitations(): regex pós-processamento no output
+// ════════════════════════════════════════════════════════════════════════════════
+
+// ── CAMADA 1: Controlo por nome de secção ────────────────────────────────────
+//
+// Função central que decide se uma secção tem PERMISSÃO para receber citações.
+//
+// REGRA DO PROJECTO:
+//   ✅ PERMITIDO: Enquadramento Teórico, Desenvolvimento Teórico (académico),
+//                 subsecções académicas (1.1, 1.2...), Conclusão, Referências
+//   ❌ PROIBIDO:  Introdução, Metodologia, Objetivos, Problematização,
+//                 Justificativa, Análise FOFA, Localização, Recursos Humanos,
+//                 Implementação, Análise Financeira, Lucro, Marketing
+
+function allowsCitations(sectionTitle: string): boolean {
+  const norm = sectionTitle
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // ✅ Lista branca: secções que PERMITEM citações (correspondência exacta após normalização)
+  const CITATION_ALLOWED_SECTIONS = new Set([
+    'enquadramento teorico',       // 3. Enquadramento Teórico (projecto)
+    'desenvolvimento teorico',     // 1. Desenvolvimento Teórico (académico)
+    'referencia bibliografica',    // Referência Bibliográfica
+    'referencias bibliograficas',  // Referências Bibliográficas
+    'bibliography',
+    'conclusao',                   // Conclusão — permitido com moderação
+    'conclusion',
+  ]);
+
+  if (CITATION_ALLOWED_SECTIONS.has(norm)) return true;
+
+  // Subsecções académicas (1.1, 1.2, 1.3...) pertencem ao Desenvolvimento Teórico
+  // e portanto também permitem citações. Identificadas pelo padrão numérico duplo.
+  // ATENÇÃO: subsecções de projecto (3.1 FOFA, 3.2 Localização, 3.3 RH, 4.1, 4.2)
+  // são secções OPERACIONAIS e estão implicitamente excluídas (não são académicas).
+  // Para distinguir, verificamos se o título contém nomes de subsecções proibidas.
+  if (/^\d+\.\d+/.test(sectionTitle)) {
+    const OPERATIONAL_SUBSECTIONS = new Set([
+      'analise fofa',
+      'localizacao do projeto',
+      'localizacao do projecto',
+      'recursos humanos',
+      'analise financeira',
+      'despesas',
+      'lucro',
+      'problematizacao',
+      'justificativa',
+      'objetivo',
+      'objetivos',
+      'objectivo',
+      'objectivos',
+      'objetivo geral',
+      'objetivos especificos',
+    ]);
+    const normSubsection = normalizeTitle(sectionTitle);
+    if (OPERATIONAL_SUBSECTIONS.has(normSubsection)) return false; // subsecção operacional
+    return true; // subsecção académica → permite citações
+  }
+
+  return false; // Tudo o resto: PROIBIDO
+}
+
+// ── CAMADA 2: Gerador do bloco de proibição para o prompt ────────────────────
+//
+// Gera um bloco de texto com EXEMPLOS CONCRETOS injectado no system prompt.
+// O modelo segue exemplos (❌ vs ✅) muito mais consistentemente do que regras.
+//
+// Este bloco é dinâmico: varia conforme allowsCitations() para a secção actual.
+
+function buildCitationGuard(sectionTitle: string): string {
+  const citationsAllowed = allowsCitations(sectionTitle);
+
+  if (!citationsAllowed) {
+    return `
+REGRA CRÍTICA — CITAÇÕES DE AUTORES NESTA SECÇÃO: ❌ COMPLETAMENTE PROIBIDAS
+═══════════════════════════════════════════════════════════════════════════════
+A secção "${sectionTitle}" é uma secção OPERACIONAL ou ESTRUTURAL do projecto.
+Citações de autores são EXCLUSIVAS do Enquadramento Teórico / Desenvolvimento Teórico.
+
+PROIBIÇÕES ABSOLUTAS — NÃO ESCREVAS NADA DISTO:
+  ❌ "Segundo Gisslen (2017), a padronização é essencial..."
+  ❌ "De acordo com a ILO (2020), o emprego produtivo..."
+  ❌ "Conforme Porter (2008), a vantagem competitiva..."
+  ❌ "...é fundamental para a sustentabilidade (Gisslen, 2017)."
+  ❌ "...conforme preconizado por Kotler & Keller (2012)."
+  ❌ "...segundo as diretrizes da ILO (ILO, 2020)."
+  ❌ Qualquer padrão "(Autor, Ano)" ou "Autor (Ano)" no corpo do texto
+
+COMO ESCREVER CORRECTAMENTE NESTA SECÇÃO:
+  ✅ "A padronização dos processos garante qualidade constante e reduz desperdícios."
+  ✅ "A formação técnica é um pilar fundamental para a criação de emprego produtivo."
+  ✅ "O modelo de baixo custo operacional permite o rápido retorno do investimento."
+  ✅ "A escola instalada em bairro de alta densidade tem acesso facilitado ao público-alvo."
+  ✅ Afirmações directas sobre o projecto — sem nenhuma referência bibliográfica.
+
+CHECKLIST MENTAL ANTES DE TERMINAR (obrigatório):
+  → Existe algum "(Autor, Ano)" ou "Autor (Ano)" no texto? → REMOVER.
+  → Existe "Segundo X...", "De acordo com X...", "Conforme X..."? → REMOVER.
+  → Existe "...conforme preconizado por..."? → REMOVER.
+  → Substituir sempre por afirmação directa sobre o projecto.
+═══════════════════════════════════════════════════════════════════════════════
+`;
+  } else {
+    return `
+REGRA — CITAÇÕES DE AUTORES NESTA SECÇÃO: ✅ PERMITIDAS (uso moderado)
+═══════════════════════════════════════════════════════════════════════════════
+A secção "${sectionTitle}" é uma secção TEÓRICA. Podes usar citações em APA 7.ª ed.
+
+FORMATO CORRECTO:
+  ✅ Narrativo:    "Segundo Gisslen (2017), a padronização de processos..."
+  ✅ Parentético:  "...é determinante para o sucesso (Porter, 2008)."
+  ✅ Organização:  "A ILO (2020) defende que o apoio às PME é essencial..."
+
+REGRAS DE USO:
+  → Máximo 2-3 citações por parágrafo; não citar em cada frase
+  → Usa autores reais e relevantes para o tema
+  → Formato obrigatório: APA 7.ª edição
+  → Cita para sustentar ideias, não para preencher espaço
+═══════════════════════════════════════════════════════════════════════════════
+`;
+  }
+}
+
+// ── CAMADA 3: Filtro pós-processamento (regex de segurança) ──────────────────
+//
+// Última linha de defesa. Remove citações que escaparam às camadas 1 e 2.
+// Executado APÓS a geração do conteúdo, ANTES de salvar na base de dados.
+//
+// Padrões detectados e removidos:
+//   → (Autor, 2020)              → citação parentética APA
+//   → (Autor & Autor, 2020)      → citação parentética com 2 autores
+//   → (Autor et al., 2020)       → citação com et al.
+//   → "Segundo Autor (Ano),"     → frase de introdução de citação
+//   → "De acordo com Autor (Ano)"
+//   → "conforme preconizado por Autor (Ano)"
+
+function stripSpuriousCitations(content: string, sectionTitle: string): string {
+  // Se a secção PERMITE citações → não filtra nada (preserva o texto intacto)
+  if (allowsCitations(sectionTitle)) return content;
+
+  let cleaned = content;
+
+  // Padrão 1: Citação parentética simples → (Autor, Ano) ou (Autor & Autor, Ano)
+  // Detecta: (Gisslen, 2017) | (Porter, 2008) | (Kotler & Keller, 2012)
+  cleaned = cleaned.replace(
+    /\s*\([A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+(?:\s*[,&]\s*[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+)*,\s*\d{4}[a-z]?\)/g,
+    ''
+  );
+
+  // Padrão 2: Citação com "et al." → (Autor et al., Ano)
+  // Detecta: (Silva et al., 2021)
+  cleaned = cleaned.replace(
+    /\s*\([A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+\s+et\s+al\.,\s*\d{4}\)/g,
+    ''
+  );
+
+  // Padrão 3: Citação de organização com sigla → (ILO, 2020) | (OIT, 2020)
+  // Remove apenas se contém ano de 4 dígitos (para não remover siglas normais como (PME))
+  cleaned = cleaned.replace(
+    /\s*\([A-Z]{2,8},\s*\d{4}\)/g,
+    ''
+  );
+
+  // Padrão 4: Frase "Segundo Autor (Ano)," → remove a frase introdutória
+  // Detecta: "Segundo Gisslen (2017)," | "Para Porter (2008),"
+  cleaned = cleaned.replace(
+    /(?:Segundo|De acordo com|Conforme|Consoante|Para|Segundo o autor|Segundo os autores|Segundo a|De acordo com a)\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+(?:\s*[,&]\s*[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+)*(?:\s+\(\d{4}\))?,?\s*/g,
+    ''
+  );
+
+  // Padrão 5: "...conforme preconizado/indicado/referido por Autor (Ano)"
+  // Detecta: "conforme preconizado por Gisslen (2017)"
+  cleaned = cleaned.replace(
+    /,?\s*conforme\s+(?:preconizado|indicado|referido|citado|apontado|descrito|defendido)\s+por\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+(?:\s*[,&]\s*[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+)*\s*(?:\(\d{4}\))?/gi,
+    ''
+  );
+
+  // Padrão 6: Referência inline com nome completo de organização
+  // Detecta: "(International Labour Organization [ILO], 2020)"
+  cleaned = cleaned.replace(
+    /\s*\([A-Z][a-zA-Z\s]+\[[A-Z]{2,8}\],\s*\d{4}\)/g,
+    ''
+  );
+
+  // Limpeza final: espaços duplos, pontuação órfã resultante das remoções
+  cleaned = cleaned
+    .replace(/[ \t]{2,}/g, ' ')        // espaços duplos → 1 espaço
+    .replace(/\.\s*\./g, '.')           // ponto duplo → 1 ponto
+    .replace(/,\s*\./g, '.')            // vírgula + ponto → 1 ponto
+    .replace(/^\s*[,;]\s*/gm, '')       // vírgula/ponto-e-vírgula no início de linha
+    .replace(/\n{3,}/g, '\n\n')         // linhas em branco excessivas
+    .trim();
+
+  return cleaned;
+}
+
+// ── Filtro pós-processamento (bloco) ──────────────────────────────────────────
 
 const SPURIOUS_HEADING_PATTERN = /^#{1,3}\s*(conclus[aã]o|consider[aã]es\s+finais|refere?ncias?(\s+bibliogr[aá]ficas?)?|bibliography|notas?\s+finais?|síntese)\s*$/im;
 const SPURIOUS_CLOSING_PHRASES = /\n+(em\s+(suma|conclus[aã]o|síntese)|portanto,\s+conclui-se|por\s+fim,\s+(pode|é\s+poss[ií]vel)|conclui-se\s+(assim|que|portanto)|desta\s+(forma|maneira|feita),\s+(conclui|verifica|observa)-se)[^]*/i;
@@ -87,13 +297,8 @@ function stripSpuriousBlocks(content: string, sectionTitle: string): string {
 }
 
 // ── Instruções específicas por secção ─────────────────────────────────────────
-//
-// Cobre AMBAS as estruturas: académica (I. Introdução…) e projecto (1. Introdução…).
-// A correspondência é feita pelo nome normalizado — sem prefixos.
 
 function getSectionInstruction(normalizedName: string, isSubsection: boolean): string {
-
-  // ── PROJECTO ──────────────────────────────────────────────────────────────
 
   if (normalizedName === 'objetivo geral') {
     return `Escreve o Objetivo Geral do projecto em exactamente 1 frase no infinitivo (ex: "Criar…", "Desenvolver…", "Implementar…"). A frase deve resumir a ambição central do projecto de forma clara e mensurável. Máximo 40 palavras. NÃO uses lista. NÃO incluas conclusão nem referências.`;
@@ -220,7 +425,7 @@ NÃO incluas conclusão nem referências no final.`;
 - Citar autores e teorias relevantes em APA 7.ª edição
 - Contextualizar o projecto no sector em Moçambique
 - Ter entre 250 e 400 palavras
-- Aqui pode haver teoria e citações; nas secções de análise aplicada (FOFA, financeira, mercado), NÃO usar explicação teórica da ferramenta
+- Aqui DEVE haver citações de autores; nas secções de análise aplicada (FOFA, financeira, mercado), NÃO usar citações
 NÃO incluas as subsecções (FOFA, Localização, RH) aqui.
 NÃO incluas conclusão nem referências no final.`;
   }
@@ -235,8 +440,6 @@ NÃO incluas a análise financeira detalhada aqui.
 NÃO incluas conclusão nem referências no final.`;
   }
 
-  // ── ACADÉMICO ─────────────────────────────────────────────────────────────
-
   if (isSubsection) {
     return `Desenvolve este subtópico de forma clara e didáctica para alunos do ensino secundário. Deve:
 - Apresentar o conceito com uma definição simples e acessível
@@ -250,14 +453,6 @@ NÃO incluas conclusão nem referências no final.`;
   if (normalizedName === 'introducao') {
     return `Escreve a secção "Introdução" para trabalho escolar/projeto do ensino secundário/médio.
 
-REGRA OBRIGATÓRIA PARA PROJETO INTEGRADO (seguir ao pé da letra):
-1) Definir claramente o projeto/área do projeto logo no início
-2) Explicar brevemente a importância do tema
-3) Apresentar o problema/necessidade existente
-4) Mostrar o objectivo geral do projeto
-5) Demonstrar o valor social, económico ou educacional do projeto
-6) Resumir os conteúdos que serão abordados no trabalho (visão geral final)
-
 ESTRUTURA OBRIGATÓRIA (5 parágrafos):
 - Parágrafo 1: definição do projeto + explicação directa do tema
 - Parágrafo 2: importância do tema + contextualização social/económica breve
@@ -267,145 +462,44 @@ ESTRUTURA OBRIGATÓRIA (5 parágrafos):
 
 REGRAS DE QUALIDADE:
 - Linguagem clara, objectiva, académica e organizada
-- Adequada ao nível de projeto integrado
-- Evitar excesso de termos técnicos desnecessários
-- Foco obrigatório no recorte específico do título/tema fornecido pelo utilizador
-- Se o título indicar uma especialidade (ex.: "bolos de forma simples"), desenvolver a introdução principalmente nessa especialidade
-- Evitar abordagem generalista da área (ex.: falar de confeitaria no geral quando o foco é bolos de forma)
-- NÃO começar com problematização extensa nem linguagem excessivamente científica
-- NÃO desenvolver conceitos teóricos aprofundados — isso é para o Desenvolvimento
-- NÃO incluir conclusão nem referências no final
 - 280 a 480 palavras
-
-REGRA DE SIMPLIFICAÇÃO ACADÉMICA (OBRIGATÓRIA):
-- Usar linguagem académica simples, clara e acessível (nível projeto integrado/ensino médio-técnico)
-- Evitar excesso de formalismo e linguagem semelhante a artigo científico universitário
-- Evitar frases muito longas e parágrafos densos
-- Evitar termos económicos/técnicos complexos quando houver alternativa simples
-- Priorizar frases curtas, objectivas e explicação directa do projeto
-- Escrever como estudante organizado e competente, não como pesquisador científico universitário
-
-EXEMPLOS DE TRECHOS A EVITAR E COMO SIMPLIFICAR:
-❌ "solução integrada que abrange desde a sementeira…"
-✅ "empresa voltada para o cultivo e venda de flores…"
-❌ "cadeia de valor"
-✅ "processo de produção e comercialização"
-❌ "soberania económica no setor da floricultura"
-✅ "fortalecimento da produção local"
-❌ "alinhando-se com as metas de sustentabilidade"
-✅ "contribuindo para o desenvolvimento local"
-
-REGRA OBRIGATÓRIA SOBRE VALOR MONETÁRIO DO PROJETO:
-- A introdução deve apresentar, de forma breve e objectiva, o valor monetário estimado para implementação do projeto
-- O valor deve aparecer naturalmente no texto (preferencialmente no parágrafo do objectivo ou da implementação)
-- Indicar que é uma estimativa inicial e mencionar brevemente a finalidade do investimento
-- Definir um único valor-base de investimento para todo o trabalho e reutilizar o mesmo valor nas secções financeiras
-- Evitar tabelas financeiras, detalhamento excessivo de custos e linguagem contabilística complexa na introdução
-
-MODELO RECOMENDADO:
-"Para a implementação do projeto, estima-se um investimento inicial de aproximadamente [VALOR], destinado à aquisição de equipamentos, materiais, infraestrutura e recursos necessários para o funcionamento da actividade."
-
-REGRA OBRIGATÓRIA SOBRE METAS E GRUPO-ALVO:
-- A introdução deve mencionar as metas principais do projeto de forma breve e mensurável
-- A introdução deve identificar claramente o grupo-alvo (quem será atendido/beneficiado)
-- Metas e grupo-alvo devem aparecer de forma natural no parágrafo do objectivo (ou implementação), junto da visão geral do projeto
-
-EXEMPLO INCORRETO (NÃO SEGUIR):
-"A confeitaria, enquanto vertente da gastronomia, transcende a mera preparação de alimentos, consolidando-se como uma ferramenta estratégica para o desenvolvimento socioeconómico..."
-Problemas deste estilo:
-- demora para definir o projeto
-- inicia com contextualização excessivamente académica
-- usa linguagem científica desnecessária
-- apresenta problematização antes da definição clara do projeto
-
-EXEMPLO CORRETO (ESTILO A SEGUIR):
-"A confeitaria é uma área da gastronomia voltada para a preparação e decoração de bolos, doces e produtos de pastelaria, desempenhando um papel importante na geração de renda e no desenvolvimento de pequenos negócios. O presente projeto consiste na criação de uma escola de confeitaria destinada ao ensino de técnicas básicas para produção de bolos de formas simples, com foco na capacitação de jovens e adultos da comunidade.
-
-Nos últimos anos, a procura por produtos de confeitaria em Moçambique tem aumentado significativamente devido à realização de festas, eventos sociais e crescimento do pequeno comércio alimentar. Apesar disso, muitas pessoas que possuem talento culinário enfrentam dificuldades por não terem acesso à formação técnica adequada, dependendo apenas de conhecimentos empíricos adquiridos no ambiente familiar.
-
-Diante desta realidade, o projeto surge como uma alternativa para promover a formação profissional, incentivar o empreendedorismo e contribuir para a redução do desemprego. A escola pretende oferecer conhecimentos básicos sobre higiene e segurança alimentar, utilização correta de utensílios e ingredientes, preparação de receitas simples e gestão de pequenos negócios de confeitaria.
-
-O trabalho abordará aspectos relacionados à metodologia do projeto, problematização, justificativa, enquadramento teórico, análise FOFA, recursos humanos, implementação, análise financeira e estratégias de marketing. Além disso, pretende demonstrar a importância social e económica da criação de uma escola de confeitaria como instrumento de inclusão produtiva e desenvolvimento comunitário."`;
+- NÃO incluir conclusão nem referências no final`;
   }
 
   if (normalizedName === 'objectivos' || normalizedName === 'objetivos') {
-    return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA para o ensino secundário/médio.
+    return `Escreve APENAS os objectivos do trabalho, de forma SIMPLES e CONCISA.
 
 Estrutura OBRIGATÓRIA:
-**Objectivo Geral**
-1 frase que resume o propósito do trabalho (começa com infinitivo: "Analisar...", "Compreender...", "Identificar...")
+**Objectivo Geral** — 1 frase no infinitivo
+**Objectivos Específicos** — 3 a 4 bullets no infinitivo
 
-**Objectivos Específicos**
-Lista de 3 a 4 bullets curtos, cada um com 1 frase simples no infinitivo.
-PROIBIÇÕES ABSOLUTAS:
-❌ NÃO escrevas nada sobre metodologia aqui
-❌ NÃO uses referências nem citações
-❌ NÃO ultrapasses 100 palavras no total
-❌ NÃO incluas conclusão nem referências no final`;
+NÃO uses referências nem citações. NÃO ultrapasses 100 palavras no total.`;
   }
 
   if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho/projeto, de forma limpa, clara e objectiva para o ensino secundário/médio.
+    return `Escreve APENAS a metodologia do trabalho/projeto (3 a 4 parágrafos curtos):
+1. Natureza da pesquisa (qualitativa, bibliográfica…)
+2. Método de análise (descritivo, comparativo…)
+3. Fontes e critérios de selecção
+4. Organização dos dados
 
-Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
-1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
-2. **Método de análise** — descreve o método usado (histórico, comparativo, descritivo, qualitativo, etc.)
-3. **Fontes e critérios de selecção** — que tipo de fontes foram consultadas e por que razão
-4. **Organização dos dados** — como a informação foi tratada e apresentada (ex: tematicamente, segundo APA 7.ª edição)
-
-FOCO DA METODOLOGIA:
-- Explicar COMO o trabalho foi realizado (procedimentos de pesquisa), não ensinar o tema.
-- Incluir de forma directa: tipo de pesquisa, métodos usados, como recolheu informações e como analisou dados.
-
-PROIBIÇÕES ABSOLUTAS:
-❌ NÃO escrevas objectivos aqui
-❌ NÃO ultrapasses 220 palavras no total
-❌ NÃO incluir enquadramento teórico nesta secção
-❌ NÃO explicar conceitos longos do tema (ex.: confeitaria, empreendedorismo, micro-learning)
-❌ NÃO incluir análise FOFA nem interpretação estratégica de mercado aqui
-❌ NÃO usar citações de autores para discutir teoria; apenas mencionar fontes consultadas
-❌ NÃO incluas conclusão nem referências no final
-
-EXEMPLO DE METODOLOGIA ERRADA (NÃO SEGUIR):
-"A presente pesquisa assume uma natureza qualitativa e bibliográfica, fundamentada na análise de modelos de ensino técnico e gestão de pequenos negócios. Esta abordagem justifica-se pela necessidade de compreender a viabilidade da implementação de uma escola de confeitaria em Quelimane, considerando as especificidades do mercado local e a eficácia da metodologia de micro-learning na capacitação profissional (Gisslen, 2017).
-
-O estudo utiliza um método descritivo, permitindo a caracterização detalhada das necessidades formativas da população local e a estruturação de um plano de negócio que responda à escassez de formação técnica acessível. A análise foca-se na correlação entre a oferta de competências práticas e o potencial de autoemprego, utilizando a análise FOFA como ferramenta estratégica para avaliar o ambiente de negócio.
-
-As fontes consultadas incluem manuais técnicos de culinária, relatórios de organizações internacionais sobre empreendedorismo alimentar (ILO, 2021) e diretrizes de padrões de educação culinária (Worldchefs, 2023). A seleção destas fontes baseou-se na sua autoridade técnica e na aplicabilidade dos conceitos a economias em desenvolvimento, garantindo que o projeto esteja alinhado com as melhores práticas globais de segurança alimentar e gestão de custos. 
-O tratamento dos dados foi realizado de forma temática, organizando as informações recolhidas em eixos estruturantes que abrangem desde a viabilidade financeira até às estratégias de marketing. Todo o conteúdo foi redigido em conformidade com as normas da APA (7.ª edição), assegurando o rigor académico e a clareza na apresentação dos resultados propostos."
-
-Por que está errado:
-- mistura teoria e fundamentação temática extensa com metodologia
-- inclui FOFA e interpretação estratégica de mercado dentro da metodologia
-- aproxima o texto de enquadramento teórico, em vez de focar no procedimento
-
-EXEMPLO DE METODOLOGIA CORRETA (ESTILO A SEGUIR):
-"A presente pesquisa possui natureza qualitativa e bibliográfica, baseada na consulta e análise de obras científicas, manuais técnicos e documentos relacionados ao ensino profissional e ao empreendedorismo na área da confeitaria. Esta abordagem permitiu compreender a viabilidade da implementação de uma escola de confeitaria na cidade de Quelimane, considerando as necessidades do mercado local e as oportunidades de capacitação profissional.
-
-O estudo adotou o método descritivo, com o objetivo de identificar e descrever as necessidades formativas da população local, bem como estruturar uma proposta de negócio voltada para o ensino da produção de bolos de formas simples. A pesquisa procurou analisar a relação entre a formação técnica em confeitaria e a promoção do autoemprego e da geração de renda.
-
-Para a recolha de dados, foram utilizadas fontes bibliográficas, incluindo livros, artigos científicos, relatórios institucionais e documentos de organizações internacionais relacionados à educação profissional, segurança alimentar e gestão de pequenos negócios. As informações recolhidas foram selecionadas com base na relevância, credibilidade e adequação ao tema em estudo.
-
-Os dados foram analisados de forma temática, permitindo organizar as informações em diferentes áreas do projeto, tais como viabilidade financeira, recursos humanos, marketing e implementação da escola de confeitaria."`;
+NÃO incluas objectivos aqui. NÃO ultrapasses 220 palavras. NÃO incluas conclusão nem referências no final.`;
   }
 
   if (normalizedName === 'conclusao' || normalizedName === 'conclusão') {
-    return `Escreve uma conclusão consistente e académica. Deve:
-- Retomar os pontos mais importantes desenvolvidos no trabalho (1 parágrafo)
-- Responder ao problema de pesquisa apresentado na introdução
-- Apresentar a relevância do tema e o que o trabalho contribuiu
-- Incluir reflexão crítica ou opinião fundamentada do aluno
-- Ter entre 220 e 320 palavras — NÃO ultrapasses este limite
-- Usar linguagem clara: "Conclui-se que...", "O presente trabalho demonstrou..."
-- NÃO introduzir informação nova`;
+    return `Escreve uma conclusão consistente e académica (220 a 320 palavras):
+- Retoma os pontos mais importantes do trabalho
+- Responde ao problema de pesquisa da introdução
+- Apresenta a relevância do tema
+- Inclui reflexão crítica
+- NÃO introduz informação nova`;
   }
 
   if (normalizedName.includes('referencia') || normalizedName.includes('bibliografia')) {
-    return `Lista as referências bibliográficas em formato APA (7.ª edição). Deve:
-- Incluir no mínimo 4 referências relevantes e credíveis para o tema
-- Ordenar alfabeticamente pelo apelido do primeiro autor
-- Apresentar cada referência numa linha separada
-- Incluir: livros didácticos, artigos académicos, sites educativos ou institucionais`;
+    return `Lista as referências bibliográficas em formato APA (7.ª edição):
+- Mínimo 4 referências relevantes
+- Ordenadas alfabeticamente pelo apelido do primeiro autor
+- Cada referência numa linha separada`;
   }
 
   return `Desenvolve o conteúdo de forma académica adequada ao ensino secundário, entre 220 e 380 palavras. NÃO incluas conclusão nem referências no final.`;
@@ -419,6 +513,9 @@ function buildDraftPrompt(
   outline: string,
   specificInstruction: string,
 ): string {
+  // CAMADA 2 aplicada também ao rascunho inicial
+  const citationGuard = buildCitationGuard(sectionTitle);
+
   return `${PROMPT_INJECTION_GUARD}
 
 És um redactor académico do ensino secundário moçambicano. Gera um RASCUNHO INICIAL da secção "${sectionTitle}" para um trabalho sobre ${wrapUserInput('user_topic', topic)}.
@@ -428,6 +525,8 @@ ${wrapUserInput('user_outline', outline.slice(0, 700))}
 
 Instrução desta secção:
 ${specificInstruction}
+
+${citationGuard}
 
 REGRAS DO RASCUNHO:
 - Entre 180 e 350 palavras — rascunho inicial, não definitivo
@@ -476,6 +575,12 @@ PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
 ❌ NÃO fechas com parágrafo de encerramento — termina no último ponto de conteúdo`
     : '';
 
+  // ── CAMADA 2: Bloco de controlo de citações injectado no system prompt ──────
+  // Este bloco é gerado dinamicamente por buildCitationGuard() e varia conforme
+  // allowsCitations(sectionTitle). Para secções operacionais, injeta proibição
+  // com exemplos concretos (❌ vs ✅). Para secções teóricas, injeta orientação.
+  const citationGuard = buildCitationGuard(sectionTitle);
+
   return `IDENTIDADE E PAPEL
 ==================
 ${PROMPT_INJECTION_GUARD}
@@ -497,6 +602,8 @@ ${previousContext}
 ${researchBlock}
 ${ragBlock}
 
+${citationGuard}
+
 REGRAS DE ADEQUAÇÃO AO CONTEXTO MOÇAMBICANO
 ===========================================
 O trabalho é produzido em Moçambique. Aplica contexto moçambicano APENAS quando o tema for social, económico, histórico ou geográfico. NÃO forces contexto geográfico em temas universais.
@@ -514,7 +621,7 @@ REGRAS DE ESCRITA — OBRIGATÓRIAS
 - NÃO incluas o título da secção no início — é inserido automaticamente
 - Usa Markdown: negrito para termos-chave, subtítulos quando adequado, listas quando necessário
 - Mantém coerência terminológica com as secções anteriores
-- Se existir contexto enriquecido acima, integra-o com citações APA no corpo do texto
+- Se existir contexto enriquecido acima, integra-o com citações APA no corpo do texto (APENAS se esta secção permitir citações — ver regra acima)
 - Tom académico claro e acessível ao nível do ensino secundário/médio`.trim();
 }
 
@@ -552,7 +659,6 @@ export async function POST(req: Request) {
 
     const hasRagDocuments = !!session.rag_enabled;
 
-    // Garantir ficha de pesquisa (apenas sem RAG)
     if (!hasRagDocuments && !session.research_brief) {
       try {
         const research = await generateResearchBrief(session.topic, outline);
@@ -565,7 +671,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Contexto das secções anteriores
     const previousSections = session.sections
       .filter(s => s.index < sectionIndex && s.content)
       .map(s => ({ title: s.title, content: s.content }));
@@ -580,7 +685,6 @@ export async function POST(req: Request) {
           )}\n`
         : '\n[SECÇÕES ANTERIORES]\n(nenhuma secção anterior disponível)\n';
 
-    // Contexto RAG multimodal
     let ragContext = '';
 
     if (hasRagDocuments) {
@@ -614,11 +718,10 @@ export async function POST(req: Request) {
           })
           .join('\n\n---\n\n');
 
-        ragContext = `${fichaTxt}\nEXCERTOS RELEVANTES:\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos nos excertos acima\n- Cita os autores reais da ficha técnica (APA 7.ª)\n- Não inventes referências — usa APENAS as listadas\n`;
+        ragContext = `${fichaTxt}\nEXCERTOS RELEVANTES:\n${chunksTxt}\n\nINSTRUÇÕES:\n- Baseia os argumentos nos excertos acima\n- Cita os autores reais da ficha técnica (APA 7.ª) APENAS se esta secção permitir citações\n- Não inventes referências — usa APENAS as listadas\n`;
       }
     }
 
-    // isSubsection: qualquer título com pelo menos 2 níveis numéricos (1.1, 1.1.1)
     const isSubsection = /^\d+\.\d+/.test(section.title);
     const normalizedName = normalizeTitle(section.title);
     const specificInstruction = getSectionInstruction(normalizedName, isSubsection);
@@ -631,7 +734,6 @@ export async function POST(req: Request) {
           let enrichedContext = '';
 
           if (hasRagDocuments) {
-            // PASS 1: Rascunho rápido
             const draft = await geminiGenerateText({
               model: 'gemini-3.1-flash-lite-preview',
               messages: [
@@ -680,7 +782,6 @@ export async function POST(req: Request) {
             })}\n\n`));
           }
 
-          // PASS 2: Geração final (streaming)
           const refinedSystemPrompt = buildRefinedSystemPrompt({
             topic: session.topic,
             outline,
@@ -728,7 +829,11 @@ export async function POST(req: Request) {
           }
 
           if (accumulated) {
-            const cleaned = stripSpuriousBlocks(accumulated, section.title);
+            // CAMADA 3: pipeline de limpeza pós-geração
+            // Passo 1: Remove blocos de fecho espúrios (conclusão, referências no final)
+            const afterBlockStrip = stripSpuriousBlocks(accumulated, section.title);
+            // Passo 2: Remove citações de autores em secções onde são proibidas
+            const cleaned = stripSpuriousCitations(afterBlockStrip, section.title);
             await saveWorkSectionContent(sessionId, sectionIndex, cleaned, session.sections);
           }
 
