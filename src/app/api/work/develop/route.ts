@@ -345,7 +345,7 @@ PROIBIÇÕES ABSOLUTAS:
   }
 
   if (normalizedName === 'metodologia') {
-    return `Escreve APENAS a metodologia do trabalho/projeto, de forma clara e objectiva para o ensino secundário/médio.
+    return `Escreve APENAS a metodologia do trabalho/projeto, de forma limpa, clara e objectiva para o ensino secundário/médio.
 
 Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 1. **Natureza da pesquisa** — indica se é qualitativa, bibliográfica, documental, etc. e justifica brevemente
@@ -353,9 +353,17 @@ Estrutura OBRIGATÓRIA (3 a 4 parágrafos curtos):
 3. **Fontes e critérios de selecção** — que tipo de fontes foram consultadas e por que razão
 4. **Organização dos dados** — como a informação foi tratada e apresentada (ex: tematicamente, segundo APA 7.ª edição)
 
+FOCO DA METODOLOGIA:
+- Explicar COMO o trabalho foi realizado (procedimentos de pesquisa), não ensinar o tema.
+- Incluir de forma directa: tipo de pesquisa, métodos usados, como recolheu informações e como analisou dados.
+
 PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO escrevas objectivos aqui
 ❌ NÃO ultrapasses 220 palavras no total
+❌ NÃO incluir enquadramento teórico nesta secção
+❌ NÃO explicar conceitos longos do tema (ex.: confeitaria, empreendedorismo, micro-learning)
+❌ NÃO incluir análise FOFA nem interpretação estratégica de mercado aqui
+❌ NÃO usar citações de autores para discutir teoria; apenas mencionar fontes consultadas
 ❌ NÃO incluas conclusão nem referências no final`;
   }
 
