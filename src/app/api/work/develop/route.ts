@@ -364,7 +364,26 @@ PROIBIÇÕES ABSOLUTAS:
 ❌ NÃO explicar conceitos longos do tema (ex.: confeitaria, empreendedorismo, micro-learning)
 ❌ NÃO incluir análise FOFA nem interpretação estratégica de mercado aqui
 ❌ NÃO usar citações de autores para discutir teoria; apenas mencionar fontes consultadas
-❌ NÃO incluas conclusão nem referências no final`;
+❌ NÃO incluas conclusão nem referências no final
+
+EXEMPLO DE METODOLOGIA ERRADA (NÃO SEGUIR):
+"A presente pesquisa assume uma natureza qualitativa e bibliográfica, fundamentada na análise de modelos de ensino técnico e gestão de pequenos negócios. Esta abordagem justifica-se pela necessidade de compreender a viabilidade da implementação de uma escola de confeitaria em Quelimane, considerando as especificidades do mercado local e a eficácia da metodologia de micro-learning na capacitação profissional.
+
+O estudo utiliza um método descritivo (...) utilizando a análise FOFA como ferramenta estratégica para avaliar o ambiente de negócio."
+
+Por que está errado:
+- mistura teoria e fundamentação temática extensa com metodologia
+- inclui FOFA e interpretação estratégica de mercado dentro da metodologia
+- aproxima o texto de enquadramento teórico, em vez de focar no procedimento
+
+EXEMPLO DE METODOLOGIA CORRETA (ESTILO A SEGUIR):
+"A presente pesquisa possui natureza qualitativa e bibliográfica, baseada na consulta e análise de obras científicas, manuais técnicos e documentos relacionados ao tema do projeto.
+
+O estudo adotou o método descritivo, com o objetivo de identificar e descrever necessidades do público-alvo e estruturar a proposta do projeto.
+
+Para a recolha de dados, foram utilizadas fontes bibliográficas, incluindo livros, artigos científicos, relatórios institucionais e documentos técnicos relevantes.
+
+Os dados foram analisados de forma temática, permitindo organizar as informações nas áreas centrais do projeto e apresentar os resultados com clareza."`;
   }
 
   if (normalizedName === 'conclusao' || normalizedName === 'conclusão') {
