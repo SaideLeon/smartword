@@ -72,15 +72,6 @@ function sectionAllowsClosing(title: string): boolean {
 // ════════════════════════════════════════════════════════════════════════════════
 
 // ── CAMADA 1: Controlo por nome de secção ────────────────────────────────────
-//
-// Função central que decide se uma secção tem PERMISSÃO para receber citações.
-//
-// REGRA DO PROJECTO:
-//   ✅ PERMITIDO: Enquadramento Teórico, Desenvolvimento Teórico (académico),
-//                 subsecções académicas (1.1, 1.2...), Conclusão, Referências
-//   ❌ PROIBIDO:  Introdução, Metodologia, Objetivos, Problematização,
-//                 Justificativa, Análise FOFA, Localização, Recursos Humanos,
-//                 Implementação, Análise Financeira, Lucro, Marketing
 
 function allowsCitations(sectionTitle: string): boolean {
   const norm = sectionTitle
@@ -91,24 +82,18 @@ function allowsCitations(sectionTitle: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // ✅ Lista branca: secções que PERMITEM citações (correspondência exacta após normalização)
   const CITATION_ALLOWED_SECTIONS = new Set([
-    'enquadramento teorico',       // 3. Enquadramento Teórico (projecto)
-    'desenvolvimento teorico',     // 1. Desenvolvimento Teórico (académico)
-    'referencia bibliografica',    // Referência Bibliográfica
-    'referencias bibliograficas',  // Referências Bibliográficas
+    'enquadramento teorico',
+    'desenvolvimento teorico',
+    'referencia bibliografica',
+    'referencias bibliograficas',
     'bibliography',
-    'conclusao',                   // Conclusão — permitido com moderação
+    'conclusao',
     'conclusion',
   ]);
 
   if (CITATION_ALLOWED_SECTIONS.has(norm)) return true;
 
-  // Subsecções académicas (1.1, 1.2, 1.3...) pertencem ao Desenvolvimento Teórico
-  // e portanto também permitem citações. Identificadas pelo padrão numérico duplo.
-  // ATENÇÃO: subsecções de projecto (3.1 FOFA, 3.2 Localização, 3.3 RH, 4.1, 4.2)
-  // são secções OPERACIONAIS e estão implicitamente excluídas (não são académicas).
-  // Para distinguir, verificamos se o título contém nomes de subsecções proibidas.
   if (/^\d+\.\d+/.test(sectionTitle)) {
     const OPERATIONAL_SUBSECTIONS = new Set([
       'analise fofa',
@@ -116,8 +101,11 @@ function allowsCitations(sectionTitle: string): boolean {
       'localizacao do projecto',
       'recursos humanos',
       'analise financeira',
+      'analise financeira despesas',
       'despesas',
       'lucro',
+      'receitas',
+      'calculo do lucro',
       'problematizacao',
       'justificativa',
       'objetivo',
@@ -128,19 +116,14 @@ function allowsCitations(sectionTitle: string): boolean {
       'objetivos especificos',
     ]);
     const normSubsection = normalizeTitle(sectionTitle);
-    if (OPERATIONAL_SUBSECTIONS.has(normSubsection)) return false; // subsecção operacional
-    return true; // subsecção académica → permite citações
+    if (OPERATIONAL_SUBSECTIONS.has(normSubsection)) return false;
+    return true;
   }
 
-  return false; // Tudo o resto: PROIBIDO
+  return false;
 }
 
 // ── CAMADA 2: Gerador do bloco de proibição para o prompt ────────────────────
-//
-// Gera um bloco de texto com EXEMPLOS CONCRETOS injectado no system prompt.
-// O modelo segue exemplos (❌ vs ✅) muito mais consistentemente do que regras.
-//
-// Este bloco é dinâmico: varia conforme allowsCitations() para a secção actual.
 
 function buildCitationGuard(sectionTitle: string): string {
   const citationsAllowed = allowsCitations(sectionTitle);
@@ -197,73 +180,48 @@ REGRAS DE USO:
 }
 
 // ── CAMADA 3: Filtro pós-processamento (regex de segurança) ──────────────────
-//
-// Última linha de defesa. Remove citações que escaparam às camadas 1 e 2.
-// Executado APÓS a geração do conteúdo, ANTES de salvar na base de dados.
-//
-// Padrões detectados e removidos:
-//   → (Autor, 2020)              → citação parentética APA
-//   → (Autor & Autor, 2020)      → citação parentética com 2 autores
-//   → (Autor et al., 2020)       → citação com et al.
-//   → "Segundo Autor (Ano),"     → frase de introdução de citação
-//   → "De acordo com Autor (Ano)"
-//   → "conforme preconizado por Autor (Ano)"
 
 function stripSpuriousCitations(content: string, sectionTitle: string): string {
-  // Se a secção PERMITE citações → não filtra nada (preserva o texto intacto)
   if (allowsCitations(sectionTitle)) return content;
 
   let cleaned = content;
 
-  // Padrão 1: Citação parentética simples → (Autor, Ano) ou (Autor & Autor, Ano)
-  // Detecta: (Gisslen, 2017) | (Porter, 2008) | (Kotler & Keller, 2012)
   cleaned = cleaned.replace(
     /\s*\([A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+(?:\s*[,&]\s*[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+)*,\s*\d{4}[a-z]?\)/g,
     ''
   );
 
-  // Padrão 2: Citação com "et al." → (Autor et al., Ano)
-  // Detecta: (Silva et al., 2021)
   cleaned = cleaned.replace(
     /\s*\([A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+\s+et\s+al\.,\s*\d{4}\)/g,
     ''
   );
 
-  // Padrão 3: Citação de organização com sigla → (ILO, 2020) | (OIT, 2020)
-  // Remove apenas se contém ano de 4 dígitos (para não remover siglas normais como (PME))
   cleaned = cleaned.replace(
     /\s*\([A-Z]{2,8},\s*\d{4}\)/g,
     ''
   );
 
-  // Padrão 4: Frase "Segundo Autor (Ano)," → remove a frase introdutória
-  // Detecta: "Segundo Gisslen (2017)," | "Para Porter (2008),"
   cleaned = cleaned.replace(
     /(?:Segundo|De acordo com|Conforme|Consoante|Para|Segundo o autor|Segundo os autores|Segundo a|De acordo com a)\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+(?:\s*[,&]\s*[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+)*(?:\s+\(\d{4}\))?,?\s*/g,
     ''
   );
 
-  // Padrão 5: "...conforme preconizado/indicado/referido por Autor (Ano)"
-  // Detecta: "conforme preconizado por Gisslen (2017)"
   cleaned = cleaned.replace(
     /,?\s*conforme\s+(?:preconizado|indicado|referido|citado|apontado|descrito|defendido)\s+por\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+(?:\s*[,&]\s*[A-ZÁÀÂÃÉÊÍÓÔÕÚ][a-záàâãéêíóôõúç]+)*\s*(?:\(\d{4}\))?/gi,
     ''
   );
 
-  // Padrão 6: Referência inline com nome completo de organização
-  // Detecta: "(International Labour Organization [ILO], 2020)"
   cleaned = cleaned.replace(
     /\s*\([A-Z][a-zA-Z\s]+\[[A-Z]{2,8}\],\s*\d{4}\)/g,
     ''
   );
 
-  // Limpeza final: espaços duplos, pontuação órfã resultante das remoções
   cleaned = cleaned
-    .replace(/[ \t]{2,}/g, ' ')        // espaços duplos → 1 espaço
-    .replace(/\.\s*\./g, '.')           // ponto duplo → 1 ponto
-    .replace(/,\s*\./g, '.')            // vírgula + ponto → 1 ponto
-    .replace(/^\s*[,;]\s*/gm, '')       // vírgula/ponto-e-vírgula no início de linha
-    .replace(/\n{3,}/g, '\n\n')         // linhas em branco excessivas
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\.\s*\./g, '.')
+    .replace(/,\s*\./g, '.')
+    .replace(/^\s*[,;]\s*/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   return cleaned;
@@ -349,15 +307,10 @@ REGRA FUNDAMENTAL:
 - NÃO explicar o que é FOFA, NÃO citar autores, NÃO descrever como a ferramenta funciona.
 
 REGRAS OBRIGATÓRIAS DA ANÁLISE:
-- Cada ponto deve ser específico ao projecto e conter dados concretos quando possível (valores, localização, equipa, público, produto, mercado).
+- Cada ponto deve ser específico ao projecto e conter dados concretos quando possível.
 - Evitar frases genéricas que sirvam para qualquer projecto.
-- Mostrar mecanismo de impacto nas fraquezas/ameaças (o que acontece e com que consequência para o projecto).
+- Mostrar mecanismo de impacto nas fraquezas/ameaças.
 - Usar linguagem directa, analítica e descritiva da realidade do projecto.
-
-CHECKLIST INTERNO (obrigatório antes de concluir):
-- Há algum ponto genérico/copiável para outro projecto? Se sim, reescrever.
-- Há citação de autor para justificar a análise? Se sim, remover.
-- Estou a aplicar a FOFA ao projecto ou a explicar a ferramenta? Se estiver a explicar, corrigir.
 
 NÃO incluas conclusão nem referências no final.`;
   }
@@ -382,28 +335,125 @@ NÃO incluas conclusão nem referências no final.`;
 NÃO incluas conclusão nem referências no final.`;
   }
 
-  if (normalizedName.includes('financeira') && normalizedName.includes('despesa')) {
-    return `Apresenta a análise financeira e as despesas do projecto. Deve:
-- Listar as despesas de investimento inicial (equipamento, espaço, licenças)
-- Listar as despesas operacionais mensais (salários, matéria-prima, electricidade)
-- Indicar o custo total estimado
-- Mencionar possíveis fontes de financiamento
-- Usar tabela Markdown ou lista com valores em MZN quando possível
-- Ter entre 200 e 350 palavras
-- CONSISTÊNCIA OBRIGATÓRIA: se a Introdução já tiver definido investimento inicial, usar exactamente o mesmo valor aqui.
-NÃO incluas receitas ou lucros aqui. NÃO incluas conclusão.`;
+  // ── SECÇÃO 4.1 — ANÁLISE FINANCEIRA / DESPESAS ────────────────────────────
+  // ALTERAÇÃO: estrutura agora exige separação explícita entre
+  //   • Investimento Inicial (gasto único)
+  //   • Grupo A — Despesas Correntes (variam mês a mês)
+  //   • Grupo B — Despesas Fixas (valor definido, pago uma vez por mês)
+  //   • Total Geral de Despesas (tabela resumo)
+  if (normalizedName.includes('financeira') || normalizedName.includes('despesa')) {
+    return `Apresenta a análise financeira do projecto com a seguinte estrutura OBRIGATÓRIA em Markdown:
+
+---
+
+## Investimento Inicial
+
+Lista todos os gastos únicos necessários para arrancar o negócio (equipamentos, mobiliário, decoração, stock inicial, licenças, etc.) numa tabela Markdown com colunas:
+
+| Nº | Item | Valor (MT) |
+
+Termina com linha de **TOTAL INVESTIMENTO** a negrito.
+
+---
+
+## Grupo A — Despesas Correntes
+
+> Despesas cujo valor VARIA de mês para mês conforme o consumo ou necessidade do momento (ex: compra de água — hoje pago 20 MT, amanhã pago 30 MT; produtos de limpeza, matéria-prima, transporte para compras).
+
+Cria uma tabela Markdown com colunas:
+
+| Nº | Descrição | Mês 1 (MT) | Mês 2 (MT) | Mês 3 (MT) |
+
+Lista 4 a 6 itens de despesas correntes realistas para o tipo de negócio do projecto, com valores ligeiramente diferentes entre meses para reflectir a variação real.
+Termina com linha de **SUBTOTAL — Despesas Correntes** a negrito.
+
+---
+
+## Grupo B — Despesas Fixas
+
+> Despesas com valor DEFINIDO, pagas uma vez por mês, independentemente do volume de trabalho (ex: renda do espaço — pago 2 500 MT todos os meses; energia eléctrica — pago 500 MT para usar durante 30 dias).
+
+Cria uma tabela Markdown com colunas:
+
+| Nº | Descrição | Mês 1 (MT) | Mês 2 (MT) | Mês 3 (MT) |
+
+Lista 3 a 5 itens de despesas fixas realistas para o tipo de negócio do projecto, com o mesmo valor nos três meses.
+Termina com linha de **SUBTOTAL — Despesas Fixas** a negrito.
+
+---
+
+## Total Geral de Despesas
+
+Cria uma tabela resumo com colunas:
+
+| Grupo | Mês 1 (MT) | Mês 2 (MT) | Mês 3 (MT) |
+
+Inclui as linhas: Despesas Correntes | Despesas Fixas | **TOTAL GERAL** (soma dos dois grupos).
+
+---
+
+REGRAS OBRIGATÓRIAS:
+- Todos os valores em Metical Moçambicano (MT), realistas para o contexto moçambicano
+- As Despesas Correntes devem ter valores diferentes entre meses (reflectem variação real)
+- As Despesas Fixas devem ter o mesmo valor nos três meses (são fixas por definição)
+- NÃO incluas receitas nem cálculo de lucro aqui — pertencem à secção 4.2
+- NÃO incluas citações de autores
+- NÃO incluas conclusão nem referências no final
+- CONSISTÊNCIA OBRIGATÓRIA: se a Introdução já definiu um valor de investimento inicial, usa exactamente esse mesmo valor aqui`;
   }
 
+  // ── SECÇÃO 4.2 — LUCRO ────────────────────────────────────────────────────
+  // ALTERAÇÃO: estrutura agora exige três blocos separados:
+  //   • Tabela de Receitas (por serviço/produto, com crescimento de clientes)
+  //   • Cálculo do Lucro (Receitas − Despesas do 4.1, com margem em %)
+  //   • Análise do Retorno (interpretação em prosa)
   if (normalizedName === 'lucro') {
-    return `Apresenta a projecção de receitas e lucratividade do projecto. Deve:
-- Estimar as receitas mensais esperadas (preço × volume estimado)
-- Calcular o lucro líquido (receitas − despesas operacionais)
-- Indicar o ponto de equilíbrio (break-even)
-- Estimar o período de retorno do investimento
-- Usar tabela Markdown ou cálculos com valores em MZN quando possível
-- Ter entre 180 e 300 palavras
-- CONSISTÊNCIA OBRIGATÓRIA: manter o mesmo investimento inicial definido na Introdução e na Análise financeira/Despesas.
-NÃO repitas as despesas. NÃO incluas conclusão nem referências no final.`;
+    return `Apresenta a projecção de receitas e o cálculo de lucro do projecto com a seguinte estrutura OBRIGATÓRIA em Markdown:
+
+---
+
+## Tabela de Receitas
+
+Cria uma tabela Markdown com colunas:
+
+| Nº | Serviço / Produto | Preço Unit. (MT) | Clientes/Mês | Mês 1 (MT) | Mês 2 (MT) | Mês 3 (MT) |
+
+Lista os principais serviços ou produtos do negócio. O número de clientes deve crescer progressivamente entre meses (o negócio vai ganhando reputação). O valor mensal = Preço × Clientes.
+Termina com linha de **TOTAL RECEITAS** a negrito.
+
+---
+
+## Cálculo do Lucro
+
+Cria uma tabela Markdown com colunas:
+
+| Indicador | Mês 1 (MT) | Mês 2 (MT) | Mês 3 (MT) |
+
+Inclui obrigatoriamente estas quatro linhas, nesta ordem:
+
+| ( + ) Total de Receitas       | [valor da tabela acima]         |
+| ( − ) Total de Despesas       | [TOTAL GERAL da secção 4.1]     |
+| **( = ) Lucro Líquido**       | **[Receitas − Despesas]**       |
+| ( % ) Margem de Lucro         | [Lucro ÷ Receitas × 100 = XX%] |
+
+A linha do Lucro Líquido e a Margem de Lucro devem estar em **negrito**.
+
+---
+
+## Análise do Retorno
+
+Escreve 2 a 3 parágrafos curtos a interpretar os resultados:
+- Em que mês o negócio começa a ser lucrativo (quando Lucro Líquido > 0)
+- Estimativa de quantos meses são necessários para recuperar o Investimento Inicial
+- Breve conclusão sobre a viabilidade financeira do projecto
+
+---
+
+REGRAS OBRIGATÓRIAS:
+- Valores em MT rigorosamente coerentes com os definidos na secção 4.1 — o TOTAL GERAL de Despesas desta secção deve ser o mesmo valor calculado em 4.1
+- NÃO repitas a lista de despesas aqui — apenas o total
+- NÃO incluas citações de autores
+- NÃO incluas conclusão formal nem referências no final`;
   }
 
   if (normalizedName === 'marketing') {
@@ -513,7 +563,6 @@ function buildDraftPrompt(
   outline: string,
   specificInstruction: string,
 ): string {
-  // CAMADA 2 aplicada também ao rascunho inicial
   const citationGuard = buildCitationGuard(sectionTitle);
 
   return `${PROMPT_INJECTION_GUARD}
@@ -575,10 +624,6 @@ PROIBIÇÕES ABSOLUTAS PARA ESTA SECÇÃO:
 ❌ NÃO fechas com parágrafo de encerramento — termina no último ponto de conteúdo`
     : '';
 
-  // ── CAMADA 2: Bloco de controlo de citações injectado no system prompt ──────
-  // Este bloco é gerado dinamicamente por buildCitationGuard() e varia conforme
-  // allowsCitations(sectionTitle). Para secções operacionais, injeta proibição
-  // com exemplos concretos (❌ vs ✅). Para secções teóricas, injeta orientação.
   const citationGuard = buildCitationGuard(sectionTitle);
 
   return `IDENTIDADE E PAPEL
@@ -830,9 +875,7 @@ export async function POST(req: Request) {
 
           if (accumulated) {
             // CAMADA 3: pipeline de limpeza pós-geração
-            // Passo 1: Remove blocos de fecho espúrios (conclusão, referências no final)
             const afterBlockStrip = stripSpuriousBlocks(accumulated, section.title);
-            // Passo 2: Remove citações de autores em secções onde são proibidas
             const cleaned = stripSpuriousCitations(afterBlockStrip, section.title);
             await saveWorkSectionContent(sessionId, sectionIndex, cleaned, session.sections);
           }

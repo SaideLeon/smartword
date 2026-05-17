@@ -66,7 +66,7 @@ O projecto tem SEMPRE esta estrutura fixa (não adicionares nem removeres secç�
 ### 3.1 Análise FOFA
 ### 3.2 Localização do projeto
 ### 3.3 Recursos Humanos
-## 4. Implementação do projeto
+### 4. Implementação do projeto
 ### 4.1 Análise financeira / Despesas
 ### 4.2 Lucro
 ## 5. Marketing
@@ -87,12 +87,24 @@ GUIA DE CONTEÚDO POR SECÇÃO:
 - "1.1.2 Objetivos Específicos": 3-4 bullets no infinitivo, mensuráveis
 - "2.1 Problematização": problema real identificado que o projecto resolve
 - "2.2 Justificativa": porquê este projecto é relevante para o contexto moçambicano
-- "3.1 Análise FOFA": Forças, Oportunidades, Fraquezas e Ameaças (tabela ou bullets)
+- "3.1 Análise FOFA": Forças, Oportunidades, Fraquezas e Ameaças (tabela ou bullets) aplicadas ao projecto concreto — sem teoria
 - "3.2 Localização do projeto": onde será implementado e porquê essa localização
 - "3.3 Recursos Humanos": equipa necessária, funções e qualificações
-- "4.1 Análise financeira / Despesas": orçamento detalhado (custo inicial, operacional, fontes de financiamento)
-- "4.2 Lucro": projecção de receitas, ponto de equilíbrio, retorno do investimento
-- "5. Marketing": público-alvo, estratégia de comunicação, canais de divulgação, preço e distribuição
+
+- "4.1 Análise financeira / Despesas": esta secção tem QUATRO blocos obrigatórios e separados:
+    1. **Investimento Inicial** — gasto único para arrancar o negócio (equipamentos, mobiliário, stock inicial, licenças), apresentado em tabela com valores em MT
+    2. **Grupo A — Despesas Correntes** — despesas cujo valor VARIA de mês para mês conforme o consumo (ex: compra de água — hoje pago 20 MT, amanhã pago 30 MT; produtos, matéria-prima, transporte para compras), apresentadas em tabela com 3 meses de projecção
+    3. **Grupo B — Despesas Fixas** — despesas com valor DEFINIDO pagas uma vez por mês independentemente do volume de trabalho (ex: renda do espaço, energia eléctrica, salário fixo), com o mesmo valor nos três meses
+    4. **Total Geral de Despesas** — tabela resumo que soma os dois grupos (Correntes + Fixas) por mês
+    Todos os valores em Metical Moçambicano (MT). NÃO incluir receitas nem lucro nesta secção.
+
+- "4.2 Lucro": esta secção tem TRÊS blocos obrigatórios e separados:
+    1. **Tabela de Receitas** — lista os serviços/produtos com preço unitário, número estimado de clientes por mês (crescente entre meses) e total mensal em MT
+    2. **Cálculo do Lucro** — tabela com: (+) Total de Receitas | (−) Total de Despesas [exactamente o TOTAL GERAL de 4.1] | (=) Lucro Líquido | (%) Margem de Lucro
+    3. **Análise do Retorno** — 2 a 3 parágrafos sobre viabilidade: quando o negócio começa a ser lucrativo e em quantos meses recupera o investimento inicial
+    NÃO repetir a lista de despesas — apenas usar o total vindo de 4.1.
+
+- "5. Marketing": público-alvo, estratégia de comunicação, canais de divulgação, preço e distribuição (4 Ps)
 - "6. Conclusão": síntese dos pontos-chave e viabilidade do projecto
 - "Referência Bibliográfica": fontes em APA 7.ª edição
 
