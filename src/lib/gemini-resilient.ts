@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview';
+const DEFAULT_MODEL = 'gemini-3.1-flash-lite';
 
 type ChatRole = 'system' | 'user' | 'assistant';
 type ChatMessage = { role: ChatRole; content: string };
