@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     }));
 
     const stream = await geminiGenerateTextStreamSSE({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...safeMessages,

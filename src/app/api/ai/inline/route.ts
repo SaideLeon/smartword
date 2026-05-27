@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     // ── Stream response ───────────────────────────────────────────────────────
 
     const stream = await geminiGenerateTextStreamSSE({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       messages: [
         { role: 'system', content: SYSTEM },
         { role: 'user', content: userPrompt },

@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       : '';
 
     const stream = await geminiGenerateTextStreamSSE({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       messages: [
         { role: 'system', content: OUTLINE_SYSTEM },
         { role: 'user', content: `Gera um esboço detalhado para um TCC sobre o seguinte tópico:\n\n${wrapUserInput('user_topic', topic)}${suggestionBlock}` },

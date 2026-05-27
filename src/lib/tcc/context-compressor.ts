@@ -116,7 +116,7 @@ async function generateCompressionSummary(
   const prompt = buildCompressionPrompt(topic, outline, sectionsToCompress, existingSummary);
 
   const summary = await geminiGenerateText({
-    model: 'gemini-3.1-flash-lite-preview',
+    model: 'gemini-3.1-flash-lite',
     messages: [
       { role: 'system', content: prompt },
       { role: 'user', content: 'Gera o resumo de contexto agora.' },
