@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         : `Gera um resumo para a contracapa de um trabalho escolar sobre:\n${wrapUserInput('user_theme', theme)}`;
 
     const stream = await geminiGenerateTextStreamSSE({
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       messages: [
         { role: 'system', content: SYSTEM },
         { role: 'user', content: userPrompt },

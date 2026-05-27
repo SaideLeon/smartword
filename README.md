@@ -40,7 +40,7 @@ PAYSUITE_WEBHOOK_SECRET="<seu_webhook_secret_paysuite>"
 SUPABASE_SERVICE_ROLE_KEY="<sua_service_role_key_supabase>"
 ```
 
-> Observação: `GEMINI_API_KEY` é usada nos fluxos de geração escolar e chat (incluindo capa, TCC e trabalhos) via SDK Gemini no modelo `gemini-3.1-flash-lite-preview`, e aceita uma ou várias chaves separadas por vírgula. `GROQ_API_KEY` fica reservada apenas para transcrição de áudio (`/api/transcribe`).
+> Observação: `GEMINI_API_KEY` é usada nos fluxos de geração escolar e chat (incluindo capa, TCC e trabalhos) via SDK Gemini no modelo `gemini-3.1-flash-lite`, e aceita uma ou várias chaves separadas por vírgula. `GROQ_API_KEY` fica reservada apenas para transcrição de áudio (`/api/transcribe`).
 
 ## Executar localmente
 

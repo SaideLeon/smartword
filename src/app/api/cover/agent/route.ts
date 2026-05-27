@@ -287,7 +287,7 @@ export async function POST(req: Request) {
       const ai = new GoogleGenAI({ apiKey: apiKeys[i] });
       try {
         result = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite-preview',
+          model: 'gemini-3.1-flash-lite',
           contents: buildGeminiContents(messageList, normalizedTopic, normalizedOutline),
           config: {
             systemInstruction: buildSystemPrompt(),

@@ -53,7 +53,7 @@ ${sectionGuidance}`;
 
 async function requestBrief(body: BriefRequest): Promise<any> {
   const text = await geminiGenerateText({
-    model: body.model ?? 'gemini-3.1-flash-lite-preview',
+    model: body.model ?? 'gemini-3.1-flash-lite',
     messages: body.messages,
     temperature: body.temperature ?? 0.2,
     maxOutputTokens: body.max_tokens ?? 900,
@@ -146,7 +146,7 @@ Regras críticas:
   for (let i = 0; i < fallbackOutlineBudgets.length; i++) {
     const outlineForPrompt = compactOutline(outline, fallbackOutlineBudgets[i]);
     const plainFallbackBody: BriefRequest = {
-      model: 'gemini-3.1-flash-lite-preview',
+      model: 'gemini-3.1-flash-lite',
       messages: [
         {
           role: 'system',

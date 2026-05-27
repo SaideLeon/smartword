@@ -780,7 +780,7 @@ export async function POST(req: Request) {
 
           if (hasRagDocuments) {
             const draft = await geminiGenerateText({
-              model: 'gemini-3.1-flash-lite-preview',
+              model: 'gemini-3.1-flash-lite',
               messages: [
                 {
                   role: 'system',
@@ -839,7 +839,7 @@ export async function POST(req: Request) {
           });
 
           const refinedStream = await geminiGenerateTextStreamSSE({
-            model: 'gemini-3.1-flash-lite-preview',
+            model: 'gemini-3.1-flash-lite',
             messages: [
               { role: 'system', content: refinedSystemPrompt },
               {
