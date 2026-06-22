@@ -7,27 +7,46 @@ interface Props {
   filename: string;
   onFilenameChange: (value: string) => void;
   onImportFile: (file: File) => void;
+  advancedMode?: boolean;
+  onToggleAdvancedMode?: () => void;
 }
 
-export function EditorFileToolbar({ filename, onFilenameChange, onImportFile }: Props) {
+
+interface FileToolbarButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  className?: string;
+  active?: boolean;
+  title?: string;
+}
+
+function FileToolbarButton({ children, onClick, className = '', active = false, title }: FileToolbarButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`cursor-pointer rounded border px-2 py-1 font-mono text-[10px] font-bold tracking-[.06em] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)] ${
+        active
+          ? 'border-transparent bg-gradient-to-br from-[var(--gold)] to-[var(--gold2)] text-black'
+          : 'border-[var(--border2)] bg-transparent text-[var(--muted)]'
+      } ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function EditorFileToolbar({
+  filename, onFilenameChange, onImportFile,
+  advancedMode = false, onToggleAdvancedMode,
+}: Props) {
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     onImportFile(file);
     e.target.value = '';
   };
-
-  const FtBtn = ({ children, onClick, className = '' }: {
-    children: React.ReactNode; onClick?: () => void; className?: string;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`cursor-pointer rounded border border-[var(--border2)] bg-transparent px-2 py-1 font-mono text-[10px] font-bold tracking-[.06em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)] ${className}`}
-    >
-      {children}
-    </button>
-  );
 
   return (
     <div className="flex h-[32px] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--surface2)] px-3">
@@ -52,7 +71,7 @@ export function EditorFileToolbar({ filename, onFilenameChange, onImportFile }: 
 
       {/* File action buttons */}
       <label className="cursor-pointer">
-        <FtBtn>IMPORTAR</FtBtn>
+        <FileToolbarButton>IMPORTAR</FileToolbarButton>
         <input
           type="file"
           accept=".txt,.md,text/plain,text/markdown"
@@ -62,8 +81,14 @@ export function EditorFileToolbar({ filename, onFilenameChange, onImportFile }: 
         />
       </label>
 
-      <FtBtn>AVANÇADO</FtBtn>
-      <FtBtn>PRÉ-VISUALIZAÇÃO</FtBtn>
+      <FileToolbarButton
+        onClick={onToggleAdvancedMode}
+        active={advancedMode}
+        title="Alterna entre o editor visual e o editor Markdown/LaTeX bruto"
+      >
+        {advancedMode ? 'VISUAL' : 'AVANÇADO'}
+      </FileToolbarButton>
+      <FileToolbarButton>PRÉ-VISUALIZAÇÃO</FileToolbarButton>
     </div>
   );
 }

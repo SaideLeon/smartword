@@ -7,6 +7,7 @@ import { useEditorActions, useEditorMeta } from '@/hooks/useEditorStore';
 import { useThemeMode } from '@/hooks/useThemeMode';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { RichEditor } from '@/components/RichEditor';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { TccPanel } from '@/components/TccPanel';
 import { WorkPanel } from '@/components/WorkPanel';
 import { AiChatDrawer } from '@/components/AiChatDrawer';
@@ -84,6 +85,7 @@ export default function Home() {
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [zoom, setZoom]               = useState(90);
+  const [advancedMode, setAdvancedMode] = useState(false);
   const [isFullscreen, setIsFullscreen]     = useState(false);
   const [fullscreenSupported] = useState(() => detectFullscreenSupport());
 
@@ -226,6 +228,8 @@ export default function Home() {
         filename={filename}
         onFilenameChange={setFilename}
         onImportFile={importTextFile}
+        advancedMode={advancedMode}
+        onToggleAdvancedMode={() => setAdvancedMode(prev => !prev)}
       />
 
       {/* ── Área de trabalho principal ── */}
@@ -276,12 +280,22 @@ export default function Home() {
             <div
               style={{ position: 'relative', zIndex: 1 }}
             >
-              <RichEditor
-                value={markdown}
-                onChange={setMarkdown}
-                isMobile={isMobile}
-                onEditorReady={setEditorInstance}
-              />
+              {advancedMode ? (
+                <div className="p-8">
+                  <MarkdownEditor
+                    value={markdown}
+                    onChange={setMarkdown}
+                    isMobile={isMobile}
+                  />
+                </div>
+              ) : (
+                <RichEditor
+                  value={markdown}
+                  onChange={setMarkdown}
+                  isMobile={isMobile}
+                  onEditorReady={setEditorInstance}
+                />
+              )}
             </div>
 
           </div>
