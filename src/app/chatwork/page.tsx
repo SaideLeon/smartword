@@ -104,6 +104,7 @@ export default function ChatworkPage() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [documentFileName, setDocumentFileName] = useState('Documento de exemplo');
   const [lastEditSummaries, setLastEditSummaries] = useState<string[]>([]);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -182,6 +183,7 @@ export default function ChatworkPage() {
 
       const data = await response.json() as { markdown: string; warnings?: string[] };
       setDocumentMarkdown(data.markdown);
+      setDocumentFileName(file.name);
       setWorkspaceMode('preview');
       setMessages(current => [...current, { role: 'assistant', content: 'Importei o DOCX para a área de trabalho. Agora podes pedir alterações por comando.' }]);
     } catch (err: any) {
@@ -232,12 +234,43 @@ export default function ChatworkPage() {
         <section className="relative flex min-w-0 flex-col border-r border-white/10 bg-[#1b1b1a]">
           <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-5">
             <button className="flex items-center gap-2 text-sm font-semibold text-white" type="button">
-              Chatwork — escrita por fases <span className="text-neutral-500">⌄</span>
+              Chatwork — edição de Word <span className="text-neutral-500">⌄</span>
             </button>
-            <span className="rounded-full bg-black/30 px-3 py-1 text-xs text-neutral-400">Workspace IA</span>
+            <label className="flex cursor-pointer items-center gap-2 rounded-full bg-[#f97316] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#fb8a3c]">
+              Subir Word
+              <input
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={event => importDocx(event.target.files?.[0])}
+                disabled={isImporting}
+              />
+            </label>
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-44 pt-5 lg:px-8">
+            <div className="mx-auto mb-4 max-w-[760px] rounded-2xl border border-dashed border-[#f97316]/40 bg-[#f97316]/10 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Suba um documento Word para começar a edição com o agente.</p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-400">Depois do upload, o texto aparece no painel da direita e podes pedir: “altera a introdução”, “corrige valores”, “sublinha esta frase” ou “formata as tabelas”.</p>
+                </div>
+                <label className="shrink-0 cursor-pointer rounded-xl bg-white px-4 py-2 text-xs font-bold text-neutral-950 hover:bg-neutral-200">
+                  {isImporting ? 'A importar…' : 'Escolher .docx'}
+                  <input
+                    type="file"
+                    accept=".docx"
+                    className="hidden"
+                    onChange={event => importDocx(event.target.files?.[0])}
+                    disabled={isImporting}
+                  />
+                </label>
+              </div>
+              <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-neutral-300">
+                Documento activo: <strong className="text-[#ffb18b]">{documentFileName}</strong>
+              </div>
+            </div>
+
             <div className="mx-auto mb-6 grid max-w-[760px] gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-3">
               {phases.map(phase => (
                 <div key={phase.title} className="rounded-xl bg-black/20 p-3">
@@ -298,7 +331,7 @@ export default function ChatworkPage() {
                   onChange={event => importDocx(event.target.files?.[0])}
                   disabled={isImporting}
                 />
-                <span className="text-xs text-neutral-400">{isImporting ? 'A importar…' : 'DOCX'}</span>
+                <span className="text-xs text-neutral-400">{isImporting ? 'A importar…' : 'Adicionar Word'}</span>
               </label>
               <div className="flex items-center gap-3 text-xs text-neutral-400">
                 <span>Agente Chatwork</span>
@@ -312,7 +345,7 @@ export default function ChatworkPage() {
         <section className="flex min-w-0 flex-col bg-[#e8e9eb] text-neutral-900">
           <header className="flex h-12 shrink-0 items-center justify-between border-b border-black/10 bg-[#2a2a28] px-5 text-neutral-200">
             <div className="min-w-0">
-              <p className="truncate text-sm">Documento actualizado · {workspaceMode === 'preview' ? 'Preview' : 'Fonte Markdown'}</p>
+              <p className="truncate text-sm">{documentFileName} · {workspaceMode === 'preview' ? 'Preview' : 'Fonte Markdown'}</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setWorkspaceMode('preview')} className={`rounded-lg px-3 py-1.5 text-xs ${workspaceMode === 'preview' ? 'bg-white/15 text-white' : 'text-neutral-400 hover:bg-white/10'}`} type="button">Preview</button>
