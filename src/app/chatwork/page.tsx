@@ -15,6 +15,14 @@ type AgentResponse = {
 
 type WorkspaceMode = 'preview' | 'source';
 
+type PhaseStatus = 'done' | 'active' | 'waiting';
+
+type AgentPhase = {
+  title: string;
+  description: string;
+  status: PhaseStatus;
+};
+
 const INITIAL_DOCUMENT = `# Trabalho académico
 
 ## I. Introdução
@@ -32,6 +40,41 @@ Apresenta a síntese final do trabalho.`;
 
 function markdownToPreview(markdown: string): string[] {
   return markdown.split('\n');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('\"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function buildExportHtml(markdown: string): string {
+  return markdown
+    .split('\n')
+    .map(line => {
+      const clean = escapeHtml(stripMarkdownPrefix(line));
+      if (!line.trim()) return '<br />';
+      if (line.startsWith('# ')) return `<h1>${clean}</h1>`;
+      if (line.startsWith('## ')) return `<h2>${clean}</h2>`;
+      if (line.startsWith('### ')) return `<h3>${clean}</h3>`;
+      if (line.startsWith('- ')) return `<li>${clean}</li>`;
+      return `<p>${clean}</p>`;
+    })
+    .join('\n');
+}
+
+function downloadDocument(markdown: string) {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Georgia,serif;line-height:1.7;margin:48px}h1{text-align:center;text-transform:uppercase}h2{text-transform:uppercase;margin-top:32px}</style></head><body>${buildExportHtml(markdown)}</body></html>`;
+  const blob = new Blob([html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'chatwork-documento.doc';
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function getLineClass(line: string): string {
@@ -61,9 +104,15 @@ export default function ChatworkPage() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [lastEditSummaries, setLastEditSummaries] = useState<string[]>([]);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const previewLines = useMemo(() => markdownToPreview(documentMarkdown), [documentMarkdown]);
+  const phases: AgentPhase[] = useMemo(() => [
+    { title: '1. Ler contexto', description: selectedText ? 'Selecção pronta para edição localizada.' : 'Documento completo disponível para o agente.', status: 'done' },
+    { title: '2. Comando por fase', description: command ? 'Pedido preparado no chat.' : 'Escreve ou dita a próxima instrução.', status: command ? 'done' : 'active' },
+    { title: '3. Aplicar no documento', description: isSending ? 'Agente a editar a área indicada.' : 'Aguardando envio para actualizar a pré-visualização.', status: isSending ? 'active' : 'waiting' },
+  ], [command, isSending, selectedText]);
 
   function captureSelection() {
     const textarea = textAreaRef.current;
@@ -104,6 +153,7 @@ export default function ChatworkPage() {
 
       const data = await response.json() as AgentResponse;
       setDocumentMarkdown(data.documentMarkdown);
+      setLastEditSummaries(data.edits.map(edit => edit.summary).filter(Boolean));
       setMessages(current => [...current, { role: 'assistant', content: data.reply }]);
       setSelectedText('');
       setWorkspaceMode('preview');
@@ -139,6 +189,13 @@ export default function ChatworkPage() {
     } finally {
       setIsImporting(false);
     }
+  }
+
+  function selectPreviewParagraph(text: string) {
+    const clean = text.trim();
+    if (!clean) return;
+    setSelectedText(clean);
+    setCommand(current => current || `Altera apenas este trecho: "${clean.slice(0, 80)}${clean.length > 80 ? '…' : ''}"`);
   }
 
   function startVoiceCommand() {
@@ -181,6 +238,18 @@ export default function ChatworkPage() {
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-44 pt-5 lg:px-8">
+            <div className="mx-auto mb-6 grid max-w-[760px] gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-3">
+              {phases.map(phase => (
+                <div key={phase.title} className="rounded-xl bg-black/20 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white">
+                    <span className={`h-2.5 w-2.5 rounded-full ${phase.status === 'done' ? 'bg-emerald-400' : phase.status === 'active' ? 'animate-pulse bg-[#f97316]' : 'bg-neutral-600'}`} />
+                    {phase.title}
+                  </div>
+                  <p className="text-xs leading-5 text-neutral-400">{phase.description}</p>
+                </div>
+              ))}
+            </div>
+
             <div className="mx-auto max-w-[760px] space-y-7">
               {messages.map((message, index) => (
                 <article key={`${message.role}-${index}`} className={message.role === 'user' ? 'flex justify-end' : 'block'}>
@@ -249,7 +318,7 @@ export default function ChatworkPage() {
               <button onClick={() => setWorkspaceMode('preview')} className={`rounded-lg px-3 py-1.5 text-xs ${workspaceMode === 'preview' ? 'bg-white/15 text-white' : 'text-neutral-400 hover:bg-white/10'}`} type="button">Preview</button>
               <button onClick={() => setWorkspaceMode('source')} className={`rounded-lg px-3 py-1.5 text-xs ${workspaceMode === 'source' ? 'bg-white/15 text-white' : 'text-neutral-400 hover:bg-white/10'}`} type="button">Fonte</button>
               <button onClick={captureSelection} className="rounded-lg px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/10" type="button">Usar selecção</button>
-              <button className="rounded-lg px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/10" type="button">Baixar</button>
+              <button onClick={() => downloadDocument(documentMarkdown)} className="rounded-lg px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/10" type="button">Baixar</button>
             </div>
           </header>
 
@@ -265,6 +334,11 @@ export default function ChatworkPage() {
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-8">
               <article className="mx-auto min-h-[920px] max-w-[620px] bg-white px-14 py-16 shadow-xl ring-1 ring-black/10">
+                {lastEditSummaries.length > 0 && (
+                  <div className="mb-8 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-5 text-emerald-900">
+                    <strong>Últimas alterações:</strong> {lastEditSummaries.join(' · ')}
+                  </div>
+                )}
                 <div className="mb-12 flex justify-center">
                   <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-red-400 text-center text-[9px] font-bold uppercase text-red-500">
                     Logo<br />Instituição
@@ -273,7 +347,7 @@ export default function ChatworkPage() {
                 {previewLines.map((line, index) => {
                   const clean = stripMarkdownPrefix(line);
                   return line.trim() ? (
-                    <p key={index} className={getLineClass(line)}>
+                    <p key={index} onClick={() => selectPreviewParagraph(clean)} className={`${getLineClass(line)} cursor-text rounded px-1 hover:bg-orange-50 hover:outline hover:outline-1 hover:outline-orange-200`} title="Clique para seleccionar este trecho para o agente">
                       {clean}
                     </p>
                   ) : <div key={index} className="h-3" />;
