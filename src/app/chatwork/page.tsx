@@ -13,6 +13,10 @@ type AgentResponse = {
   edits: Array<{ summary: string }>;
 };
 
+type DocxRenderResponse = {
+  html: string;
+};
+
 type WorkspaceMode = 'preview' | 'source';
 
 type PhaseStatus = 'done' | 'active' | 'waiting';
@@ -105,6 +109,7 @@ export default function ChatworkPage() {
   const [error, setError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [documentFileName, setDocumentFileName] = useState('Documento de exemplo');
+  const [docxPreviewHtml, setDocxPreviewHtml] = useState('');
   const [lastEditSummaries, setLastEditSummaries] = useState<string[]>([]);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -170,19 +175,30 @@ export default function ChatworkPage() {
     if (!file || isImporting) return;
 
     const formData = new FormData();
+    const renderFormData = new FormData();
     formData.append('file', file);
+    renderFormData.append('file', file);
     setIsImporting(true);
     setError('');
 
     try {
-      const response = await fetch('/api/chatwork/docx/preview', { method: 'POST', body: formData });
+      const [response, renderResponse] = await Promise.all([
+        fetch('/api/chatwork/docx/preview', { method: 'POST', body: formData }),
+        fetch('/api/chatwork/docx/render', { method: 'POST', body: renderFormData }),
+      ]);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Falha ao importar o DOCX.');
       }
+      if (!renderResponse.ok) {
+        const data = await renderResponse.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao renderizar o DOCX.');
+      }
 
       const data = await response.json() as { markdown: string; warnings?: string[] };
+      const renderData = await renderResponse.json() as DocxRenderResponse;
       setDocumentMarkdown(data.markdown);
+      setDocxPreviewHtml(renderData.html);
       setDocumentFileName(file.name);
       setWorkspaceMode('preview');
       setMessages(current => [...current, { role: 'assistant', content: 'Importei o DOCX para a área de trabalho. Agora podes pedir alterações por comando.' }]);
@@ -253,7 +269,7 @@ export default function ChatworkPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-white">Suba um documento Word para começar a edição com o agente.</p>
-                  <p className="mt-1 text-xs leading-5 text-neutral-400">Depois do upload, o texto aparece no painel da direita e podes pedir: “altera a introdução”, “corrige valores”, “sublinha esta frase” ou “formata as tabelas”.</p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-400">Depois do upload, o Word aparece com layout fiel no painel da direita e podes pedir: “altera a introdução”, “corrige valores”, “sublinha esta frase” ou “formata as tabelas”.</p>
                 </div>
                 <label className="shrink-0 cursor-pointer rounded-xl bg-white px-4 py-2 text-xs font-bold text-neutral-950 hover:bg-neutral-200">
                   {isImporting ? 'A importar…' : 'Escolher .docx'}
@@ -364,6 +380,20 @@ export default function ChatworkPage() {
               className="min-h-0 flex-1 resize-none bg-[#111] p-6 font-mono text-sm leading-7 text-neutral-100 outline-none"
               spellCheck={false}
             />
+          ) : docxPreviewHtml ? (
+            <div className="min-h-0 flex-1 overflow-hidden bg-[#d9dbdf]">
+              {lastEditSummaries.length > 0 && (
+                <div className="mx-4 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-5 text-emerald-900 shadow-sm sm:mx-8">
+                  <strong>Últimas alterações no texto editável:</strong> {lastEditSummaries.join(' · ')}
+                </div>
+              )}
+              <iframe
+                srcDoc={docxPreviewHtml}
+                title={`Pré-visualização fiel de ${documentFileName}`}
+                className="h-full w-full border-0"
+                sandbox=""
+              />
+            </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-8">
               <article className="mx-auto min-h-[920px] max-w-[620px] bg-white px-14 py-16 shadow-xl ring-1 ring-black/10">
