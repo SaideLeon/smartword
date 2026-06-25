@@ -13,6 +13,8 @@ type AgentResponse = {
   edits: Array<{ summary: string }>;
 };
 
+type WorkspaceMode = 'preview' | 'source';
+
 const INITIAL_DOCUMENT = `# Trabalho académico
 
 ## I. Introdução
@@ -33,22 +35,27 @@ function markdownToPreview(markdown: string): string[] {
 }
 
 function getLineClass(line: string): string {
-  if (line.startsWith('# ')) return 'text-2xl font-bold text-white';
-  if (line.startsWith('## ')) return 'mt-5 text-lg font-semibold text-white';
-  if (line.startsWith('### ')) return 'mt-4 text-base font-semibold text-white';
-  if (line.startsWith('- ')) return 'ml-5 list-item text-[var(--text-secondary)]';
-  if (line.startsWith('> ')) return 'border-l-2 border-[var(--accent-teal)] pl-3 italic text-[var(--text-secondary)]';
-  return 'text-[var(--text-primary)]';
+  if (line.startsWith('# ')) return 'mb-10 text-center text-[15px] font-bold uppercase tracking-wide text-black';
+  if (line.startsWith('## ')) return 'mb-4 mt-8 text-[13px] font-bold uppercase text-black';
+  if (line.startsWith('### ')) return 'mb-3 mt-5 text-[12px] font-bold text-black';
+  if (line.startsWith('- ')) return 'ml-8 list-item text-[12px] leading-6 text-black';
+  if (line.startsWith('> ')) return 'border-l-2 border-neutral-500 pl-3 italic text-neutral-700';
+  return 'mb-3 text-[12px] leading-6 text-black';
+}
+
+function stripMarkdownPrefix(line: string): string {
+  return line.replace(/^#{1,3}\s*/, '').replace(/^-\s*/, '').replace(/^>\s*/, '');
 }
 
 export default function ChatworkPage() {
   const [documentMarkdown, setDocumentMarkdown] = useState(INITIAL_DOCUMENT);
   const [selectedText, setSelectedText] = useState('');
   const [command, setCommand] = useState('');
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('preview');
   const [messages, setMessages] = useState<ChatworkMessage[]>([
     {
       role: 'assistant',
-      content: 'Olá! Sou o agente Chatwork. Selecciona uma área do documento ou dá um comando por fases para eu editar contigo.',
+      content: 'Olá! Importa um DOCX, selecciona uma área do documento ou dá comandos por fases. Eu actualizo o trabalho e mantemos a pré-visualização aberta.',
     },
   ]);
   const [isSending, setIsSending] = useState(false);
@@ -99,6 +106,7 @@ export default function ChatworkPage() {
       setDocumentMarkdown(data.documentMarkdown);
       setMessages(current => [...current, { role: 'assistant', content: data.reply }]);
       setSelectedText('');
+      setWorkspaceMode('preview');
     } catch (err: any) {
       setError(err.message || 'Erro inesperado no Chatwork.');
       setMessages(current => [...current, { role: 'assistant', content: 'Não consegui aplicar a alteração agora. Tenta novamente ou reformula o comando.' }]);
@@ -124,7 +132,8 @@ export default function ChatworkPage() {
 
       const data = await response.json() as { markdown: string; warnings?: string[] };
       setDocumentMarkdown(data.markdown);
-      setMessages(current => [...current, { role: 'assistant', content: 'Importei o DOCX para o workspace. Agora podes pedir alterações por comando.' }]);
+      setWorkspaceMode('preview');
+      setMessages(current => [...current, { role: 'assistant', content: 'Importei o DOCX para a área de trabalho. Agora podes pedir alterações por comando.' }]);
     } catch (err: any) {
       setError(err.message || 'Erro ao importar o DOCX.');
     } finally {
@@ -151,121 +160,127 @@ export default function ChatworkPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f0f10] text-[var(--text-primary)]">
-      <div className="flex h-screen flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] bg-[#151516] px-5 py-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--accent-teal)]">Nova interface experimental</p>
-            <h1 className="text-lg font-semibold text-white">Chatwork Workspace</h1>
-          </div>
-          <div className="hidden rounded-full border border-[var(--border)] px-3 py-1 font-mono text-[11px] text-[var(--text-secondary)] md:block">
-            Documento + agente em tempo real
-          </div>
-        </header>
+    <main className="h-screen overflow-hidden bg-[#1b1b1a] text-[#f4f0ea]">
+      <div className="grid h-full grid-cols-[48px_minmax(360px,49vw)_minmax(420px,1fr)]">
+        <nav className="flex flex-col items-center border-r border-white/10 bg-[#191918] py-3 text-neutral-300">
+          <div className="mb-5 flex h-8 w-8 items-center justify-center rounded-full bg-[#f97316] text-sm font-bold text-white">C</div>
+          {['+', '◌', '▱', '⌘', '▣'].map(item => (
+            <button key={item} className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg text-lg hover:bg-white/10" type="button">
+              {item}
+            </button>
+          ))}
+          <div className="mt-auto flex h-9 w-9 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-900">SO</div>
+        </nav>
 
-        <section className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-[360px_minmax(0,1fr)_420px]">
-          <aside className="flex min-h-0 flex-col border-r border-[var(--border)] bg-[#151516]">
-            <div className="border-b border-[var(--border)] p-4">
-              <h2 className="text-sm font-semibold text-white">Agente IA</h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
-                Conversa por fases: pede para melhorar uma secção, trocar palavras, sublinhar ideias, expandir objectivos ou reformular parágrafos.
-              </p>
-            </div>
+        <section className="relative flex min-w-0 flex-col border-r border-white/10 bg-[#1b1b1a]">
+          <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-5">
+            <button className="flex items-center gap-2 text-sm font-semibold text-white" type="button">
+              Chatwork — escrita por fases <span className="text-neutral-500">⌄</span>
+            </button>
+            <span className="rounded-full bg-black/30 px-3 py-1 text-xs text-neutral-400">Workspace IA</span>
+          </header>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-44 pt-5 lg:px-8">
+            <div className="mx-auto max-w-[760px] space-y-7">
               {messages.map((message, index) => (
-                <div
-                  key={`${message.role}-${index}`}
-                  className={`rounded-2xl px-3 py-2 text-sm leading-6 ${
-                    message.role === 'user'
-                      ? 'ml-8 bg-[var(--accent-teal)] text-black'
-                      : 'mr-8 border border-[var(--border)] bg-[#1d1d1f] text-[var(--text-primary)]'
-                  }`}
-                >
-                  {message.content}
-                </div>
+                <article key={`${message.role}-${index}`} className={message.role === 'user' ? 'flex justify-end' : 'block'}>
+                  <div
+                    className={message.role === 'user'
+                      ? 'max-w-[78%] rounded-2xl bg-[#111] px-4 py-3 text-[15px] leading-6 text-white shadow-lg'
+                      : 'max-w-[88%] text-[15px] leading-7 text-[#e9e2da]'}
+                  >
+                    {message.role === 'assistant' && index > 0 && (
+                      <p className="mb-2 text-xs text-neutral-500">Executou comandos ›</p>
+                    )}
+                    {message.content}
+                  </div>
+                </article>
               ))}
+
               {isSending && (
-                <div className="mr-8 rounded-2xl border border-[var(--border)] bg-[#1d1d1f] px-3 py-2 text-sm text-[var(--text-secondary)]">
-                  O agente está a analisar o documento…
+                <div className="flex items-center gap-3 text-sm text-neutral-400">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#f97316] border-t-transparent" />
+                  Trabalhando no documento…
                 </div>
               )}
             </div>
+          </div>
 
-            <form onSubmit={submitCommand} className="border-t border-[var(--border)] p-4">
-              {selectedText && (
-                <div className="mb-3 rounded-xl border border-[var(--accent-teal)]/40 bg-[var(--accent-teal)]/10 p-3 text-xs text-[var(--text-secondary)]">
-                  <strong className="text-[var(--accent-teal)]">Selecção activa:</strong> {selectedText.slice(0, 160)}{selectedText.length > 160 ? '…' : ''}
-                </div>
-              )}
-              {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
-              <textarea
-                value={command}
-                onChange={event => setCommand(event.target.value)}
-                placeholder="Ex.: melhora a introdução, troca esta palavra, sublinha a ideia principal…"
-                className="h-24 w-full resize-none rounded-2xl border border-[var(--border)] bg-[#101011] p-3 text-sm outline-none focus:border-[var(--accent-teal)]"
-              />
-              <div className="mt-3 flex gap-2">
-                <button type="submit" disabled={isSending} className="flex-1 rounded-xl bg-[var(--accent-teal)] px-4 py-2 text-sm font-semibold text-black disabled:opacity-50">
-                  Enviar comando
-                </button>
-                <button type="button" onClick={startVoiceCommand} className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm text-white">
-                  Voz
-                </button>
+          <form onSubmit={submitCommand} className="absolute inset-x-4 bottom-4 mx-auto max-w-[760px] rounded-[22px] border border-white/10 bg-[#2a2a28] p-3 shadow-2xl shadow-black/40">
+            {selectedText && (
+              <div className="mb-2 rounded-xl border border-[#f97316]/40 bg-[#f97316]/10 px-3 py-2 text-xs text-neutral-300">
+                <strong className="text-[#ff9b6a]">Selecção activa:</strong> {selectedText.slice(0, 150)}{selectedText.length > 150 ? '…' : ''}
               </div>
-            </form>
-          </aside>
-
-          <section className="flex min-h-0 flex-col bg-[#101011]">
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Editor do documento</h2>
-                <p className="text-xs text-[var(--text-secondary)]">Selecciona um trecho e clica em “Usar selecção”.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold text-white hover:border-[var(--accent-teal)]">
-                  {isImporting ? 'A importar…' : 'Importar DOCX'}
-                  <input
-                    type="file"
-                    accept=".docx"
-                    className="hidden"
-                    onChange={event => importDocx(event.target.files?.[0])}
-                    disabled={isImporting}
-                  />
-                </label>
-                <button onClick={captureSelection} className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold text-white hover:border-[var(--accent-teal)]">
-                  Usar selecção
-                </button>
+            )}
+            {error && <p className="mb-2 px-1 text-xs text-red-300">{error}</p>}
+            <textarea
+              value={command}
+              onChange={event => setCommand(event.target.value)}
+              placeholder="Escreva uma mensagem…"
+              className="h-20 w-full resize-none bg-transparent px-2 py-2 text-[15px] text-white outline-none placeholder:text-neutral-500"
+            />
+            <div className="flex items-center justify-between px-1 pt-1">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1 text-lg text-white hover:bg-white/10">
+                +
+                <input
+                  type="file"
+                  accept=".docx"
+                  className="hidden"
+                  onChange={event => importDocx(event.target.files?.[0])}
+                  disabled={isImporting}
+                />
+                <span className="text-xs text-neutral-400">{isImporting ? 'A importar…' : 'DOCX'}</span>
+              </label>
+              <div className="flex items-center gap-3 text-xs text-neutral-400">
+                <span>Agente Chatwork</span>
+                <button type="button" onClick={startVoiceCommand} className="rounded-lg px-2 py-1 text-lg text-white hover:bg-white/10">♩</button>
+                <button type="submit" disabled={isSending} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f97316] text-lg font-bold text-white disabled:opacity-50">↑</button>
               </div>
             </div>
+          </form>
+        </section>
+
+        <section className="flex min-w-0 flex-col bg-[#e8e9eb] text-neutral-900">
+          <header className="flex h-12 shrink-0 items-center justify-between border-b border-black/10 bg-[#2a2a28] px-5 text-neutral-200">
+            <div className="min-w-0">
+              <p className="truncate text-sm">Documento actualizado · {workspaceMode === 'preview' ? 'Preview' : 'Fonte Markdown'}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setWorkspaceMode('preview')} className={`rounded-lg px-3 py-1.5 text-xs ${workspaceMode === 'preview' ? 'bg-white/15 text-white' : 'text-neutral-400 hover:bg-white/10'}`} type="button">Preview</button>
+              <button onClick={() => setWorkspaceMode('source')} className={`rounded-lg px-3 py-1.5 text-xs ${workspaceMode === 'source' ? 'bg-white/15 text-white' : 'text-neutral-400 hover:bg-white/10'}`} type="button">Fonte</button>
+              <button onClick={captureSelection} className="rounded-lg px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/10" type="button">Usar selecção</button>
+              <button className="rounded-lg px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/10" type="button">Baixar</button>
+            </div>
+          </header>
+
+          {workspaceMode === 'source' ? (
             <textarea
               ref={textAreaRef}
               value={documentMarkdown}
               onChange={event => setDocumentMarkdown(event.target.value)}
               onSelect={captureSelection}
-              className="min-h-0 flex-1 resize-none bg-[#101011] p-6 font-mono text-sm leading-7 text-[var(--text-primary)] outline-none"
+              className="min-h-0 flex-1 resize-none bg-[#111] p-6 font-mono text-sm leading-7 text-neutral-100 outline-none"
               spellCheck={false}
             />
-          </section>
-
-          <aside className="flex min-h-0 flex-col border-l border-[var(--border)] bg-[#f7f3ea] text-[#201b15]">
-            <div className="border-b border-[#ded6c8] px-4 py-3">
-              <h2 className="text-sm font-semibold">Pré-visualização</h2>
-              <p className="text-xs text-[#746858]">Visualização em tempo real do trabalho enquanto conversas com o agente.</p>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
-              <article className="mx-auto min-h-full max-w-[720px] rounded-sm bg-white px-8 py-10 shadow-2xl shadow-black/10">
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-8">
+              <article className="mx-auto min-h-[920px] max-w-[620px] bg-white px-14 py-16 shadow-xl ring-1 ring-black/10">
+                <div className="mb-12 flex justify-center">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-red-400 text-center text-[9px] font-bold uppercase text-red-500">
+                    Logo<br />Instituição
+                  </div>
+                </div>
                 {previewLines.map((line, index) => {
-                  const clean = line.replace(/^#{1,3}\s*/, '').replace(/^-\s*/, '• ').replace(/^>\s*/, '');
+                  const clean = stripMarkdownPrefix(line);
                   return line.trim() ? (
-                    <p key={index} className={`${getLineClass(line)} mb-3 leading-7`}>
+                    <p key={index} className={getLineClass(line)}>
                       {clean}
                     </p>
                   ) : <div key={index} className="h-3" />;
                 })}
               </article>
             </div>
-          </aside>
+          )}
         </section>
       </div>
     </main>
