@@ -14,7 +14,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
-  const [recentAction, setRecentAction] = useState<'import' | 'clear' | 'pagebreak' | 'section' | 'toc' | null>(null);
+  const [recentAction, setRecentAction] = useState<'import' | 'clear' | 'pagebreak' | 'section' | 'toc' | 'math' | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousValueRef = useRef(value);
 
@@ -40,7 +40,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
     });
   }, [value]);
 
-  const showActionFeedback = useCallback((action: 'import' | 'clear' | 'pagebreak' | 'section' | 'toc') => {
+  const showActionFeedback = useCallback((action: 'import' | 'clear' | 'pagebreak' | 'section' | 'toc' | 'math') => {
     setRecentAction(action);
     if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     feedbackTimeoutRef.current = setTimeout(() => {
@@ -49,7 +49,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
     }, 1800);
   }, []);
 
-  const insertAtCursor = useCallback((marker: string, feedbackKey: 'pagebreak' | 'section' | 'toc') => {
+  const insertAtCursor = useCallback((marker: string, feedbackKey: 'pagebreak' | 'section' | 'toc' | 'math') => {
     const textarea = textareaRef.current;
     const insertion = `\n\n${marker}\n\n`;
 
@@ -163,6 +163,14 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
             tone="toc"
             fullWidth={isMobile}
           />
+
+          <ToolbarBtn
+            onClick={() => insertAtCursor('$$\n\\frac{a}{b}\n$$', 'math')}
+            label={recentAction === 'math' ? 'Inserido ✓' : 'π Fórmula'}
+            title="Insere um bloco LaTeX que será exportado como equação editável no Word"
+            tone="math"
+            fullWidth={isMobile}
+          />
         </div>
       </div>
 
@@ -172,6 +180,7 @@ export function MarkdownEditor({ value, onChange, isMobile = false }: Props) {
           { marker: '{pagebreak}', desc: 'quebra de página', markerClassName: 'text-text-faint' },
           { marker: '{section}',   desc: 'nova secção · paginação reinicia em 1', markerClassName: 'text-green' },
           { marker: '{toc}',       desc: 'índice automático · actualizado no Word', markerClassName: 'text-[#7db8e0]' },
+          { marker: '$$...$$',     desc: 'fórmula LaTeX em bloco · exporta como equação Word', markerClassName: 'text-gold' },
         ].map(({ marker, desc, markerClassName }) => (
           <span key={marker} className="font-mono text-[10px] tracking-[0.04em] text-text-dim">
             <code className={`rounded-[3px] bg-surface px-[5px] py-px ${markerClassName}`}>{marker}</code>
@@ -237,7 +246,7 @@ function ToolbarBtn({
   label: string;
   icon?: ReactNode;
   title?: string;
-  tone?: 'muted' | 'section' | 'toc';
+  tone?: 'muted' | 'section' | 'toc' | 'math';
   fullWidth?: boolean;
 }) {
   const toneClassName =
@@ -245,7 +254,9 @@ function ToolbarBtn({
       ? 'text-[#6a9e5f] hover:border-[#6a9e5f55]'
       : tone === 'toc'
         ? 'text-[#7db8e0] hover:border-[#7db8e055]'
-        : 'text-text-muted hover:border-[#8a7d6e55]';
+        : tone === 'math'
+          ? 'text-gold hover:border-[#c9a96e55]'
+          : 'text-text-muted hover:border-[#8a7d6e55]';
 
   return (
     <button
