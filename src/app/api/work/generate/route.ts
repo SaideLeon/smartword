@@ -6,12 +6,13 @@ import { parseOutlinePayload } from '@/lib/validation/input-guards';
 import { PROMPT_INJECTION_GUARD, wrapUserInput } from '@/lib/prompt-sanitizer';
 import { requireAuth } from '@/lib/api-auth';
 import type { WorkType } from '@/lib/work/types';
+import { buildWorkContextPolicyInstruction, detectWorkContextPolicy } from '@/lib/work/context-policy';
 
 // ── Sistema prompt: trabalho académico clássico ────────────────────────────────
 
 const SYSTEM_ACADEMIC = `${PROMPT_INJECTION_GUARD}
 
-És um especialista em metodologia académica do ensino secundário e médio em Moçambique.
+És um especialista em metodologia académica do ensino secundário e médio.
 Vais gerar um esboço orientador para um trabalho escolar sobre o tópico fornecido.
 
 O trabalho tem SEMPRE estas secções fixas (não adicionares nem removeres nenhuma). A estrutura principal obrigatória é:
@@ -40,11 +41,11 @@ REGRAS DE ADEQUAÇÃO AO NÍVEL SECUNDÁRIO/MÉDIO — OBRIGATÓRIAS:
 - "II. Objectivos" deve ter APENAS: 1 objectivo geral (1 frase no infinitivo) + 3 a 4 objectivos específicos simples (bullets no infinitivo). SEM metodologia aqui. SEM referências ou citações.
 - "III. Metodologia" deve descrever: tipo de pesquisa (qualitativa/bibliográfica), método de análise (histórico, comparativo, etc.) e critérios de selecção das fontes. SEM objectivos aqui.
 - "I. Introdução" deve conter: contextualização do tema, problema de pesquisa, objectivos gerais e estrutura do trabalho. Máximo 1 página. SEM desenvolvimento teórico antecipado.
-- As subsecções do Desenvolvimento (1.1, 1.2, 1.3) apresentam os conceitos de forma progressiva com exemplos práticos ligados ao quotidiano moçambicano.
+- As subsecções do Desenvolvimento (1.1, 1.2, 1.3) apresentam os conceitos de forma progressiva, com exemplos apenas quando forem relevantes para compreender o tema.
 - "Conclusão" resume os pontos principais e apresenta a opinião do aluno. Máximo 1 página.
 - "Referências Bibliográficas" lista todas as fontes em formato APA 7.ª edição. NÃO aparece em nenhuma outra secção.
 
-Escreve em português europeu/moçambicano. Sê concreto e útil.`;
+Escreve em português europeu com normas ortográficas moçambicanas quando aplicável. Sê concreto e útil.`;
 
 // ── Sistema prompt: projecto empresarial / empreendedor ───────────────────────
 
@@ -129,7 +130,10 @@ export async function POST(req: Request) {
 
     const { topic, sessionId, suggestions, workType = 'academic' } = parsedPayload as typeof parsedPayload & { workType?: WorkType };
 
-    const SYSTEM = getSystemPrompt(workType);
+    const contextPolicy = detectWorkContextPolicy(topic, workType);
+    const SYSTEM = `${getSystemPrompt(workType)}
+
+${buildWorkContextPolicyInstruction(contextPolicy)}`;
 
     const suggestionBlock = suggestions
       ? `\n\nSugestões de ajuste dadas pelo utilizador para esta nova versão do esboço:\n${wrapUserInput('user_suggestions', suggestions)}\n\nAplica estas sugestões com prioridade e regenera o esboço completo. Mantém SEMPRE a estrutura de secções definida.`
