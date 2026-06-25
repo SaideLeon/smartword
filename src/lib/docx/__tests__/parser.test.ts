@@ -26,6 +26,21 @@ describe('parseToAST', () => {
   });
 
 
+  it('converte blocos de código math/latex em equações de bloco', () => {
+    const ast = parseToAST('```latex\nE = mc^2\n```');
+
+    expect(ast[0]).toEqual({ type: 'math_block', latex: 'E = mc^2' });
+  });
+
+  it('converte ambientes LaTeX de bloco inseridos manualmente', () => {
+    const ast = parseToAST('\\begin{equation}\nx^2+y^2=z^2\n\\end{equation}');
+
+    expect(ast[0]).toEqual({
+      type: 'math_block',
+      latex: '\\begin{equation}\nx^2+y^2=z^2\n\\end{equation}',
+    });
+  });
+
   it('converte bloco ```chart``` em nó de gráfico', () => {
     const markdown = [
       '```chart',

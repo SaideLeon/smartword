@@ -70,11 +70,18 @@ function htmlToPlainText(html: string): string {
     .trim();
 }
 
+const LATEX_BLOCK_ENV_RE = /(^|\n)\\begin\{(equation\*?|align\*?|gather\*?|multline\*?)\}([\s\S]*?)\\end\{\2\}(?=\n|$)/g;
+
 export function parseToAST(markdown: string): DocumentNode[] {
-  // Preprocess Gemini-style math delimiters to standard markdown math delimiters
+  // Preprocess common manual LaTeX delimiters/environments to standard markdown math delimiters.
+  // This keeps formulas typed in advanced mode on the same export path as AI-generated formulas.
   const preprocessed = markdown
     .replace(/\\\((.*?)\\\)/g, '$$$1$$')         // \( ... \) → $...$
-    .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$'); // \[ ... \] → $$...$$
+    .replace(/\\\[([\s\S]*?)\\\]/g, '\n$$$$\n$1\n$$$$\n') // \[ ... \] → $$...$$
+    .replace(LATEX_BLOCK_ENV_RE, (_match, prefix: string, env: string, body: string) => {
+      const latex = `\\begin{${env}}${body}\\end{${env}}`;
+      return `${prefix}\n$$\n${latex}\n$$\n`;
+    });
 
   const processor = unified()
     .use(remarkParse)
@@ -201,6 +208,10 @@ export function parseToAST(markdown: string): DocumentNode[] {
       case 'code': {
         if (node.lang === 'chart') {
           return parseChartBlock(node.value as string);
+        }
+
+        if (node.lang === 'math' || node.lang === 'latex' || node.lang === 'tex') {
+          return { type: 'math_block', latex: node.value };
         }
 
         return {
