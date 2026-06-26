@@ -295,15 +295,20 @@ NÃO repitas a problematização. NÃO incluas conclusão nem referências no fi
   }
 
   if (normalizedName === 'analise fofa') {
-    return `Apresenta APENAS a Análise FOFA (SWOT) APLICADA ao projecto concreto (não teoria), com 4 blocos bem estruturados:
+    return `Apresenta APENAS a Análise FOFA (SWOT) APLICADA ao projecto concreto (não teoria), obrigatoriamente em tabela Markdown.
 
-**Forças** (internas, positivas) — 3 a 4 bullets
-**Oportunidades** (externas, positivas) — 3 a 4 bullets
-**Fraquezas** (internas, negativas) — 2 a 3 bullets
-**Ameaças** (externas, negativas) — 2 a 3 bullets
+FORMATO OBRIGATÓRIO — usa exactamente uma tabela Markdown com estas colunas:
+
+| Categoria FOFA | Tipo de factor | Pontos aplicados ao projecto | Impacto no projecto |
+|---|---|---|---|
+| Forças | Interno positivo | 3 a 4 pontos específicos, separados por <br> | Explica como estes pontos favorecem a execução, qualidade ou competitividade |
+| Oportunidades | Externo positivo | 3 a 4 pontos específicos, separados por <br> | Explica como o contexto externo pode beneficiar o projecto |
+| Fraquezas | Interno negativo | 2 a 3 pontos específicos, separados por <br> | Explica o risco operacional e o que precisa de melhoria |
+| Ameaças | Externo negativo | 2 a 3 pontos específicos, separados por <br> | Explica como estes factores podem prejudicar resultados, custos ou continuidade |
 
 REGRA FUNDAMENTAL:
 - Esta secção é de análise aplicada ao projecto, não de enquadramento teórico.
+- NÃO transformar a FOFA em listas soltas; tem de sair em tabela Markdown.
 - NÃO explicar o que é FOFA, NÃO citar autores, NÃO descrever como a ferramenta funciona.
 
 REGRAS OBRIGATÓRIAS DA ANÁLISE:
