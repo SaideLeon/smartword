@@ -88,7 +88,7 @@ GUIA DE CONTEÚDO POR SECÇÃO:
 - "1.1.2 Objetivos Específicos": 3-4 bullets no infinitivo, mensuráveis
 - "2.1 Problematização": problema real identificado que o projecto resolve
 - "2.2 Justificativa": porquê este projecto é relevante para o contexto moçambicano
-- "3.1 Análise FOFA": Forças, Oportunidades, Fraquezas e Ameaças (tabela ou bullets) aplicadas ao projecto concreto — sem teoria
+- "3.1 Análise FOFA": Forças, Oportunidades, Fraquezas e Ameaças aplicadas ao projecto concreto, obrigatoriamente numa tabela Markdown — sem teoria
 - "3.2 Localização do projeto": onde será implementado e porquê essa localização
 - "3.3 Recursos Humanos": equipa necessária, funções e qualificações
 
