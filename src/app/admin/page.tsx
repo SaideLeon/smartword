@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 import {
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
   CircleDollarSign,
   Copy,
   ExternalLink,
+  Eye,
   FileText,
   Link2,
   Mail,
@@ -54,6 +55,10 @@ interface AdminUser {
   id: string; email: string | null; full_name: string | null;
   role: 'user' | 'admin'; plan_key: string | null;
   payment_status: string | null; created_at: string;
+}
+interface AdminWork {
+  id: string; topic: string; work_type: 'academic' | 'project' | null;
+  status: string | null; created_at: string; updated_at: string;
 }
 
 /* ════════════════════════════════════════════
@@ -484,6 +489,9 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userQuery, setUserQuery] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [userWorks, setUserWorks] = useState<Record<string, AdminWork[]>>({});
+  const [loadingWorksUserId, setLoadingWorksUserId] = useState<string | null>(null);
   const [expForm, setExpForm] = useState({
     category: 'groq_api', description: '', amount_mzn: '',
     period_month: today.getMonth() + 1, period_year: today.getFullYear(),
@@ -534,6 +542,7 @@ export default function AdminPage() {
       const rows = Array.isArray(data) ? (data as AdminUser[]) : [];
       setUsers(rows);
       setSelectedUserIds(cur => cur.filter(id => rows.some(r => r.id === id)));
+      setExpandedUserId(cur => cur && rows.some(r => r.id === cur) ? cur : null);
     } catch { flash('Falha de rede.'); setUsers([]); }
   }, [flash]);
 
@@ -585,6 +594,23 @@ export default function AdminPage() {
     if (!res.ok) { flash('Falha ao gerar relatório.'); return; }
     flash('Relatório gerado.'); void loadReport(expForm.period_month, expForm.period_year);
   };
+
+  const loadUserWorks = useCallback(async (userId: string, force = false) => {
+    if (!force && userWorks[userId]) {
+      setExpandedUserId(cur => cur === userId ? null : userId);
+      return;
+    }
+
+    setLoadingWorksUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/users?works_user_id=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      if (!res.ok) { flash(`Erro: ${data?.error ?? `HTTP ${res.status}`}`); return; }
+      setUserWorks(cur => ({ ...cur, [userId]: Array.isArray(data) ? (data as AdminWork[]) : [] }));
+      setExpandedUserId(userId);
+    } catch { flash('Falha ao carregar trabalhos do utilizador.'); }
+    finally { setLoadingWorksUserId(null); }
+  }, [flash, userWorks]);
 
   const toggleSelectedUser = (id: string) =>
     setSelectedUserIds(cur => cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]);
@@ -833,7 +859,7 @@ export default function AdminPage() {
                 <div className="flex flex-col items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] py-16 text-center">
                   <FileText size={32} className="text-[var(--faint)] opacity-40" />
                   <p className="font-serif text-lg">Nenhum relatório gerado</p>
-                  <p className="font-mono text-[11px] text-[var(--faint)]">Seleccione o período e clique em "Gerar relatório".</p>
+                  <p className="font-mono text-[11px] text-[var(--faint)]">Seleccione o período e clique em &quot;Gerar relatório&quot;.</p>
                 </div>
               )}
             </div>
@@ -871,14 +897,18 @@ export default function AdminPage() {
                           <input type="checkbox" checked={users.length > 0 && selectedUserIds.length === users.length}
                             onChange={toggleSelectAllUsers} aria-label="Seleccionar todos" />
                         </th>
-                        {['Utilizador', 'Plano', 'Pagamento', 'Criado em'].map(col => (
+                        {['Utilizador', 'Plano', 'Pagamento', 'Criado em', 'Trabalhos'].map(col => (
                           <th key={col} className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--faint)]">{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)]">
-                      {users.map(user => (
-                        <tr key={user.id} className="transition hover:bg-[var(--border)]/20">
+                      {users.map(user => {
+                        const works = userWorks[user.id] ?? [];
+                        const isExpanded = expandedUserId === user.id;
+                        return (
+                        <Fragment key={user.id}>
+                        <tr className="transition hover:bg-[var(--border)]/20">
                           <td className="px-5 py-3.5">
                             <input type="checkbox" checked={selectedUserIds.includes(user.id)}
                               onChange={() => toggleSelectedUser(user.id)} aria-label={`Seleccionar ${user.email ?? user.id}`} />
@@ -903,8 +933,55 @@ export default function AdminPage() {
                           <td className="px-5 py-3.5 font-mono text-[11px] text-[var(--muted)]">
                             {new Date(user.created_at).toLocaleDateString('pt-PT')}
                           </td>
+                          <td className="px-5 py-3.5">
+                            <button type="button" onClick={() => void loadUserWorks(user.id)}
+                              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+                              {loadingWorksUserId === user.id ? <RefreshCw size={11} className="animate-spin" /> : <Eye size={11} />}
+                              {isExpanded ? 'Ocultar' : 'Ver'}
+                            </button>
+                          </td>
                         </tr>
-                      ))}
+                        {isExpanded && (
+                          <tr key={`${user.id}-works`} className="bg-[var(--border)]/10">
+                            <td colSpan={6} className="px-5 py-4">
+                              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface2)] p-4">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                  <div>
+                                    <h3 className="font-serif text-base text-[var(--ink)]">Trabalhos académicos criados</h3>
+                                    <p className="font-mono text-[10px] text-[var(--faint)]">{works.length} trabalho(s) encontrado(s) para {user.full_name || user.email || 'este utilizador'}</p>
+                                  </div>
+                                  <button type="button" onClick={() => void loadUserWorks(user.id, true)}
+                                    className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 font-mono text-[10px] uppercase text-[var(--muted)] transition hover:border-[var(--gold2)] hover:text-[var(--gold2)]">
+                                    <RefreshCw size={10} /> Actualizar
+                                  </button>
+                                </div>
+                                {works.length === 0 ? (
+                                  <p className="py-4 text-center font-mono text-[11px] text-[var(--faint)]">Nenhum trabalho criado por este utilizador.</p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {works.map(work => (
+                                      <div key={work.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+                                        <div className="min-w-0">
+                                          <p className="truncate text-sm font-medium text-[var(--ink)]">{work.topic}</p>
+                                          <p className="font-mono text-[10px] text-[var(--faint)]">ID: {work.id}</p>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+                                          <span className="rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-2 py-0.5 uppercase text-[var(--gold2)]">{work.work_type === 'project' ? 'Projecto' : 'Académico'}</span>
+                                          <span className="rounded-full border border-[var(--border)] px-2 py-0.5 uppercase text-[var(--muted)]">{work.status ?? '—'}</span>
+                                          <span className="text-[var(--faint)]">Criado: {new Date(work.created_at).toLocaleDateString('pt-PT')}</span>
+                                          <span className="text-[var(--faint)]">Actualizado: {new Date(work.updated_at).toLocaleDateString('pt-PT')}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
+                      );
+                      })}
                     </tbody>
                   </table>
                   {users.length === 0 && (

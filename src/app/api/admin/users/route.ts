@@ -86,6 +86,23 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get('q') ?? '').trim().slice(0, 120);
+  const worksUserId = (searchParams.get('works_user_id') ?? '').trim();
+
+  if (worksUserId) {
+    if (!UUID_V4_PATTERN.test(worksUserId)) {
+      return NextResponse.json({ error: 'ID de utilizador inválido' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('work_sessions')
+      .select('id,topic,work_type,status,created_at,updated_at')
+      .eq('user_id', worksUserId)
+      .order('updated_at', { ascending: false })
+      .limit(100);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data ?? []);
+  }
 
   let query = supabase
     .from('profiles')
